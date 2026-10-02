@@ -85,8 +85,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement daemon behavior, SQLite, UI or browser management.
 
 **Work:**
-- [~] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
-- [ ] T001.2 — Extend hosted CI from bootstrap verification to the implementation skeleton
+- [x] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
+- [~] T001.2 — Extend hosted CI from bootstrap verification to the implementation skeleton
 - [ ] T001.3 — Prove clean-checkout build/test/package smoke
 
 **Acceptance:**
