@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pcms-local.invalid/schemas/task-claim-v1.json",
+  "title": "PCMS-local Agent Task Claim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taskId",
+    "phase",
+    "owner",
+    "baseMainSha",
+    "acceptanceIds",
+    "touchedPaths",
+    "dependsOnTasks",
+    "migrationIds",
+    "status"
+  ],
+  "properties": {
+    "taskId": {
+      "type": "string",
+      "minLength": 3
+    },
+    "phase": {
+      "type": "string",
+      "pattern": "^P\\d{2}$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseMainSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "acceptanceIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^A\\d{2}-\\d{2}$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "touchedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependsOnTasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "migrationIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "contractChanges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "mergeAfter": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "status": {
+      "enum": [
+        "CLAIMED",
+        "ACTIVE",
+        "BLOCKED",
+        "READY_FOR_INTEGRATION",
+        "MERGED",
+        "ABANDONED"
+      ]
+    }
+  }
+}

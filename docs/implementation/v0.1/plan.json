@@ -1,0 +1,873 @@
+{
+  "baseline": "0.1",
+  "authority": "docs/implementation/v0.1/plan.json",
+  "productAuthority": "docs/product/PRODUCT_REQUIREMENTS.md",
+  "architectureAuthority": "docs/architecture",
+  "statuses": [
+    "BLOCKED",
+    "READY",
+    "IN_PROGRESS",
+    "COMPLETE"
+  ],
+  "phases": [
+    {
+      "id": "P00",
+      "name": "Architecture, governance and proven-source bootstrap",
+      "status": "IN_PROGRESS",
+      "dependsOn": [],
+      "specs": [
+        "00",
+        "01",
+        "15",
+        "16",
+        "18"
+      ],
+      "acceptanceIds": [
+        "A00-01",
+        "A00-02",
+        "A00-03",
+        "A00-04",
+        "A00-05",
+        "A00-06",
+        "A00-07"
+      ],
+      "deliverables": [
+        "Normative product and architecture authority",
+        "AGENTS contract and machine-readable plan",
+        "Acceptance/traceability/definition-of-done records",
+        "Exact provenance for ported PersonaMonkey routing source",
+        "Behavior-preserving native routing source + hardening tests",
+        "Repository verifier and first CI gates"
+      ],
+      "tasks": [
+        {
+          "id": "T00.1",
+          "name": "Import exact product requirements and authority hierarchy"
+        },
+        {
+          "id": "T00.2",
+          "name": "Write architecture/ADRs/non-goals"
+        },
+        {
+          "id": "T00.3",
+          "name": "Create plan, policies, ownership, acceptance and agent protocol"
+        },
+        {
+          "id": "T00.4",
+          "name": "Port native router baseline with exact provenance"
+        },
+        {
+          "id": "T00.5",
+          "name": "Add repository verification/toolchain skeleton"
+        },
+        {
+          "id": "T00.6",
+          "name": "Add initial GitHub Actions and validate on branch"
+        }
+      ]
+    },
+    {
+      "id": "P01",
+      "name": "Executable local shell, SQLite and CI foundation",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P00"
+      ],
+      "specs": [
+        "02",
+        "12",
+        "13",
+        "14",
+        "15"
+      ],
+      "acceptanceIds": [
+        "A01-01",
+        "A01-02",
+        "A01-03",
+        "A01-04",
+        "A01-05",
+        "A01-06",
+        "A01-07",
+        "A01-08"
+      ],
+      "deliverables": [
+        "Pinned Node/TypeScript workspace",
+        "pcmsd loopback API with health/readiness",
+        "SQLite migration/repository base",
+        "minimal local Web UI and CLI",
+        "development/user-service launch path",
+        "hosted CI for deterministic tests/build"
+      ],
+      "tasks": [
+        {
+          "id": "T01.1",
+          "name": "Workspace/build/lint/typecheck/test baseline"
+        },
+        {
+          "id": "T01.2",
+          "name": "Config/data-root/single-instance primitives"
+        },
+        {
+          "id": "T01.3",
+          "name": "SQLite adapter and migration authority"
+        },
+        {
+          "id": "T01.4",
+          "name": "pcmsd loopback HTTP health/readiness and auth bootstrap"
+        },
+        {
+          "id": "T01.5",
+          "name": "minimal Web UI shell"
+        },
+        {
+          "id": "T01.6",
+          "name": "CLI typed client and JSON mode"
+        },
+        {
+          "id": "T01.7",
+          "name": "user systemd/development launcher and diagnostics"
+        },
+        {
+          "id": "T01.8",
+          "name": "CI matrices, package smoke, release artifact skeleton"
+        }
+      ]
+    },
+    {
+      "id": "P02",
+      "name": "Updateable module package/runtime/lifecycle",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P01"
+      ],
+      "specs": [
+        "06",
+        "07",
+        "10",
+        "12",
+        "14",
+        "15"
+      ],
+      "acceptanceIds": [
+        "A02-01",
+        "A02-02",
+        "A02-03",
+        "A02-04",
+        "A02-05",
+        "A02-06",
+        "A02-07",
+        "A02-08",
+        "A02-09",
+        "A02-10",
+        "A02-11",
+        "A02-12"
+      ],
+      "deliverables": [
+        ".pcmsmod schema and bounded parser",
+        "module-runner IPC/runtime generations",
+        "namespaced module storage",
+        "install/update/permission-delta/disable/rollback",
+        "hello/reference module shipped through real package path"
+      ],
+      "tasks": [
+        {
+          "id": "T02.1",
+          "name": "manifest/package schemas and archive safety"
+        },
+        {
+          "id": "T02.2",
+          "name": "immutable package/version store"
+        },
+        {
+          "id": "T02.3",
+          "name": "module SDK RPC protocol and capability enforcement"
+        },
+        {
+          "id": "T02.4",
+          "name": "module-runner process lifecycle and bounded IPC"
+        },
+        {
+          "id": "T02.5",
+          "name": "module storage + candidate migration copy"
+        },
+        {
+          "id": "T02.6",
+          "name": "quiesce/drain/fence/update/atomic activation"
+        },
+        {
+          "id": "T02.7",
+          "name": "permission expansion approval"
+        },
+        {
+          "id": "T02.8",
+          "name": "disable/remove/purge guards/rollback"
+        },
+        {
+          "id": "T02.9",
+          "name": "module UI host"
+        },
+        {
+          "id": "T02.10",
+          "name": "reference module install/update/crash acceptance"
+        }
+      ]
+    },
+    {
+      "id": "P03",
+      "name": "Chromium Persona lifecycle and non-destructive agent attachment",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P01"
+      ],
+      "specs": [
+        "03",
+        "12",
+        "14"
+      ],
+      "acceptanceIds": [
+        "A03-01",
+        "A03-02",
+        "A03-03",
+        "A03-04",
+        "A03-05",
+        "A03-06",
+        "A03-07",
+        "A03-08",
+        "A03-09",
+        "A03-10"
+      ],
+      "deliverables": [
+        "Persona profile-root management",
+        "Chromium launch/attach/close/reconnect",
+        "DevTools endpoint ownership verification",
+        "multiple isolated profiles",
+        "agent attach/detach path"
+      ],
+      "tasks": [
+        {
+          "id": "T03.1",
+          "name": "browser binary capability probe"
+        },
+        {
+          "id": "T03.2",
+          "name": "Persona profile-root creation/path safety"
+        },
+        {
+          "id": "T03.3",
+          "name": "typed launch and DevToolsActivePort discovery"
+        },
+        {
+          "id": "T03.4",
+          "name": "process ownership/single-instance reconciliation"
+        },
+        {
+          "id": "T03.5",
+          "name": "persistent state round-trip"
+        },
+        {
+          "id": "T03.6",
+          "name": "two-Persona cookie/storage isolation"
+        },
+        {
+          "id": "T03.7",
+          "name": "browser crash recovery"
+        },
+        {
+          "id": "T03.8",
+          "name": "manual close/retire/delete guards"
+        },
+        {
+          "id": "T03.9",
+          "name": "agent attach/detach non-destructive acceptance"
+        },
+        {
+          "id": "T03.10",
+          "name": "active Persona resource cap"
+        }
+      ]
+    },
+    {
+      "id": "P04",
+      "name": "Protected routing and Chromium fail-closed integration",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P00",
+        "P03"
+      ],
+      "specs": [
+        "04",
+        "13",
+        "14",
+        "16"
+      ],
+      "acceptanceIds": [
+        "A04-01",
+        "A04-02",
+        "A04-03",
+        "A04-04",
+        "A04-05",
+        "A04-06",
+        "A04-07",
+        "A04-08",
+        "A04-09",
+        "A04-10",
+        "A04-11"
+      ],
+      "deliverables": [
+        "Typed routerd Unix-socket client",
+        "Chromium-compatible loopback forwarder command",
+        "protected/direct/block launch modes",
+        "route/egress/DNS/WebRTC/QUIC acceptance",
+        "route-loss no-direct-fallback proof"
+      ],
+      "tasks": [
+        {
+          "id": "T04.1",
+          "name": "port baseline native tests green unchanged"
+        },
+        {
+          "id": "T04.2",
+          "name": "typed bounded Core router client"
+        },
+        {
+          "id": "T04.3",
+          "name": "prepare_chromium_exit daemon command + tests"
+        },
+        {
+          "id": "T04.4",
+          "name": "protected browser proxy/resolver policy"
+        },
+        {
+          "id": "T04.5",
+          "name": "daemon and browser egress verification"
+        },
+        {
+          "id": "T04.6",
+          "name": "DNS/QUIC/WebRTC leak acceptance"
+        },
+        {
+          "id": "T04.7",
+          "name": "route loss no Direct fallback"
+        },
+        {
+          "id": "T04.8",
+          "name": "Direct explicit mode"
+        },
+        {
+          "id": "T04.9",
+          "name": "Block mode"
+        },
+        {
+          "id": "T04.10",
+          "name": "route switch/relaunch safety"
+        },
+        {
+          "id": "T04.11",
+          "name": "multiple active protected Personas"
+        }
+      ]
+    },
+    {
+      "id": "P05",
+      "name": "Core domain, Accounts, Generator identity, search and session observations",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P01",
+        "P03",
+        "P04"
+      ],
+      "specs": [
+        "02",
+        "03",
+        "04",
+        "10",
+        "12",
+        "17"
+      ],
+      "acceptanceIds": [
+        "A05-01",
+        "A05-02",
+        "A05-03",
+        "A05-04",
+        "A05-05",
+        "A05-06",
+        "A05-07",
+        "A05-08",
+        "A05-09",
+        "A05-10"
+      ],
+      "deliverables": [
+        "Account/Persona binding invariants",
+        "stable GeneratorRef model",
+        "binding history/rebind",
+        "route/session health projections",
+        "core search/navigation",
+        "50+ dormant Persona sanity"
+      ],
+      "tasks": [
+        {
+          "id": "T05.1",
+          "name": "Account/Persona/Route/Generator schemas and repositories"
+        },
+        {
+          "id": "T05.2",
+          "name": "partial unique binding constraints/rebind history"
+        },
+        {
+          "id": "T05.3",
+          "name": "GeneratorRef stable identity/current slug semantics"
+        },
+        {
+          "id": "T05.4",
+          "name": "Persona route/session health projection"
+        },
+        {
+          "id": "T05.5",
+          "name": "search API/UI"
+        },
+        {
+          "id": "T05.6",
+          "name": "import/export basic Account/Generator data"
+        },
+        {
+          "id": "T05.7",
+          "name": "wrong-account observation contract"
+        },
+        {
+          "id": "T05.8",
+          "name": "50+ inventory performance sanity"
+        }
+      ]
+    },
+    {
+      "id": "P06",
+      "name": "Browser automation, Perchance adapter, operations and Human Tasks",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P02",
+        "P05"
+      ],
+      "specs": [
+        "05",
+        "08",
+        "09",
+        "10",
+        "12",
+        "14"
+      ],
+      "acceptanceIds": [
+        "A06-01",
+        "A06-02",
+        "A06-03",
+        "A06-04",
+        "A06-05",
+        "A06-06",
+        "A06-07",
+        "A06-08",
+        "A06-09",
+        "A06-10",
+        "A06-11",
+        "A06-12",
+        "A06-13"
+      ],
+      "deliverables": [
+        "BrowserDriver/Puppeteer-Core adapter",
+        "Perchance session/generator read probes",
+        "OperationCoordinator/target claims",
+        "shared provider admission/cooldown",
+        "HumanTask/transient input continuation",
+        "response-loss reconciliation fixtures/live acceptance"
+      ],
+      "tasks": [
+        {
+          "id": "T06.1",
+          "name": "BrowserDriver connect/cancel/timeout/diagnostics"
+        },
+        {
+          "id": "T06.2",
+          "name": "Perchance session identity + wrong-account detection"
+        },
+        {
+          "id": "T06.3",
+          "name": "generator stable provider identity/current slug probe"
+        },
+        {
+          "id": "T06.4",
+          "name": "OperationCoordinator state machine/claims"
+        },
+        {
+          "id": "T06.5",
+          "name": "provider gate/backpressure"
+        },
+        {
+          "id": "T06.6",
+          "name": "HumanTask/transient input broker"
+        },
+        {
+          "id": "T06.7",
+          "name": "provider adapter save/read-first reconciliation discovery"
+        },
+        {
+          "id": "T06.8",
+          "name": "pcmsd/browser/module restart uncertainty matrix"
+        },
+        {
+          "id": "T06.9",
+          "name": "scheduler/queue/batch base"
+        }
+      ]
+    },
+    {
+      "id": "P07",
+      "name": "Deployer — first real updateable production module",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P06"
+      ],
+      "specs": [
+        "06",
+        "07",
+        "08",
+        "09",
+        "17"
+      ],
+      "acceptanceIds": [
+        "A07-01",
+        "A07-02",
+        "A07-03",
+        "A07-04",
+        "A07-05",
+        "A07-06",
+        "A07-07",
+        "A07-08",
+        "A07-09",
+        "A07-10",
+        "A07-11",
+        "A07-12"
+      ],
+      "deliverables": [
+        "official Deployer .pcmsmod",
+        "GitHub artifact discovery/exact SHA",
+        "stable target mapping",
+        "initial/update/no-op deployment paths",
+        "public-state/drift verification",
+        "independent Deployer update after Core install"
+      ],
+      "tasks": [
+        {
+          "id": "T07.1",
+          "name": "GitHub read adapter and exact commit snapshot"
+        },
+        {
+          "id": "T07.2",
+          "name": "artifact ZIP validation/hash/version selection"
+        },
+        {
+          "id": "T07.3",
+          "name": "stable Account/Generator mapping"
+        },
+        {
+          "id": "T07.4",
+          "name": "provider deployment discovery/live contract"
+        },
+        {
+          "id": "T07.5",
+          "name": "initial deploy/save/verify/public path"
+        },
+        {
+          "id": "T07.6",
+          "name": "changed artifact update/no-op"
+        },
+        {
+          "id": "T07.7",
+          "name": "external drift/response-loss reconciliation"
+        },
+        {
+          "id": "T07.8",
+          "name": "schedule/poll/backpressure"
+        },
+        {
+          "id": "T07.9",
+          "name": "module update/rollback while installed"
+        },
+        {
+          "id": "T07.10",
+          "name": "end-to-end beta vertical slice"
+        }
+      ]
+    },
+    {
+      "id": "P08",
+      "name": "Refresh measurement, Ban observations and Intelligent Refresher",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P06",
+        "P07"
+      ],
+      "specs": [
+        "09",
+        "17"
+      ],
+      "acceptanceIds": [
+        "A08-01",
+        "A08-02",
+        "A08-03",
+        "A08-04",
+        "A08-05",
+        "A08-06",
+        "A08-07",
+        "A08-08",
+        "A08-09",
+        "A08-10"
+      ],
+      "deliverables": [
+        "safe refresh behavior evidence",
+        "optional read-only listing/Ban observations",
+        "cohorts > recent-page capacity",
+        "active/sleep schedules/budgets",
+        "official independently updateable Refresher package"
+      ],
+      "tasks": [
+        {
+          "id": "T08.1",
+          "name": "measure current Perchance refresh behavior safely"
+        },
+        {
+          "id": "T08.2",
+          "name": "listing/recent parser fixtures/live evidence"
+        },
+        {
+          "id": "T08.3",
+          "name": "refresh measurement module"
+        },
+        {
+          "id": "T08.4",
+          "name": "Refresher policy/cohort/time semantics"
+        },
+        {
+          "id": "T08.5",
+          "name": "shared target claim collision with Deployer"
+        },
+        {
+          "id": "T08.6",
+          "name": "provider rate-limit shared gate"
+        },
+        {
+          "id": "T08.7",
+          "name": "manual/scheduled/recent-visibility modes"
+        },
+        {
+          "id": "T08.8",
+          "name": "updateable package acceptance"
+        }
+      ]
+    },
+    {
+      "id": "P09",
+      "name": "Explorer and Account Provisioning",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P06"
+      ],
+      "specs": [
+        "10",
+        "17"
+      ],
+      "acceptanceIds": [
+        "A09-01",
+        "A09-02",
+        "A09-03",
+        "A09-04",
+        "A09-05",
+        "A09-06",
+        "A09-07",
+        "A09-08",
+        "A09-09",
+        "A09-10",
+        "A09-11"
+      ],
+      "deliverables": [
+        "Explorer candidate/claim/ownership module",
+        "Provisioning staged import/signup/login/verification module",
+        "Persona allocation and HumanTask continuation",
+        "verified activation only"
+      ],
+      "tasks": [
+        {
+          "id": "T09.1",
+          "name": "Explorer live semantics/provider discovery"
+        },
+        {
+          "id": "T09.2",
+          "name": "Explorer candidate availability/claim/ownership"
+        },
+        {
+          "id": "T09.3",
+          "name": "Explorer reservations/project handoff"
+        },
+        {
+          "id": "T09.4",
+          "name": "Provisioning staged import/duplicate detection"
+        },
+        {
+          "id": "T09.5",
+          "name": "Persona allocation and signup/login flow"
+        },
+        {
+          "id": "T09.6",
+          "name": "CAPTCHA/code HumanTask continuation"
+        },
+        {
+          "id": "T09.7",
+          "name": "authenticated identity verification before ACTIVE"
+        },
+        {
+          "id": "T09.8",
+          "name": "interrupted-flow recovery/batch isolation"
+        }
+      ]
+    },
+    {
+      "id": "P10",
+      "name": "Statistics, backup/restore, operational UX and full V1 consolidation",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P08",
+        "P09"
+      ],
+      "specs": [
+        "11",
+        "12",
+        "13",
+        "14",
+        "17"
+      ],
+      "acceptanceIds": [
+        "A10-01",
+        "A10-02",
+        "A10-03",
+        "A10-04",
+        "A10-05",
+        "A10-06",
+        "A10-07",
+        "A10-08",
+        "A10-09"
+      ],
+      "deliverables": [
+        "Statistics derived module",
+        "automatic authoritative-state backups",
+        "optional Persona profile backup",
+        "fresh-install restore/RECOVERY_HOLD",
+        "attention/notifications/search polish",
+        "Full-V1 gap assessment"
+      ],
+      "tasks": [
+        {
+          "id": "T10.1",
+          "name": "Statistics facts/aggregates package"
+        },
+        {
+          "id": "T10.2",
+          "name": "coherent DB/module backup manifest"
+        },
+        {
+          "id": "T10.3",
+          "name": "automatic backup/retention"
+        },
+        {
+          "id": "T10.4",
+          "name": "optional closed-Persona profile snapshot"
+        },
+        {
+          "id": "T10.5",
+          "name": "restore staging/RECOVERY_HOLD/reconciliation"
+        },
+        {
+          "id": "T10.6",
+          "name": "attention/notification/search operational polish"
+        },
+        {
+          "id": "T10.7",
+          "name": "Full V1 workflows/projects/workspaces gap review"
+        }
+      ]
+    },
+    {
+      "id": "P11",
+      "name": "Adversarial hardening, installer and beta/release acceptance",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P10"
+      ],
+      "specs": [
+        "13",
+        "14",
+        "15",
+        "18"
+      ],
+      "acceptanceIds": [
+        "A11-01",
+        "A11-02",
+        "A11-03",
+        "A11-04",
+        "A11-05",
+        "A11-06",
+        "A11-07",
+        "A11-08",
+        "A11-09",
+        "A11-10",
+        "A11-11",
+        "A11-12",
+        "A11-13",
+        "A11-14",
+        "A11-15"
+      ],
+      "deliverables": [
+        "one-command Fedora/Linux install/update/uninstall path",
+        "release bundles/checksums/SBOM",
+        "adversarial crash/recovery matrix",
+        "50+ account/profile resource sanity",
+        "self-hosted route/provider acceptance",
+        "first supported beta/release candidate"
+      ],
+      "tasks": [
+        {
+          "id": "T11.1",
+          "name": "installer/desktop/user-service/router integration"
+        },
+        {
+          "id": "T11.2",
+          "name": "core/module reproducible release packaging"
+        },
+        {
+          "id": "T11.3",
+          "name": "crash/update/route/provider recovery matrix"
+        },
+        {
+          "id": "T11.4",
+          "name": "queue/backpressure/resource pressure tests"
+        },
+        {
+          "id": "T11.5",
+          "name": "50+ Persona performance/disk/startup sanity"
+        },
+        {
+          "id": "T11.6",
+          "name": "security/redaction/path/archive audit"
+        },
+        {
+          "id": "T11.7",
+          "name": "fresh-install restore drill"
+        },
+        {
+          "id": "T11.8",
+          "name": "live agent/route/provider acceptance"
+        },
+        {
+          "id": "T11.9",
+          "name": "release provenance and beta sign-off"
+        }
+      ]
+    }
+  ]
+}
