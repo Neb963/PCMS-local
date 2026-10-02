@@ -50,7 +50,7 @@
     {
       "id": "M02",
       "name": "Updateable module platform",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P006",
         "P007",
@@ -63,7 +63,7 @@
     {
       "id": "M03",
       "name": "Chromium Persona runtime",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P012",
         "P013",
