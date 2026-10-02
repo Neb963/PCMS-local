@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,6 +8,8 @@ import test from "node:test";
 import { resolvePcmsPaths } from "../../dist/config/paths.js";
 import { startPcmsd } from "../../dist/daemon/server.js";
 import { InstanceAlreadyRunningError } from "../../dist/runtime/instance-lock.js";
+import { DatabaseSchemaError } from "../../dist/storage/migrations.js";
+import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
 
 async function createFixturePaths(prefix) {
   const root = await mkdtemp(join(tmpdir(), prefix));
@@ -61,6 +63,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(daemon.host, "127.0.0.1");
     assert.ok(daemon.port > 0);
     assert.equal(daemon.origin, `http://127.0.0.1:${daemon.port}`);
+    assert.equal(daemon.schemaVersion, 1);
 
     const health = await getJson(daemon.origin, "/api/v1/health");
     assert.equal(health.status, 200);
@@ -68,6 +71,10 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(health.body.status, "ok");
     assert.equal(health.body.version, "0.0.0");
     assert.equal(typeof health.body.uptimeMs, "number");
+    assert.deepEqual(health.body.database, {
+      status: "ok",
+      schemaVersion: 1
+    });
 
     const ready = await getJson(daemon.origin, "/api/v1/ready");
     assert.equal(ready.status, 200);
@@ -75,7 +82,8 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
       service: "pcmsd",
       status: "ready",
       ready: true,
-      version: "0.0.0"
+      version: "0.0.0",
+      schemaVersion: 1
     });
 
     const version = await getJson(daemon.origin, "/api/v1/version");
@@ -130,4 +138,24 @@ test("bootstrap endpoints reject unsupported methods and unknown paths", async (
   } finally {
     await daemon.close();
   }
+});
+
+
+test("database bootstrap failure prevents readiness and releases instance ownership", async () => {
+  const paths = await createFixturePaths("pcmsd-db-reject-");
+  const raw = openConfiguredSqliteDatabase(paths.databasePath);
+  raw.exec("PRAGMA application_id = 12345");
+  raw.close();
+
+  await assert.rejects(
+    () => startPcmsd({ paths, port: 0 }),
+    DatabaseSchemaError
+  );
+
+  await rm(paths.databasePath, { force: true });
+  await rm(`${paths.databasePath}-wal`, { force: true });
+  await rm(`${paths.databasePath}-shm`, { force: true });
+
+  const daemon = await startPcmsd({ paths, port: 0 });
+  await daemon.close();
 });

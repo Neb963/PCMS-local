@@ -14,6 +14,10 @@ import {
   acquireInstanceLock,
   type InstanceLock
 } from "../runtime/instance-lock.js";
+import {
+  openPcmsDatabase,
+  type PcmsDatabase
+} from "../storage/database.js";
 import { workspaceMetadata } from "../workspace.js";
 
 export interface StartPcmsdOptions {
@@ -26,6 +30,7 @@ export interface PcmsdHandle {
   readonly port: number;
   readonly origin: string;
   readonly startedAt: string;
+  readonly schemaVersion: number;
   close(): Promise<void>;
 }
 
@@ -52,7 +57,11 @@ function requestPath(request: IncomingMessage): string {
   }
 }
 
-function createRequestHandler(startedAtMs: number, isReady: () => boolean) {
+function createRequestHandler(
+  startedAtMs: number,
+  isReady: () => boolean,
+  schemaVersion: number
+) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     if (request.method !== "GET" && request.method !== "HEAD") {
       writeJson(request, response, 405, {
@@ -70,7 +79,11 @@ function createRequestHandler(startedAtMs: number, isReady: () => boolean) {
         service: "pcmsd",
         status: "ok",
         version: workspaceMetadata.version,
-        uptimeMs: Math.max(0, Date.now() - startedAtMs)
+        uptimeMs: Math.max(0, Date.now() - startedAtMs),
+        database: {
+          status: "ok",
+          schemaVersion
+        }
       });
       return;
     }
@@ -81,7 +94,8 @@ function createRequestHandler(startedAtMs: number, isReady: () => boolean) {
         service: "pcmsd",
         status: ready ? "ready" : "not_ready",
         ready,
-        version: workspaceMetadata.version
+        version: workspaceMetadata.version,
+        schemaVersion
       });
       return;
     }
@@ -153,9 +167,22 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
 
   await ensurePcmsDirectories(paths);
   let instanceLock: InstanceLock | null = await acquireInstanceLock(paths.instanceLockPath);
+  let database: PcmsDatabase | null = null;
+
+  try {
+    database = openPcmsDatabase(paths.databasePath);
+  } catch (error: unknown) {
+    await instanceLock.release();
+    instanceLock = null;
+    throw error;
+  }
+
+  const schemaVersion = database.schemaVersion;
   const startedAtMs = Date.now();
   let ready = false;
-  const server = createServer(createRequestHandler(startedAtMs, () => ready));
+  const server = createServer(
+    createRequestHandler(startedAtMs, () => ready, schemaVersion)
+  );
 
   server.on("clientError", (_error, socket) => {
     socket.end("HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
@@ -166,6 +193,8 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
     address = await listenOnLoopback(server, port);
     ready = true;
   } catch (error: unknown) {
+    database.close();
+    database = null;
     await instanceLock.release();
     instanceLock = null;
     throw error;
@@ -179,6 +208,7 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
     port: address.port,
     origin: `http://${PCMSD_LOOPBACK_HOST}:${address.port}`,
     startedAt,
+    schemaVersion,
     async close(): Promise<void> {
       if (closed) {
         return;
@@ -189,9 +219,16 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
       try {
         await closeServer(server);
       } finally {
-        if (instanceLock !== null) {
-          await instanceLock.release();
-          instanceLock = null;
+        try {
+          if (database !== null) {
+            database.close();
+            database = null;
+          }
+        } finally {
+          if (instanceLock !== null) {
+            await instanceLock.release();
+            instanceLock = null;
+          }
         }
       }
     }
