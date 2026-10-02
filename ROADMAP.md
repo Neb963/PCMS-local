@@ -12,6 +12,7 @@ PCMS-local uses **session-sized implementation phases** because long cloud-agent
 - `P000` is the only current size exception because it predates this roadmap.
 - Exactly **one phase globally** may be `READY` or `IN_PROGRESS`.
 - Phases execute sequentially. This is an operational reliability choice, not a statement that every subsystem is architecturally coupled.
+- Milestone status is derived: READY before its first phase starts, IN_PROGRESS after at least one constituent phase completes while another is active, COMPLETE when all constituent phases complete, otherwise BLOCKED.
 - An agent implements **one phase maximum**. After closing it, the agent marks only the immediate successor `READY`, publishes progress, and **STOPS**.
 - If a phase proves materially oversized, do not grind through it. Split the remaining scope into successor session phases while preserving milestone/acceptance ownership and the one-active-phase invariant.
 - P001–P047 are CI-first and require no MCP, real Perchance credentials or real Mullvad credentials.
