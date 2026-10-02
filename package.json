@@ -32,7 +32,8 @@
     "test": "npm run test:unit && npm run test:integration && npm run test:native",
     "verify": "npm run verify:repo && npm run verify:port && npm run lint && npm run typecheck && npm test",
     "test:integration": "npm run build --silent && node --test tests/integration/*.test.mjs",
-    "audit:prod": "npm audit --omit=dev --audit-level=high"
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "package:smoke": "npm run build --silent && node scripts/package-smoke.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"
