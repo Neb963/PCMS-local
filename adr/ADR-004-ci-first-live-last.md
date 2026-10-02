@@ -11,7 +11,7 @@ The project specifically aims to minimize fragile browser/MCP-driven development
 
 ## Decision
 
-Development phases P01–P11 are closable without MCP and without real Perchance or Mullvad credentials.
+Development phases P001–P047 are closable without MCP and without real Perchance or Mullvad credentials.
 
 GitHub Actions is the primary acceptance environment:
 - real Chromium/Chrome for Testing for browser/profile/CDP mechanics;
@@ -19,7 +19,7 @@ GitHub Actions is the primary acceptance environment:
 - synthetic SOCKS/WireGuard/network fixtures for routing and fail-closed behavior;
 - deterministic crash, timeout, response-loss, clock and recovery injection.
 
-Real Perchance, real Mullvad and MCP are reserved for final P12 system acceptance after the implementation is otherwise release-candidate complete.
+Real Perchance, real Mullvad and MCP are reserved for final P048–P049 system acceptance after the implementation is otherwise release-candidate complete.
 
 No Perchance credential, browser session/profile, Mullvad account secret or WireGuard private configuration is required in public-repository GitHub Actions.
 
@@ -27,9 +27,9 @@ No Perchance credential, browser session/profile, Mullvad account secret or Wire
 
 Passing emulator/synthetic tests proves PCMS behavior against the encoded contract. It does not prove that current Perchance/Mullvad behavior still matches that contract.
 
-P12 exists specifically to detect that final integration gap.
+P048–P049 exists specifically to detect that final integration gap.
 
-If P12 discovers provider/network drift:
+If P048–P049 discovers provider/network drift:
 1. record the observed discrepancy;
 2. update discovery evidence and the emulator/synthetic fixture;
 3. reproduce the failure in deterministic CI;
@@ -51,5 +51,5 @@ Positive:
 
 Costs:
 - emulator fidelity becomes an explicit maintained asset;
-- real provider/network drift can remain invisible until P12;
-- P12 is still required before a release can claim real-system compatibility.
+- real provider/network drift can remain invisible until P048–P049;
+- P048–P049 is still required before a release can claim real-system compatibility.
