@@ -671,6 +671,56 @@ export class ModuleStateStore {
         moduleId,
         runtimeGeneration
       );
+      const usage = this.#database.prepare(`
+        SELECT
+          COUNT(*) AS entry_count,
+          COALESCE(
+            SUM(
+              length(CAST(state_key AS BLOB)) +
+              length(CAST(value_json AS BLOB))
+            ),
+            0
+          ) AS total_bytes
+        FROM module_state_entries
+        WHERE module_id = ?
+          AND state_generation = ?
+          AND state_key <> ?
+      `).get(
+        moduleId,
+        registration.activeStateGeneration,
+        key
+      );
+      const entryCount = usage?.["entry_count"];
+      const totalBytes = usage?.["total_bytes"];
+      if (
+        typeof entryCount !== "number" ||
+        !Number.isSafeInteger(entryCount) ||
+        typeof totalBytes !== "number" ||
+        !Number.isSafeInteger(totalBytes)
+      ) {
+        fail(
+          "MODULE_STATE_CORRUPT",
+          "module state usage metadata is invalid"
+        );
+      }
+      const nextEntryCount = entryCount + 1;
+      const nextTotalBytes =
+        totalBytes +
+        Buffer.byteLength(key) +
+        Buffer.byteLength(entry.json);
+      if (nextEntryCount > MODULE_STATE_MAX_ENTRIES) {
+        fail(
+          "MODULE_STATE_LIMIT_EXCEEDED",
+          `module state exceeds ${MODULE_STATE_MAX_ENTRIES} entries`
+        );
+      }
+      if (nextTotalBytes > MODULE_STATE_MAX_TOTAL_BYTES) {
+        fail(
+          "MODULE_STATE_LIMIT_EXCEEDED",
+          `module state exceeds ${MODULE_STATE_MAX_TOTAL_BYTES} total bytes`
+        );
+      }
+
       this.#database.prepare(`
         INSERT INTO module_state_entries (
           module_id,

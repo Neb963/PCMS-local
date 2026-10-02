@@ -220,3 +220,73 @@ test("module state rejects invalid keys, non-JSON values and oversize values", a
     await f.cleanup();
   }
 });
+
+test("incremental writes enforce aggregate entry and byte limits", async () => {
+  const f = await fixture();
+  try {
+    const almostFullEntries = Object.fromEntries(
+      Array.from({ length: 511 }, (_, index) => [
+        `key${String(index).padStart(3, "0")}`,
+        index
+      ])
+    );
+    f.store.registerModule(
+      "fixture.entry-cap",
+      "1.0.0",
+      1,
+      almostFullEntries
+    );
+    f.store.setActiveValue(
+      "fixture.entry-cap",
+      1,
+      "key511",
+      511
+    );
+    assert.throws(
+      () =>
+        f.store.setActiveValue(
+          "fixture.entry-cap",
+          1,
+          "key512",
+          512
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_STATE_LIMIT_EXCEEDED"
+    );
+
+    const chunk = "x".repeat(31 * 1024);
+    const almostFullBytes = Object.fromEntries(
+      Array.from({ length: 15 }, (_, index) => [
+        `chunk${String(index).padStart(2, "0")}`,
+        chunk
+      ])
+    );
+    f.store.registerModule(
+      "fixture.byte-cap",
+      "1.0.0",
+      1,
+      almostFullBytes
+    );
+    f.store.setActiveValue(
+      "fixture.byte-cap",
+      1,
+      "chunk15",
+      chunk
+    );
+    assert.throws(
+      () =>
+        f.store.setActiveValue(
+          "fixture.byte-cap",
+          1,
+          "chunk16",
+          chunk
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_STATE_LIMIT_EXCEEDED"
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
