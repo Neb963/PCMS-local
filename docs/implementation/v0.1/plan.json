@@ -38,7 +38,7 @@
     {
       "id": "M01",
       "name": "Local application foundation",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P001",
         "P002",
@@ -50,7 +50,7 @@
     {
       "id": "M02",
       "name": "Updateable module platform",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P006",
         "P007",
@@ -380,7 +380,7 @@
       "id": "P005",
       "milestone": "M01",
       "name": "User-service lifecycle and installable development bundle",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P004"
       ],
@@ -418,7 +418,7 @@
       "id": "P006",
       "milestone": "M02",
       "name": "Module manifest and safe package parser",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P005"
       ],
