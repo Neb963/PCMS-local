@@ -299,8 +299,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T011.1 — Implement isolated/resettable module UI host
-- [~] T011.2 — Build/install/update the reference module through the real package path
-- [ ] T011.3 — Exercise UI failure, update and lifecycle integration
+- [x] T011.2 — Build/install/update the reference module through the real package path
+- [~] T011.3 — Exercise UI failure, update and lifecycle integration
 
 **Acceptance:**
 - [ ] A02-11
