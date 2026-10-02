@@ -29,6 +29,16 @@ export type ModuleRuntimeState =
 
 export type ModuleSdkHandler = (params: unknown) => unknown | Promise<unknown>;
 
+export interface ModuleSdkRequestContext {
+  readonly moduleId: string;
+  readonly runtimeGeneration: number;
+  readonly method: string;
+}
+
+export type ModuleSdkAuthorizer = (
+  context: ModuleSdkRequestContext
+) => void | Promise<void>;
+
 export interface StartModuleRuntimeOptions {
   readonly moduleId: string;
   readonly version: string;
@@ -37,6 +47,7 @@ export interface StartModuleRuntimeOptions {
   readonly runtimeGeneration: number;
   readonly startupNonce?: string;
   readonly sdkHandlers?: Readonly<Record<string, ModuleSdkHandler>>;
+  readonly authorizeSdkRequest?: ModuleSdkAuthorizer;
   readonly limits?: Partial<ModuleRpcLimits>;
   readonly runnerPath?: string;
 }
@@ -76,7 +87,8 @@ const SUPPORTED_SDK_DOMAINS = new Set([
   "secrets",
   "http",
   "github",
-  "services"
+  "services",
+  "storage"
 ]);
 
 const FORBIDDEN_SDK_SEGMENTS = new Set([
@@ -155,6 +167,31 @@ function errorPayload(
   retryable = false
 ): ModuleRpcErrorPayload {
   return Object.freeze({ code, message, retryable });
+}
+
+function errorPayloadFromUnknown(
+  error: unknown,
+  fallbackCode: string,
+  fallbackMessage: string
+): ModuleRpcErrorPayload {
+  const candidate =
+    typeof error === "object" && error !== null
+      ? error as { readonly code?: unknown; readonly retryable?: unknown }
+      : null;
+  const code =
+    typeof candidate?.code === "string" &&
+    /^[A-Z][A-Z0-9_]{1,63}$/.test(candidate.code)
+      ? candidate.code
+      : fallbackCode;
+  const message =
+    error instanceof Error && error.message !== ""
+      ? error.message.slice(0, 512)
+      : fallbackMessage;
+  const retryable =
+    typeof candidate?.retryable === "boolean"
+      ? candidate.retryable
+      : false;
+  return errorPayload(code, message, retryable);
 }
 
 function runtimeLost(message: string): ModuleRuntimeError {
@@ -497,33 +534,41 @@ class ModuleRuntimeImpl {
       return;
     }
 
-    const handler = this.#sdkHandlers.get(envelope.method);
-    if (handler === undefined) {
-      await this.#sendResponse(
-        envelope.requestId,
-        undefined,
-        errorPayload(
-          "MODULE_SDK_METHOD_DENIED",
-          `module SDK method is not approved: ${envelope.method}`
-        )
-      );
-      return;
-    }
-
     this.#activeSdkDispatches += 1;
     try {
+      await this.#options.authorizeSdkRequest?.(Object.freeze({
+        moduleId: this.#options.moduleId,
+        runtimeGeneration: this.#options.runtimeGeneration,
+        method: envelope.method
+      }));
+
+      const handler = this.#sdkHandlers.get(envelope.method);
+      if (handler === undefined) {
+        await this.#sendResponse(
+          envelope.requestId,
+          undefined,
+          errorPayload(
+            "MODULE_SDK_METHOD_DENIED",
+            `module SDK method is not approved: ${envelope.method}`
+          )
+        );
+        return;
+      }
+
       const result = await handler(envelope.params);
       await this.#sendResponse(
         envelope.requestId,
         result === undefined ? null : result
       );
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Core SDK handler failed";
       await this.#sendResponse(
         envelope.requestId,
         undefined,
-        errorPayload("MODULE_SDK_REQUEST_FAILED", message)
+        errorPayloadFromUnknown(
+          error,
+          "MODULE_SDK_REQUEST_FAILED",
+          "Core SDK handler failed"
+        )
       );
     } finally {
       this.#activeSdkDispatches -= 1;

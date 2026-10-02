@@ -99,7 +99,7 @@ test("Web UI shell bootstraps authenticated same-origin Core status", async () =
       baseline: "0.1",
       database: {
         status: "ok",
-        schemaVersion: 1
+        schemaVersion: 2
       }
     });
 
@@ -143,7 +143,7 @@ test("CLI status uses the same authenticated Core API and emits stable JSON", as
         baseline: "0.1",
         database: {
           status: "ok",
-          schemaVersion: 1
+          schemaVersion: 2
         }
       }
     });
@@ -156,7 +156,7 @@ test("CLI status uses the same authenticated Core API and emits stable JSON", as
     assert.equal(humanResult.stderr, "");
     assert.match(humanResult.stdout, /^PCMS Local\n/m);
     assert.match(humanResult.stdout, /^Status: ready$/m);
-    assert.match(humanResult.stdout, /^Schema: 1$/m);
+    assert.match(humanResult.stdout, /^Schema: 2$/m);
     assert.equal(humanResult.stdout.includes(token), false);
   } finally {
     await daemon.close();

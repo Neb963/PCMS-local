@@ -235,8 +235,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not activate permission expansion or expose module UI.
 
 **Work:**
-- [~] T008.1 — Implement module namespace/version storage and generation fencing
-- [ ] T008.2 — Implement candidate state copy/migration/health validation
+- [x] T008.1 — Implement module namespace/version storage and generation fencing
+- [~] T008.2 — Implement candidate state copy/migration/health validation
 - [ ] T008.3 — Prove stale runtime rejection and last-known-good survival on candidate failure
 
 **Acceptance:**

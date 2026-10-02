@@ -29,7 +29,7 @@ test("fresh database initializes PCMS identity, schema version and migration his
   try {
     const database = openPcmsDatabase(fixture.path);
     assert.equal(database.applicationId, PCMS_APPLICATION_ID);
-    assert.equal(database.schemaVersion, 1);
+    assert.equal(database.schemaVersion, CORE_MIGRATIONS.length);
     database.close();
 
     const raw = openConfiguredSqliteDatabase(fixture.path);
@@ -38,10 +38,10 @@ test("fresh database initializes PCMS identity, schema version and migration his
         raw.prepare("PRAGMA application_id").get().application_id,
         PCMS_APPLICATION_ID
       );
-      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, 1);
+      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, CORE_MIGRATIONS.length);
       assert.equal(
         raw.prepare("SELECT count(*) AS count FROM schema_migrations").get().count,
-        1
+        CORE_MIGRATIONS.length
       );
     } finally {
       raw.close();
@@ -56,8 +56,8 @@ test("existing database upgrades in order when a new immutable migration is appe
   const migrations = [
     ...CORE_MIGRATIONS,
     {
-      version: 2,
-      id: "0002-upgrade-fixture",
+      version: CORE_MIGRATIONS.length + 1,
+      id: "0003-upgrade-fixture",
       sql: "CREATE TABLE upgrade_probe (id INTEGER PRIMARY KEY) STRICT;"
     }
   ];
@@ -70,12 +70,12 @@ test("existing database upgrades in order when a new immutable migration is appe
       migrations,
       now: () => new Date("2026-10-02T01:00:00.000Z")
     });
-    assert.equal(upgraded.schemaVersion, 2);
+    assert.equal(upgraded.schemaVersion, CORE_MIGRATIONS.length + 1);
     upgraded.close();
 
     const raw = openConfiguredSqliteDatabase(fixture.path);
     try {
-      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, 2);
+      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, CORE_MIGRATIONS.length + 1);
       assert.equal(
         raw.prepare(`
           SELECT count(*) AS count
@@ -86,7 +86,7 @@ test("existing database upgrades in order when a new immutable migration is appe
       );
       assert.equal(
         raw.prepare("SELECT count(*) AS count FROM schema_migrations").get().count,
-        2
+        CORE_MIGRATIONS.length + 1
       );
     } finally {
       raw.close();
@@ -101,8 +101,8 @@ test("failed migration rolls back schema effects, history and user_version", asy
   const migrations = [
     ...CORE_MIGRATIONS,
     {
-      version: 2,
-      id: "0002-failing-fixture",
+      version: CORE_MIGRATIONS.length + 1,
+      id: "0003-failing-fixture",
       sql: `
         CREATE TABLE should_rollback (id INTEGER PRIMARY KEY) STRICT;
         SELECT no_such_function();
@@ -121,7 +121,7 @@ test("failed migration rolls back schema effects, history and user_version", asy
 
     const raw = openConfiguredSqliteDatabase(fixture.path);
     try {
-      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, 1);
+      assert.equal(raw.prepare("PRAGMA user_version").get().user_version, CORE_MIGRATIONS.length);
       assert.equal(
         raw.prepare(`
           SELECT count(*) AS count
@@ -132,7 +132,7 @@ test("failed migration rolls back schema effects, history and user_version", asy
       );
       assert.equal(
         raw.prepare("SELECT count(*) AS count FROM schema_migrations").get().count,
-        1
+        CORE_MIGRATIONS.length
       );
     } finally {
       raw.close();
