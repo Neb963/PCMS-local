@@ -2,7 +2,7 @@ import { createZip } from "./zip-fixture.mjs";
 
 export const REFERENCE_MODULE_ID = "reference.acceptance";
 
-export function createReferenceModulePackage(version) {
+export function createReferenceModulePackage(version, options = {}) {
   if (version !== "1.0.0" && version !== "1.1.0") {
     throw new RangeError(`unsupported reference module version: ${version}`);
   }
@@ -19,7 +19,9 @@ export function createReferenceModulePackage(version) {
     stateSchemaVersion: 1
   };
 
-  const backend = `export function createModule(context) {
+  const backend =
+    options.backendSource ??
+    `export function createModule(context) {
     return {
       async handle(method, params) {
         if (method === "describe") {
