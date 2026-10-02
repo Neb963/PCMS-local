@@ -1,0 +1,36 @@
+[Unit]
+Description=Persona Mullvad Router
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /usr/local/lib/persona-mullvad-router/routerd.py
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=15
+Environment=PRM_CONTROL_UID=@UID@
+Environment=PRM_CONTROL_GID=@GID@
+UMask=0077
+RuntimeDirectory=persona-mullvad-router
+RuntimeDirectoryMode=0755
+
+# NET_ADMIN configures WireGuard and routes; NET_RAW permits SO_BINDTODEVICE
+# on kernels that still require it. CHOWN is limited to assigning the control
+# socket to the desktop account in routerd.main(). The daemon handles SIGTERM
+# cleanup itself, so shutdown does not reconnect through the user-owned socket.
+CapabilityBoundingSet=CAP_CHOWN CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+PrivateTmp=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+ReadWritePaths=/etc/persona-mullvad-router /run/persona-mullvad-router
+
+[Install]
+WantedBy=multi-user.target
