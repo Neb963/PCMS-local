@@ -88,8 +88,8 @@ export function createZip(entries) {
     const directory = entry.name?.endsWith("/") ?? false;
     const externalAttributes =
       entry.externalAttributes ??
-      ((directory ? 0o040755 : 0o100644) << 16) |
-        (directory ? 0x10 : 0);
+      (((directory ? 0o040755 : 0o100644) << 16) |
+        (directory ? 0x10 : 0));
 
     const local = localHeader({
       name,

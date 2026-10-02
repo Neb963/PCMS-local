@@ -11,8 +11,6 @@ import {
 const LOCAL_FILE_SIGNATURE = 0x04034b50;
 const CENTRAL_FILE_SIGNATURE = 0x02014b50;
 const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
-const ZIP64_END_SIGNATURE = 0x06064b50;
-const ZIP64_LOCATOR_SIGNATURE = 0x07064b50;
 
 export const MODULE_PACKAGE_LIMITS = Object.freeze({
   archiveBytes: 16 * 1024 * 1024,
@@ -454,13 +452,6 @@ export function parsePcmsModulePackage(input: Uint8Array): ParsedModulePackage {
   if (buffer.length === 0 || buffer.length > MODULE_PACKAGE_LIMITS.archiveBytes) {
     fail(`module archive byte size must be between 1 and ${MODULE_PACKAGE_LIMITS.archiveBytes}`);
   }
-  if (
-    buffer.includes(Buffer.from([0x50, 0x4b, 0x06, 0x06])) ||
-    buffer.includes(Buffer.from([0x50, 0x4b, 0x06, 0x07]))
-  ) {
-    fail("ZIP64 module packages are not supported");
-  }
-
   const eocdOffset = findEndOfCentralDirectory(buffer);
   const centralOffset = u32(buffer, eocdOffset + 16, "central-directory offset");
   const centralEntries = parseCentralDirectory(buffer, eocdOffset);

@@ -1,5 +1,5 @@
 const SEMVER =
-  /^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$/;
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 const API_RANGE = new RegExp(
   `^(?:[~^]?${SEMVER.source.slice(1, -1)}|>=${SEMVER.source.slice(1, -1)} <${SEMVER.source.slice(1, -1)})$`
@@ -7,11 +7,11 @@ const API_RANGE = new RegExp(
 
 const MODULE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 const SERVICE_REF =
-  /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*@(?:0|[1-9]\\d*)$/;
+  /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*@(?:0|[1-9]\d*)$/;
 const SECRET_SCOPE =
   /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
 const HTTP_ORIGIN =
-  /^https?:\\/\\/(?:\\*\\.)?[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::(?:[1-9]\\d{0,4}))?$/i;
+  /^https?:\/\/(?:\*\.)?[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?(?::(?:[1-9]\d{0,4}))?$/i;
 
 const FIXED_CAPABILITIES = new Set([
   "accounts.read",
@@ -95,7 +95,7 @@ function requireString(
     typeof value !== "string" ||
     value.length === 0 ||
     value.length > maxLength ||
-    /[\\u0000-\\u001f\\u007f]/.test(value)
+    /[\u0000-\u001f\u007f]/.test(value)
   ) {
     fail(`${field} must be a non-empty bounded string without control characters`);
   }
