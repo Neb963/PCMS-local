@@ -63,7 +63,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(daemon.host, "127.0.0.1");
     assert.ok(daemon.port > 0);
     assert.equal(daemon.origin, `http://127.0.0.1:${daemon.port}`);
-    assert.equal(daemon.schemaVersion, 3);
+    assert.equal(daemon.schemaVersion, 4);
 
     const health = await getJson(daemon.origin, "/api/v1/health");
     assert.equal(health.status, 200);
@@ -73,7 +73,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(typeof health.body.uptimeMs, "number");
     assert.deepEqual(health.body.database, {
       status: "ok",
-      schemaVersion: 3
+      schemaVersion: 4
     });
 
     const ready = await getJson(daemon.origin, "/api/v1/ready");
@@ -83,7 +83,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
       status: "ready",
       ready: true,
       version: "0.0.0",
-      schemaVersion: 3
+      schemaVersion: 4
     });
 
     const version = await getJson(daemon.origin, "/api/v1/version");

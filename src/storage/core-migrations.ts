@@ -123,5 +123,42 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
       SET activated_at = updated_at
       WHERE activated_at IS NULL;
     `
+  }),
+  Object.freeze({
+    version: 4,
+    id: "0004-module-lifecycle-evidence",
+    sql: `
+      ALTER TABLE module_registry
+        ADD COLUMN lifecycle_status TEXT NOT NULL
+        DEFAULT 'ENABLED'
+        CHECK (lifecycle_status IN ('ENABLED', 'DISABLED', 'REMOVED'));
+
+      ALTER TABLE module_registry
+        ADD COLUMN removed_at TEXT;
+
+      UPDATE module_registry
+      SET lifecycle_status = 'DISABLED'
+      WHERE runtime_enabled = 0;
+
+      CREATE TABLE module_lifecycle_evidence (
+        module_id TEXT NOT NULL,
+        evidence_kind TEXT NOT NULL
+          CHECK (evidence_kind IN ('OPERATION', 'HUMAN_TASK')),
+        evidence_id TEXT NOT NULL
+          CHECK (length(evidence_id) BETWEEN 1 AND 128),
+        unresolved INTEGER NOT NULL
+          CHECK (unresolved IN (0, 1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        resolved_at TEXT,
+        PRIMARY KEY (module_id, evidence_kind, evidence_id),
+        FOREIGN KEY (module_id)
+          REFERENCES module_registry(module_id)
+          ON DELETE CASCADE
+      ) STRICT;
+
+      CREATE INDEX module_lifecycle_unresolved_evidence
+        ON module_lifecycle_evidence(module_id, unresolved);
+    `
   })
 ]);

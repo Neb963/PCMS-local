@@ -57,7 +57,7 @@ test("existing database upgrades in order when a new immutable migration is appe
     ...CORE_MIGRATIONS,
     {
       version: CORE_MIGRATIONS.length + 1,
-      id: "0004-upgrade-fixture",
+      id: "0005-upgrade-fixture",
       sql: "CREATE TABLE upgrade_probe (id INTEGER PRIMARY KEY) STRICT;"
     }
   ];
@@ -102,7 +102,7 @@ test("failed migration rolls back schema effects, history and user_version", asy
     ...CORE_MIGRATIONS,
     {
       version: CORE_MIGRATIONS.length + 1,
-      id: "0004-failing-fixture",
+      id: "0005-failing-fixture",
       sql: `
         CREATE TABLE should_rollback (id INTEGER PRIMARY KEY) STRICT;
         SELECT no_such_function();
