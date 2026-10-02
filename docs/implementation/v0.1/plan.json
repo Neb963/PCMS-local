@@ -305,7 +305,7 @@
       "id": "P003",
       "milestone": "M01",
       "name": "SQLite bootstrap and migration authority",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P002"
       ],

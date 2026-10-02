@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P002**
-- Current phase: **P003 — READY**
+- Current phase: **P003 — IN_PROGRESS**
 - Next phase: **P004 — BLOCKED (P003)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
@@ -116,7 +116,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P002 → COMPLETE; P003 → READY; publish to GitHub; **STOP — do not implement P003.**
 
 ### P003 — SQLite bootstrap and migration authority
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P002  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -126,7 +126,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add Account/Persona/module domain repositories yet.
 
 **Work:**
-- [ ] T003.1 — Implement database open/configuration and required pragmas
+- [~] T003.1 — Implement database open/configuration and required pragmas
 - [ ] T003.2 — Implement ordered migration/checksum authority
 - [ ] T003.3 — Test fresh, upgraded and incompatible/corrupt-open paths
 
