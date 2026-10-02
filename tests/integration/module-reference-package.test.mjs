@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -7,6 +7,9 @@ import test from "node:test";
 import {
   ModuleManager
 } from "../../dist/modules/manager.js";
+import {
+  ModulePackageStoreError
+} from "../../dist/modules/package-store.js";
 import {
   ModuleRuntimeError
 } from "../../dist/modules/runner.js";
@@ -384,6 +387,38 @@ test("module UI SDK authority is fenced across disable and re-enable", async () 
       {
         "after-reenable": "accepted"
       }
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
+
+test("installed package runtime tree must match its immutable archive", async () => {
+  const f = await fixture();
+
+  try {
+    const installed = await f.manager.installPackage(
+      createReferenceModulePackage("1.0.0")
+    );
+    await writeFile(
+      join(
+        installed.package.packageRoot,
+        "backend",
+        "injected.mjs"
+      ),
+      "export const injected = true;\n"
+    );
+
+    await assert.rejects(
+      () =>
+        f.manager.packageStore.getInstalled(
+          REFERENCE_MODULE_ID,
+          "1.0.0"
+        ),
+      (error) =>
+        error instanceof ModulePackageStoreError &&
+        error.code === "MODULE_PACKAGE_STORE_CORRUPT" &&
+        /unexpected file/.test(error.message)
     );
   } finally {
     await f.cleanup();
