@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P006**
-- Current phase: **P007 — IN_PROGRESS**
-- Next phase: **P008 — BLOCKED (P007)**
+- Completed through: **P007**
+- Current phase: **P008 — READY**
+- Next phase: **P009 — BLOCKED (P008)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
@@ -204,7 +204,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P006 → COMPLETE; P007 → READY; publish to GitHub; **STOP — do not implement P007.**
 
 ### P007 — Module runner IPC and crash containment
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P006  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -216,16 +216,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T007.1 — Implement module-runner process lifecycle and typed RPC envelope
 - [x] T007.2 — Enforce supported-authority boundary: no raw DB/router/CDP handles
-- [~] T007.3 — Test crash/timeout/oversize-message containment with unrelated Core responsiveness
+- [x] T007.3 — Test crash/timeout/oversize-message containment with unrelated Core responsiveness
 
 **Acceptance:**
-- [ ] A02-03
-- [ ] A02-04
+- [x] A02-03
+- [x] A02-04
 
 **Closure:** relevant tests + CI green; phase report finalized; P007 → COMPLETE; P008 → READY; publish to GitHub; **STOP — do not implement P008.**
 
 ### P008 — Module storage generations and candidate migration
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P007  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

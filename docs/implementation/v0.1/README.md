@@ -28,8 +28,8 @@ Repository transport may be either a local Git checkout or the GitHub connector.
 
 ## Current state
 
-- P000–P006 — COMPLETE
-- P007 — READY
-- P008–P049 — BLOCKED
+- P000–P007 — COMPLETE
+- P008 — READY
+- P009–P049 — BLOCKED
 - M02 — current milestone
 - M12 / P048–P049 — final live acceptance only
