@@ -186,3 +186,77 @@ export function parseSerializedModuleAuthorityEnvelope(
     requiredServices: record["requiredServices"] as string[]
   });
 }
+
+export function serializeModuleAuthorityDelta(
+  delta: ModuleAuthorityDelta
+): string {
+  return JSON.stringify({
+    addedCapabilities: [...delta.addedCapabilities],
+    removedCapabilities: [...delta.removedCapabilities],
+    addedRequiredServices: [...delta.addedRequiredServices],
+    removedRequiredServices: [...delta.removedRequiredServices],
+    expands: delta.expands
+  });
+}
+
+export function parseSerializedModuleAuthorityDelta(
+  serialized: string
+): ModuleAuthorityDelta {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized);
+  } catch (error: unknown) {
+    throw new ModuleAuthorityError(
+      `stored authority delta is invalid JSON: ${error instanceof Error ? error.message : "unknown parse failure"}`
+    );
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    fail("stored authority delta must be an object");
+  }
+
+  const record = parsed as Record<string, unknown>;
+  const exactKeys = [
+    "addedCapabilities",
+    "addedRequiredServices",
+    "expands",
+    "removedCapabilities",
+    "removedRequiredServices"
+  ];
+  if (
+    Object.keys(record).sort().join("\u0000") !== exactKeys.join("\u0000") ||
+    !Array.isArray(record["addedCapabilities"]) ||
+    !Array.isArray(record["removedCapabilities"]) ||
+    !Array.isArray(record["addedRequiredServices"]) ||
+    !Array.isArray(record["removedRequiredServices"]) ||
+    typeof record["expands"] !== "boolean"
+  ) {
+    fail("stored authority delta has invalid shape");
+  }
+
+  const added = normalizeModuleAuthorityEnvelope({
+    capabilities: record["addedCapabilities"] as string[],
+    requiredServices: record["addedRequiredServices"] as string[]
+  });
+  const removed = normalizeModuleAuthorityEnvelope({
+    capabilities: record["removedCapabilities"] as string[],
+    requiredServices: record["removedRequiredServices"] as string[]
+  });
+  const expands =
+    added.capabilities.length > 0 ||
+    added.requiredServices.length > 0;
+  if (record["expands"] !== expands) {
+    fail("stored authority delta expansion flag is inconsistent");
+  }
+
+  return Object.freeze({
+    addedCapabilities: added.capabilities,
+    removedCapabilities: removed.capabilities,
+    addedRequiredServices: added.requiredServices,
+    removedRequiredServices: removed.requiredServices,
+    expands
+  });
+}

@@ -257,8 +257,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T009.1 — Compute initial/update authority envelopes and expansion deltas
-- [~] T009.2 — Implement approval state and atomic candidate activation
-- [ ] T009.3 — Test decline/reduced-authority/no-expansion paths
+- [x] T009.2 — Implement approval state and atomic candidate activation
+- [~] T009.3 — Test decline/reduced-authority/no-expansion paths
 
 **Acceptance:**
 - [ ] A02-07

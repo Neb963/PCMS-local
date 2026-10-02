@@ -1,5 +1,13 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import {
+  computeModuleAuthorityDelta,
+  emptyModuleAuthorityEnvelope,
+  normalizeModuleAuthorityEnvelope,
+  serializeModuleAuthorityDelta,
+  serializeModuleAuthorityEnvelope,
+  type ModuleAuthorityEnvelope
+} from "./authority.js";
 import type { ModuleSdkHandler } from "./runner.js";
 
 const MODULE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
@@ -463,12 +471,20 @@ export class ModuleStateStore {
     moduleId: string,
     version: string,
     stateSchemaVersion: number,
-    initialState: Readonly<Record<string, unknown>> = {}
+    initialState: Readonly<Record<string, unknown>> = {},
+    initialApprovedAuthority: ModuleAuthorityEnvelope =
+      emptyModuleAuthorityEnvelope()
   ): ModuleRegistration {
     validateModuleId(moduleId);
     validateVersion(version);
     validatePositiveInteger(stateSchemaVersion, "stateSchemaVersion");
     const normalized = normalizeState(initialState);
+    const approvedAuthority =
+      normalizeModuleAuthorityEnvelope(initialApprovedAuthority);
+    const initialAuthorityDelta = computeModuleAuthorityDelta(
+      null,
+      approvedAuthority
+    );
     const now = this.#now().toISOString();
 
     return transaction(this.#database, () => {
@@ -518,9 +534,38 @@ export class ModuleStateStore {
           runtime_enabled,
           state_schema_version,
           state_revision,
-          updated_at
-        ) VALUES (?, ?, 1, 1, 1, ?, 0, ?)
-      `).run(moduleId, version, stateSchemaVersion, now);
+          updated_at,
+          approved_authority_json,
+          activated_at
+        ) VALUES (?, ?, 1, 1, 1, ?, 0, ?, ?, ?)
+      `).run(
+        moduleId,
+        version,
+        stateSchemaVersion,
+        now,
+        serializeModuleAuthorityEnvelope(approvedAuthority),
+        now
+      );
+
+      this.#database.prepare(`
+        INSERT INTO module_generation_authority (
+          module_id,
+          state_generation,
+          requested_authority_json,
+          authority_delta_json,
+          approval_status,
+          requested_at,
+          decided_at,
+          activated_at
+        ) VALUES (?, 1, ?, ?, 'APPROVED', ?, ?, ?)
+      `).run(
+        moduleId,
+        serializeModuleAuthorityEnvelope(approvedAuthority),
+        serializeModuleAuthorityDelta(initialAuthorityDelta),
+        now,
+        now,
+        now
+      );
 
       return this.getRegistration(moduleId);
     });

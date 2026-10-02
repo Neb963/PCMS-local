@@ -61,5 +61,67 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
           REFERENCES module_state_generations(module_id, state_generation)
       ) STRICT;
     `
+  }),
+  Object.freeze({
+    version: 3,
+    id: "0003-module-authority-activation",
+    sql: `
+      ALTER TABLE module_registry
+        ADD COLUMN approved_authority_json TEXT NOT NULL
+        DEFAULT '{"capabilities":[],"requiredServices":[]}';
+
+      ALTER TABLE module_registry
+        ADD COLUMN activated_at TEXT;
+
+      CREATE TABLE module_generation_authority (
+        module_id TEXT NOT NULL,
+        state_generation INTEGER NOT NULL CHECK (state_generation > 0),
+        requested_authority_json TEXT NOT NULL
+          CHECK (length(requested_authority_json) BETWEEN 2 AND 16384),
+        authority_delta_json TEXT NOT NULL
+          CHECK (length(authority_delta_json) BETWEEN 2 AND 16384),
+        approval_status TEXT NOT NULL
+          CHECK (
+            approval_status IN (
+              'NOT_REQUIRED',
+              'AWAITING_APPROVAL',
+              'APPROVED',
+              'DECLINED'
+            )
+          ),
+        requested_at TEXT NOT NULL,
+        decided_at TEXT,
+        activated_at TEXT,
+        PRIMARY KEY (module_id, state_generation),
+        FOREIGN KEY (module_id, state_generation)
+          REFERENCES module_state_generations(module_id, state_generation)
+          ON DELETE CASCADE
+      ) STRICT;
+
+      INSERT INTO module_generation_authority (
+        module_id,
+        state_generation,
+        requested_authority_json,
+        authority_delta_json,
+        approval_status,
+        requested_at,
+        decided_at,
+        activated_at
+      )
+      SELECT
+        module_id,
+        active_state_generation,
+        '{"capabilities":[],"requiredServices":[]}',
+        '{"addedCapabilities":[],"removedCapabilities":[],"addedRequiredServices":[],"removedRequiredServices":[],"expands":false}',
+        'APPROVED',
+        updated_at,
+        updated_at,
+        updated_at
+      FROM module_registry;
+
+      UPDATE module_registry
+      SET activated_at = updated_at
+      WHERE activated_at IS NULL;
+    `
   })
 ]);
