@@ -652,7 +652,7 @@
       "id": "P012",
       "milestone": "M03",
       "name": "Persona profile-root lifecycle",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P011"
       ],

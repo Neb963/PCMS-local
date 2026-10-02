@@ -314,7 +314,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P012 — Persona profile-root lifecycle
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P011  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -324,7 +324,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement provider login, routing or generic CDP automation.
 
 **Work:**
-- [ ] T012.1 — Implement safe profile-root allocation keyed by Persona UID
+- [~] T012.1 — Implement safe profile-root allocation keyed by Persona UID
 - [ ] T012.2 — Implement open/close persistence semantics
 - [ ] T012.3 — Implement retire/delete guards and profile-path safety tests
 

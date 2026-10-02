@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P011**  
 Current milestone: **M03 — Chromium Persona runtime**  
-Current phase: **P012 — READY**  
+Current phase: **P012 — IN_PROGRESS**  
 Next phase: **P013 — BLOCKED (P012)**
 
 Canonical execution view: `ROADMAP.md`.
