@@ -158,7 +158,7 @@ test("self-contained bundle stops cleanly and restarts without foundation-state 
     const parsedBefore = JSON.parse(diagnosticsBefore.stdout);
     assert.equal(parsedBefore.ok, true);
     assert.equal(parsedBefore.diagnostics.status, "ready");
-    assert.equal(parsedBefore.diagnostics.database.schemaVersion, 1);
+    assert.equal(parsedBefore.diagnostics.database.schemaVersion, 2);
     assert.equal(parsedBefore.diagnostics.runtime.node, process.version);
     assert.equal(diagnosticsBefore.stdout.includes(tokenBefore), false);
 
@@ -178,7 +178,7 @@ test("self-contained bundle stops cleanly and restarts without foundation-state 
       { cwd: bundleRoot, env }
     );
     assert.equal(statusAfter.stderr, "");
-    assert.equal(JSON.parse(statusAfter.stdout).status.database.schemaVersion, 1);
+    assert.equal(JSON.parse(statusAfter.stdout).status.database.schemaVersion, 2);
     assert.equal(statusAfter.stdout.includes(tokenAfter), false);
 
     await stopBundledDaemon(second);

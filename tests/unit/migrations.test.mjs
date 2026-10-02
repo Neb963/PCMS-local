@@ -24,7 +24,7 @@ async function withDatabase(prefix, run) {
   }
 }
 
-test("applies the ordered bootstrap migration and records its immutable checksum", async () => {
+test("applies ordered core migrations and records immutable checksums", async () => {
   await withDatabase("pcms-migrate-fresh-", (database) => {
     const result = applyPcmsMigrations(database, {
       now: () => new Date("2026-10-02T00:00:00.000Z")
@@ -32,7 +32,7 @@ test("applies the ordered bootstrap migration and records its immutable checksum
 
     assert.equal(result.applicationId, PCMS_APPLICATION_ID);
     assert.equal(result.schemaVersion, CORE_MIGRATIONS.length);
-    assert.equal(result.applied.length, 1);
+    assert.equal(result.applied.length, CORE_MIGRATIONS.length);
     assert.equal(result.applied[0].id, "0001-schema-migrations");
 
     const row = database.prepare(`
@@ -49,7 +49,7 @@ test("applies the ordered bootstrap migration and records its immutable checksum
 
     const second = applyPcmsMigrations(database);
     assert.equal(second.applied.length, 0);
-    assert.equal(second.schemaVersion, 1);
+    assert.equal(second.schemaVersion, CORE_MIGRATIONS.length);
   });
 });
 

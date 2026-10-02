@@ -496,7 +496,7 @@
       "id": "P008",
       "milestone": "M02",
       "name": "Module storage generations and candidate migration",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P007"
       ],
@@ -535,7 +535,7 @@
       "id": "P009",
       "milestone": "M02",
       "name": "Capability approval and atomic module activation",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P008"
       ],
