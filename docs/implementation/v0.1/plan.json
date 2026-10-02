@@ -535,7 +535,7 @@
       "id": "P009",
       "milestone": "M02",
       "name": "Capability approval and atomic module activation",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P008"
       ],
@@ -573,7 +573,7 @@
       "id": "P010",
       "milestone": "M02",
       "name": "Disable, re-enable, rollback and purge guards",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P009"
       ],
