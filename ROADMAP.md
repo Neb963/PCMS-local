@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P000**
-- Current phase: **P001 — READY**
+- Current phase: **P001 — IN_PROGRESS**
 - Next phase: **P002 — BLOCKED (P001)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
@@ -75,7 +75,7 @@ Target size: **historical size exception**
 Milestone status: **READY**
 
 ### P001 — Workspace, toolchain and hosted-CI baseline
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P000  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -85,7 +85,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement daemon behavior, SQLite, UI or browser management.
 
 **Work:**
-- [ ] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
+- [~] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
 - [ ] T001.2 — Extend hosted CI from bootstrap verification to the implementation skeleton
 - [ ] T001.3 — Prove clean-checkout build/test/package smoke
 

@@ -230,7 +230,7 @@
       "id": "P001",
       "milestone": "M01",
       "name": "Workspace, toolchain and hosted-CI baseline",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P000"
       ],
