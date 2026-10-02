@@ -424,3 +424,65 @@ test("installed package runtime tree must match its immutable archive", async ()
     await f.cleanup();
   }
 });
+
+test("unhealthy reference update remains inactive and last-known-good stays runnable", async () => {
+  const f = await fixture();
+  let runtime = null;
+
+  try {
+    await f.manager.installPackage(
+      createReferenceModulePackage("1.0.0")
+    );
+    const brokenV2 = createReferenceModulePackage(
+      "1.1.0",
+      {
+        backendSource:
+          "export const notAModuleFactory = true;\n"
+      }
+    );
+
+    await assert.rejects(
+      () => f.manager.updatePackage(brokenV2),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_CANDIDATE_HEALTH_FAILED"
+    );
+
+    const registration =
+      f.manager.stateStore.getRegistration(
+        REFERENCE_MODULE_ID
+      );
+    assert.equal(registration.activeVersion, "1.0.0");
+    assert.equal(registration.runtimeGeneration, 1);
+    assert.equal(
+      f.manager.stateStore.getReadyCandidate(
+        REFERENCE_MODULE_ID
+      ),
+      null
+    );
+
+    const stagedButInactive =
+      await f.manager.packageStore.getInstalled(
+        REFERENCE_MODULE_ID,
+        "1.1.0"
+      );
+    assert.equal(stagedButInactive.version, "1.1.0");
+
+    runtime = await f.manager.startActiveRuntime(
+      REFERENCE_MODULE_ID
+    );
+    assert.deepEqual(
+      await runtime.request("describe", {}),
+      {
+        id: REFERENCE_MODULE_ID,
+        version: "1.0.0",
+        runtimeGeneration: 1
+      }
+    );
+  } finally {
+    if (runtime !== null) {
+      await runtime.stop();
+    }
+    await f.cleanup();
+  }
+});
