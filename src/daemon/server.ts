@@ -24,7 +24,12 @@ import {
   openPcmsDatabase,
   type PcmsDatabase
 } from "../storage/database.js";
-import { ModuleUiHostError, type ModuleUiHost } from "../modules/ui-host.js";
+import {
+  MODULE_UI_HOST_CSP,
+  MODULE_UI_HOST_JS,
+  ModuleUiHostError,
+  type ModuleUiHost
+} from "../modules/ui-host.js";
 import { APP_CSS, APP_JS, renderAppShell } from "../ui/app-shell.js";
 import { workspaceMetadata } from "../workspace.js";
 
@@ -105,6 +110,134 @@ function writeBytes(
     ...extraHeaders
   });
   response.end(request.method === "HEAD" ? undefined : body);
+}
+
+class RequestBodyError extends Error {
+  public readonly code: string;
+
+  public constructor(code: string, message: string) {
+    super(message);
+    this.name = "RequestBodyError";
+    this.code = code;
+  }
+}
+
+async function readBoundedJsonBody(
+  request: IncomingMessage,
+  maxBytes = 64 * 1024
+): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of request) {
+    const bytes =
+      typeof chunk === "string"
+        ? Buffer.from(chunk)
+        : Buffer.from(chunk);
+    total += bytes.length;
+    if (total > maxBytes) {
+      throw new RequestBodyError(
+        "REQUEST_BODY_TOO_LARGE",
+        "Module UI SDK request body exceeds its limit"
+      );
+    }
+    chunks.push(bytes);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(
+      Buffer.concat(chunks).toString("utf8")
+    );
+  } catch {
+    throw new RequestBodyError(
+      "INVALID_JSON",
+      "Module UI SDK request body must be valid JSON"
+    );
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed)
+  ) {
+    throw new RequestBodyError(
+      "INVALID_MODULE_UI_SDK_REQUEST",
+      "Module UI SDK request must be an object"
+    );
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function safeStructuredError(error: unknown): Readonly<{
+  code: string;
+  message: string;
+}> {
+  if (error instanceof RequestBodyError) {
+    return Object.freeze({
+      code: error.code,
+      message: error.message
+    });
+  }
+  if (error instanceof ModuleUiHostError) {
+    return Object.freeze({
+      code: error.code,
+      message: error.message
+    });
+  }
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { readonly code?: unknown }).code === "string" &&
+    /^[A-Z][A-Z0-9_]{1,63}$/.test(
+      (error as { readonly code: string }).code
+    )
+  ) {
+    return Object.freeze({
+      code: (error as { readonly code: string }).code,
+      message:
+        error instanceof Error
+          ? error.message.slice(0, 512)
+          : "Module UI SDK request failed"
+    });
+  }
+  return Object.freeze({
+    code: "MODULE_UI_SDK_FAILED",
+    message: "Module UI SDK request failed"
+  });
+}
+
+function moduleSdkStatus(error: unknown): number {
+  const code = safeStructuredError(error).code;
+  if (
+    code === "MODULE_UI_SESSION_NOT_FOUND" ||
+    code === "MODULE_UI_ASSET_NOT_FOUND"
+  ) {
+    return 404;
+  }
+  if (
+    code === "MODULE_UI_STALE" ||
+    code === "MODULE_UI_FAILED" ||
+    code === "MODULE_RUNTIME_STALE" ||
+    code === "MODULE_RUNTIME_DISABLED"
+  ) {
+    return 409;
+  }
+  if (
+    code === "MODULE_UI_SDK_METHOD_DENIED" ||
+    code === "INVALID_MODULE_UI_SDK_METHOD"
+  ) {
+    return 403;
+  }
+  if (
+    code === "INVALID_JSON" ||
+    code === "REQUEST_BODY_TOO_LARGE" ||
+    code === "INVALID_MODULE_UI_SDK_REQUEST" ||
+    code === "INVALID_MODULE_SDK_PARAMS" ||
+    code === "INVALID_MODULE_UI_SESSION"
+  ) {
+    return 400;
+  }
+  return 500;
 }
 
 function moduleUiStatus(error: ModuleUiHostError): number {
@@ -208,6 +341,143 @@ function serveModuleUi(
     });
 }
 
+function serveModuleUiHost(
+  request: IncomingMessage,
+  response: ServerResponse,
+  path: string,
+  moduleUiHost: ModuleUiHost
+): void {
+  const match =
+    /^\/module-ui-host\/([A-Za-z0-9_-]+)\/([1-9]\d*)\/?$/.exec(path);
+  if (match === null) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_NOT_FOUND",
+        message: "Module UI host endpoint not found"
+      }
+    });
+    return;
+  }
+  const sessionId = match[1];
+  const generationText = match[2];
+  if (sessionId === undefined || generationText === undefined) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_NOT_FOUND",
+        message: "Module UI host endpoint not found"
+      }
+    });
+    return;
+  }
+
+  try {
+    const body = moduleUiHost.renderFrameHost(
+      sessionId,
+      Number(generationText)
+    );
+    writeText(
+      request,
+      response,
+      "text/html; charset=utf-8",
+      body,
+      {
+        "content-security-policy": MODULE_UI_HOST_CSP,
+        "x-frame-options": "SAMEORIGIN"
+      }
+    );
+  } catch (error: unknown) {
+    if (error instanceof ModuleUiHostError) {
+      writeJson(
+        request,
+        response,
+        moduleUiStatus(error),
+        {
+          error: {
+            code: error.code,
+            message: error.message
+          }
+        }
+      );
+      return;
+    }
+    writeJson(request, response, 500, {
+      error: {
+        code: "MODULE_UI_HOST_FAILED",
+        message: "Module UI host failed"
+      }
+    });
+  }
+}
+
+function serveModuleUiSdk(
+  request: IncomingMessage,
+  response: ServerResponse,
+  path: string,
+  moduleUiHost: ModuleUiHost
+): void {
+  const match =
+    /^\/module-ui-sdk\/([A-Za-z0-9_-]+)\/([1-9]\d*)\/?$/.exec(path);
+  if (match === null) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_SDK_NOT_FOUND",
+        message: "Module UI SDK endpoint not found"
+      }
+    });
+    return;
+  }
+  const sessionId = match[1];
+  const generationText = match[2];
+  if (sessionId === undefined || generationText === undefined) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_SDK_NOT_FOUND",
+        message: "Module UI SDK endpoint not found"
+      }
+    });
+    return;
+  }
+
+  void readBoundedJsonBody(request)
+    .then(async (payload) => {
+      const keys = Object.keys(payload).sort();
+      if (
+        keys.some(
+          (key) => key !== "method" && key !== "params"
+        ) ||
+        !Object.hasOwn(payload, "method") ||
+        typeof payload["method"] !== "string"
+      ) {
+        throw new RequestBodyError(
+          "INVALID_MODULE_UI_SDK_REQUEST",
+          "Module UI SDK request must contain method and optional params only"
+        );
+      }
+      const result = await moduleUiHost.callSdk(
+        sessionId,
+        Number(generationText),
+        payload["method"],
+        Object.hasOwn(payload, "params")
+          ? payload["params"]
+          : null
+      );
+      if (response.headersSent || response.destroyed) return;
+      writeJson(request, response, 200, { result });
+    })
+    .catch((error: unknown) => {
+      if (response.headersSent || response.destroyed) return;
+      const structured = safeStructuredError(error);
+      writeJson(
+        request,
+        response,
+        moduleSdkStatus(error),
+        {
+          error: structured
+        }
+      );
+    });
+}
+
 function createRequestHandler(
   startedAtMs: number,
   isReady: () => boolean,
@@ -248,6 +518,30 @@ function createRequestHandler(
       return;
     }
 
+    const path = requestPath(request);
+
+    if (
+      moduleUiHost !== undefined &&
+      path.startsWith("/module-ui-sdk/")
+    ) {
+      if (request.method !== "POST") {
+        writeJson(request, response, 405, {
+          error: {
+            code: "METHOD_NOT_ALLOWED",
+            message: "Module UI SDK endpoint requires POST"
+          }
+        });
+        return;
+      }
+      serveModuleUiSdk(
+        request,
+        response,
+        path,
+        moduleUiHost
+      );
+      return;
+    }
+
     if (request.method !== "GET" && request.method !== "HEAD") {
       writeJson(request, response, 405, {
         error: {
@@ -258,8 +552,6 @@ function createRequestHandler(
       return;
     }
 
-    const path = requestPath(request);
-
     if (path === "/" || path === "/index.html") {
       writeText(
         request,
@@ -268,7 +560,7 @@ function createRequestHandler(
         renderAppShell(apiToken),
         {
           "content-security-policy":
-            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         }
       );
       return;
@@ -281,6 +573,32 @@ function createRequestHandler(
 
     if (path === "/app.css") {
       writeText(request, response, "text/css; charset=utf-8", APP_CSS);
+      return;
+    }
+
+    if (
+      moduleUiHost !== undefined &&
+      path === "/module-ui-host.js"
+    ) {
+      writeText(
+        request,
+        response,
+        "text/javascript; charset=utf-8",
+        MODULE_UI_HOST_JS
+      );
+      return;
+    }
+
+    if (
+      moduleUiHost !== undefined &&
+      path.startsWith("/module-ui-host/")
+    ) {
+      serveModuleUiHost(
+        request,
+        response,
+        path,
+        moduleUiHost
+      );
       return;
     }
 
