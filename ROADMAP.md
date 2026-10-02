@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P010**
-- Current phase: **P011 — READY**
-- Next phase: **P012 — BLOCKED (P011)**
-- Current milestone: **M02 — Updateable module platform**
+- Completed through: **P011**
+- Current phase: **P012 — READY**
+- Next phase: **P013 — BLOCKED (P012)**
+- Current milestone: **M03 — Chromium Persona runtime**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -180,7 +180,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M02 — Updateable module platform
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P006 — Module manifest and safe package parser
 Status: **COMPLETE**  
@@ -288,7 +288,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P010 → COMPLETE; P011 → READY; publish to GitHub; **STOP — do not implement P011.**
 
 ### P011 — Module UI host and reference package acceptance
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P010  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -298,23 +298,23 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not special-case first-party modules inside Core.
 
 **Work:**
-- [ ] T011.1 — Implement isolated/resettable module UI host
-- [ ] T011.2 — Build/install/update the reference module through the real package path
-- [ ] T011.3 — Exercise UI failure, update and lifecycle integration
+- [x] T011.1 — Implement isolated/resettable module UI host
+- [x] T011.2 — Build/install/update the reference module through the real package path
+- [x] T011.3 — Exercise UI failure, update and lifecycle integration
 
 **Acceptance:**
-- [ ] A02-11
-- [ ] A02-12
+- [x] A02-11
+- [x] A02-12
 
 **Closure:** relevant tests + CI green; phase report finalized; P011 → COMPLETE; P012 → READY; publish to GitHub; **STOP — do not implement P012.**
 
 ---
 
 ## M03 — Chromium Persona runtime
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P012 — Persona profile-root lifecycle
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P011  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
