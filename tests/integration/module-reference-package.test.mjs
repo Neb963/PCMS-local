@@ -292,3 +292,100 @@ test("reference .pcmsmod installs, updates and rolls back through the shared mod
     await f.cleanup();
   }
 });
+
+test("module UI SDK authority is fenced across disable and re-enable", async () => {
+  const f = await fixture();
+  const host = new ModuleUiHost();
+
+  try {
+    await f.manager.installPackage(
+      createReferenceModulePackage("1.0.0")
+    );
+    const first = await f.manager.mountActiveUi(
+      REFERENCE_MODULE_ID,
+      host
+    );
+    assert.equal(first.runtimeGeneration, 1);
+
+    const disabled =
+      f.manager.lifecycleStore.disableModule(
+        REFERENCE_MODULE_ID,
+        1
+      );
+    assert.equal(disabled.status, "DISABLED");
+    assert.equal(disabled.runtimeGeneration, 2);
+
+    await assert.rejects(
+      () =>
+        host.callSdk(
+          first.sessionId,
+          first.uiGeneration,
+          "storage.get",
+          { key: "marker" }
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_RUNTIME_STALE"
+    );
+    await assert.rejects(
+      () =>
+        f.manager.mountActiveUi(
+          REFERENCE_MODULE_ID,
+          host
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_RUNTIME_DISABLED"
+    );
+
+    const enabled =
+      f.manager.lifecycleStore.enableModule(
+        REFERENCE_MODULE_ID,
+        2
+      );
+    assert.equal(enabled.status, "ENABLED");
+    assert.equal(enabled.runtimeGeneration, 3);
+
+    await assert.rejects(
+      () =>
+        host.callSdk(
+          first.sessionId,
+          first.uiGeneration,
+          "storage.get",
+          { key: "marker" }
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_RUNTIME_STALE"
+    );
+
+    const remounted =
+      await f.manager.mountActiveUi(
+        REFERENCE_MODULE_ID,
+        host
+      );
+    assert.equal(remounted.runtimeGeneration, 3);
+    assert.deepEqual(
+      await host.callSdk(
+        remounted.sessionId,
+        remounted.uiGeneration,
+        "storage.set",
+        {
+          key: "after-reenable",
+          value: "accepted"
+        }
+      ),
+      { stateRevision: 1 }
+    );
+    assert.deepEqual(
+      f.manager.stateStore.readActiveState(
+        REFERENCE_MODULE_ID
+      ).state,
+      {
+        "after-reenable": "accepted"
+      }
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
