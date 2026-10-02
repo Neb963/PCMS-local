@@ -146,8 +146,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement domain feature screens or direct database access from clients.
 
 **Work:**
-- [~] T004.1 — Implement authenticated/same-origin Web UI shell
-- [ ] T004.2 — Implement typed CLI client with stable JSON mode
+- [x] T004.1 — Implement authenticated/same-origin Web UI shell
+- [~] T004.2 — Implement typed CLI client with stable JSON mode
 - [ ] T004.3 — Exercise both surfaces against a real pcmsd integration fixture
 
 **Acceptance:**

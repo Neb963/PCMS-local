@@ -2,6 +2,12 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 
 import {
+  bearerToken,
+  ensureLocalApiToken,
+  localApiTokenMatches
+} from "../auth/local-api.js";
+
+import {
   DEFAULT_PCMSD_PORT,
   PCMSD_LOOPBACK_HOST
 } from "../config/daemon.js";
@@ -18,6 +24,7 @@ import {
   openPcmsDatabase,
   type PcmsDatabase
 } from "../storage/database.js";
+import { APP_CSS, APP_JS, renderAppShell } from "../ui/app-shell.js";
 import { workspaceMetadata } from "../workspace.js";
 
 export interface StartPcmsdOptions {
@@ -34,6 +41,12 @@ export interface PcmsdHandle {
   close(): Promise<void>;
 }
 
+const SECURITY_HEADERS = Object.freeze({
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY"
+});
+
 function writeJson(
   request: IncomingMessage,
   response: ServerResponse,
@@ -44,7 +57,25 @@ function writeJson(
   response.writeHead(statusCode, {
     "cache-control": "no-store",
     "content-type": "application/json; charset=utf-8",
-    "content-length": Buffer.byteLength(body).toString()
+    "content-length": Buffer.byteLength(body).toString(),
+    ...SECURITY_HEADERS
+  });
+  response.end(request.method === "HEAD" ? undefined : body);
+}
+
+function writeText(
+  request: IncomingMessage,
+  response: ServerResponse,
+  contentType: string,
+  body: string,
+  extraHeaders: Readonly<Record<string, string>> = {}
+): void {
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-type": contentType,
+    "content-length": Buffer.byteLength(body).toString(),
+    ...SECURITY_HEADERS,
+    ...extraHeaders
   });
   response.end(request.method === "HEAD" ? undefined : body);
 }
@@ -60,9 +91,41 @@ function requestPath(request: IncomingMessage): string {
 function createRequestHandler(
   startedAtMs: number,
   isReady: () => boolean,
-  schemaVersion: number
+  schemaVersion: number,
+  apiToken: string,
+  currentOrigin: () => string
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
+    const origin = currentOrigin();
+    let expectedHost: string;
+    try {
+      expectedHost = new URL(origin).host;
+    } catch {
+      response.destroy();
+      return;
+    }
+
+    if (request.headers.host !== expectedHost) {
+      writeJson(request, response, 400, {
+        error: {
+          code: "INVALID_HOST",
+          message: "Request Host does not match the local PCMS endpoint"
+        }
+      });
+      return;
+    }
+
+    const requestOrigin = request.headers.origin;
+    if (requestOrigin !== undefined && requestOrigin !== origin) {
+      writeJson(request, response, 403, {
+        error: {
+          code: "INVALID_ORIGIN",
+          message: "Cross-origin requests are not permitted"
+        }
+      });
+      return;
+    }
+
     if (request.method !== "GET" && request.method !== "HEAD") {
       writeJson(request, response, 405, {
         error: {
@@ -74,6 +137,60 @@ function createRequestHandler(
     }
 
     const path = requestPath(request);
+
+    if (path === "/" || path === "/index.html") {
+      writeText(
+        request,
+        response,
+        "text/html; charset=utf-8",
+        renderAppShell(apiToken),
+        {
+          "content-security-policy":
+            "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      );
+      return;
+    }
+
+    if (path === "/app.js") {
+      writeText(request, response, "text/javascript; charset=utf-8", APP_JS);
+      return;
+    }
+
+    if (path === "/app.css") {
+      writeText(request, response, "text/css; charset=utf-8", APP_CSS);
+      return;
+    }
+
+    if (path === "/api/v1/status") {
+      const candidate = bearerToken(request.headers.authorization);
+      if (
+        candidate === null ||
+        !localApiTokenMatches(apiToken, candidate)
+      ) {
+        writeJson(request, response, 401, {
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Valid local API authorization is required"
+          }
+        });
+        return;
+      }
+
+      const ready = isReady();
+      writeJson(request, response, ready ? 200 : 503, {
+        service: "pcmsd",
+        status: ready ? "ready" : "not_ready",
+        version: workspaceMetadata.version,
+        baseline: workspaceMetadata.baseline,
+        database: {
+          status: "ok",
+          schemaVersion
+        }
+      });
+      return;
+    }
+
     if (path === "/api/v1/health") {
       writeJson(request, response, 200, {
         service: "pcmsd",
@@ -177,11 +294,29 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
     throw error;
   }
 
+  let apiToken: string;
+  try {
+    apiToken = await ensureLocalApiToken(paths.apiTokenFile);
+  } catch (error: unknown) {
+    database.close();
+    database = null;
+    await instanceLock.release();
+    instanceLock = null;
+    throw error;
+  }
+
   const schemaVersion = database.schemaVersion;
   const startedAtMs = Date.now();
   let ready = false;
+  let origin = "";
   const server = createServer(
-    createRequestHandler(startedAtMs, () => ready, schemaVersion)
+    createRequestHandler(
+      startedAtMs,
+      () => ready,
+      schemaVersion,
+      apiToken,
+      () => origin
+    )
   );
 
   server.on("clientError", (_error, socket) => {
@@ -191,6 +326,7 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
   let address: AddressInfo;
   try {
     address = await listenOnLoopback(server, port);
+    origin = `http://${PCMSD_LOOPBACK_HOST}:${address.port}`;
     ready = true;
   } catch (error: unknown) {
     database.close();
@@ -206,7 +342,7 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
   return Object.freeze({
     host: PCMSD_LOOPBACK_HOST,
     port: address.port,
-    origin: `http://${PCMSD_LOOPBACK_HOST}:${address.port}`,
+    origin,
     startedAt,
     schemaVersion,
     async close(): Promise<void> {
