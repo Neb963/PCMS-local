@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P001**
-- Current phase: **P002 — READY**
+- Current phase: **P002 — IN_PROGRESS**
 - Next phase: **P003 — BLOCKED (P002)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
@@ -96,7 +96,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P001 → COMPLETE; P002 → READY; publish to GitHub; **STOP — do not implement P002.**
 
 ### P002 — Configuration, data root and single-instance daemon
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P001  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -106,7 +106,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add SQLite migrations, Web UI or CLI feature surfaces.
 
 **Work:**
-- [ ] T002.1 — Implement XDG/config/data-root resolution and safe overrides
+- [~] T002.1 — Implement XDG/config/data-root resolution and safe overrides
 - [ ] T002.2 — Implement single-instance ownership/stale-owner handling
 - [ ] T002.3 — Start loopback pcmsd with health/readiness/version and lifecycle tests
 
