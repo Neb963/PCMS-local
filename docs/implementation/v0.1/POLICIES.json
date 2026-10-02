@@ -80,5 +80,24 @@
     "provenanceRequired": true,
     "firefoxRuntimeCode": "DO_NOT_PORT",
     "provenNativeRouter": "PORT_BEHAVIOR_PRESERVING_FIRST"
+  },
+  "testing": {
+    "strategy": "CI_FIRST_LIVE_LAST",
+    "developmentPhaseRange": "P01-P11",
+    "developmentEvidence": [
+      "U",
+      "I",
+      "B",
+      "E",
+      "N",
+      "REC"
+    ],
+    "livePhase": "P12",
+    "liveEvidence": "L",
+    "githubActionsSecrets": "No real Perchance/Mullvad/browser-session credentials or WireGuard private configs are required for CI.",
+    "perchance": "Use evidence-backed emulator/fixtures for phase gating; real provider only P12.",
+    "routing": "Use synthetic network/SOCKS/WireGuard fixtures for phase gating; real Mullvad only P12.",
+    "mcp": "Not required to close P01-P11; final interoperability/system acceptance only.",
+    "driftRule": "When live behavior disagrees with emulator, encode the observation into emulator/regression CI before continuing live debugging."
   }
 }
