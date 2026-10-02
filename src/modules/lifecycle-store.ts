@@ -50,6 +50,13 @@ export interface ModuleRollbackResult {
   readonly activatedAt: string;
 }
 
+export interface ModulePurgeResult {
+  readonly moduleId: string;
+  readonly purgedAt: string;
+  readonly deletedStateGenerations: number;
+  readonly deletedEvidenceRecords: number;
+}
+
 export interface ModuleLifecycleStoreOptions {
   readonly now?: () => Date;
 }
@@ -525,6 +532,157 @@ export class ModuleLifecycleStore {
         runtimeGeneration: nextRuntimeGeneration,
         approvedAuthority,
         activatedAt
+      });
+    });
+  }
+
+  public removeModule(
+    moduleId: string,
+    expectedRuntimeGeneration: number
+  ): ModuleLifecycleSnapshot {
+    validateModuleId(moduleId);
+    validateGeneration(
+      expectedRuntimeGeneration,
+      "expectedRuntimeGeneration"
+    );
+    const now = this.#now().toISOString();
+
+    return transaction(this.#database, () => {
+      const current = this.getLifecycle(moduleId);
+      if (
+        current.runtimeGeneration !==
+        expectedRuntimeGeneration
+      ) {
+        fail(
+          "MODULE_RUNTIME_STALE",
+          `expected runtime generation ${expectedRuntimeGeneration}, current generation is ${current.runtimeGeneration}`
+        );
+      }
+      if (current.status === "REMOVED") {
+        return current;
+      }
+      if (
+        current.runtimeGeneration ===
+        Number.MAX_SAFE_INTEGER
+      ) {
+        fail(
+          "MODULE_RUNTIME_GENERATION_EXHAUSTED",
+          "module runtime generation is exhausted"
+        );
+      }
+
+      const nextRuntimeGeneration =
+        current.runtimeGeneration + 1;
+      const result = this.#database.prepare(`
+        UPDATE module_registry
+        SET lifecycle_status = 'REMOVED',
+            runtime_enabled = 0,
+            runtime_generation = ?,
+            removed_at = ?,
+            updated_at = ?
+        WHERE module_id = ?
+          AND runtime_generation = ?
+      `).run(
+        nextRuntimeGeneration,
+        now,
+        now,
+        moduleId,
+        expectedRuntimeGeneration
+      );
+      if (result.changes !== 1) {
+        fail(
+          "MODULE_RUNTIME_STALE",
+          "module runtime generation changed during remove",
+          true
+        );
+      }
+
+      return this.getLifecycle(moduleId);
+    });
+  }
+
+  public purgeModule(
+    moduleId: string,
+    options: Readonly<{ confirm: boolean }>
+  ): ModulePurgeResult {
+    validateModuleId(moduleId);
+    if (options.confirm !== true) {
+      fail(
+        "MODULE_PURGE_CONFIRMATION_REQUIRED",
+        "module purge requires explicit confirmation"
+      );
+    }
+    const purgedAt = this.#now().toISOString();
+
+    return transaction(this.#database, () => {
+      const current = this.getLifecycle(moduleId);
+      if (current.status !== "REMOVED") {
+        fail(
+          "MODULE_PURGE_REQUIRES_REMOVE",
+          "module must be removed before data purge"
+        );
+      }
+
+      const blockers = this.listUnresolvedEvidence(moduleId);
+      if (blockers.length > 0) {
+        const kinds = [
+          ...new Set(blockers.map((item) => item.kind))
+        ].sort();
+        fail(
+          "MODULE_PURGE_BLOCKED_BY_EVIDENCE",
+          `module purge is blocked by ${blockers.length} unresolved evidence record(s): ${kinds.join(", ")}`
+        );
+      }
+
+      const generationCountRow = this.#database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM module_state_generations
+        WHERE module_id = ?
+      `).get(moduleId);
+      const evidenceCountRow = this.#database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM module_lifecycle_evidence
+        WHERE module_id = ?
+      `).get(moduleId);
+      const deletedStateGenerations =
+        generationCountRow?.["count"];
+      const deletedEvidenceRecords =
+        evidenceCountRow?.["count"];
+      if (
+        typeof deletedStateGenerations !== "number" ||
+        !Number.isSafeInteger(deletedStateGenerations) ||
+        typeof deletedEvidenceRecords !== "number" ||
+        !Number.isSafeInteger(deletedEvidenceRecords)
+      ) {
+        fail(
+          "MODULE_LIFECYCLE_CORRUPT",
+          "module purge counts are invalid"
+        );
+      }
+
+      const removed = this.#database.prepare(`
+        DELETE FROM module_registry
+        WHERE module_id = ?
+          AND lifecycle_status = 'REMOVED'
+      `).run(moduleId);
+      if (removed.changes !== 1) {
+        fail(
+          "MODULE_PURGE_STATE_CHANGED",
+          "module lifecycle changed during purge",
+          true
+        );
+      }
+
+      this.#database.prepare(`
+        DELETE FROM module_state_generations
+        WHERE module_id = ?
+      `).run(moduleId);
+
+      return Object.freeze({
+        moduleId,
+        purgedAt,
+        deletedStateGenerations,
+        deletedEvidenceRecords
       });
     });
   }
