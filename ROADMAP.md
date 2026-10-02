@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P007**
-- Current phase: **P008 — IN_PROGRESS**
-- Next phase: **P009 — BLOCKED (P008)**
+- Completed through: **P008**
+- Current phase: **P009 — READY**
+- Next phase: **P010 — BLOCKED (P009)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
@@ -225,7 +225,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P007 → COMPLETE; P008 → READY; publish to GitHub; **STOP — do not implement P008.**
 
 ### P008 — Module storage generations and candidate migration
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P007  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -237,16 +237,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T008.1 — Implement module namespace/version storage and generation fencing
 - [x] T008.2 — Implement candidate state copy/migration/health validation
-- [~] T008.3 — Prove stale runtime rejection and last-known-good survival on candidate failure
+- [x] T008.3 — Prove stale runtime rejection and last-known-good survival on candidate failure
 
 **Acceptance:**
-- [ ] A02-05
-- [ ] A02-06
+- [x] A02-05
+- [x] A02-06
 
 **Closure:** relevant tests + CI green; phase report finalized; P008 → COMPLETE; P009 → READY; publish to GitHub; **STOP — do not implement P009.**
 
 ### P009 — Capability approval and atomic module activation
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P008  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
