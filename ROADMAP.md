@@ -127,8 +127,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T003.1 — Implement database open/configuration and required pragmas
-- [~] T003.2 — Implement ordered migration/checksum authority
-- [ ] T003.3 — Test fresh, upgraded and incompatible/corrupt-open paths
+- [x] T003.2 — Implement ordered migration/checksum authority
+- [~] T003.3 — Test fresh, upgraded and incompatible/corrupt-open paths
 
 **Acceptance:**
 - [ ] A01-03
