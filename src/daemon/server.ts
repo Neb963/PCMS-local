@@ -93,7 +93,8 @@ function createRequestHandler(
   isReady: () => boolean,
   schemaVersion: number,
   apiToken: string,
-  currentOrigin: () => string
+  currentOrigin: () => string,
+  paths: PcmsPaths
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     const origin = currentOrigin();
@@ -162,7 +163,7 @@ function createRequestHandler(
       return;
     }
 
-    if (path === "/api/v1/status") {
+    if (path === "/api/v1/status" || path === "/api/v1/diagnostics") {
       const candidate = bearerToken(request.headers.authorization);
       if (
         candidate === null ||
@@ -178,14 +179,40 @@ function createRequestHandler(
       }
 
       const ready = isReady();
+      if (path === "/api/v1/status") {
+        writeJson(request, response, ready ? 200 : 503, {
+          service: "pcmsd",
+          status: ready ? "ready" : "not_ready",
+          version: workspaceMetadata.version,
+          baseline: workspaceMetadata.baseline,
+          database: {
+            status: "ok",
+            schemaVersion
+          }
+        });
+        return;
+      }
+
       writeJson(request, response, ready ? 200 : 503, {
         service: "pcmsd",
         status: ready ? "ready" : "not_ready",
         version: workspaceMetadata.version,
-        baseline: workspaceMetadata.baseline,
+        runtime: {
+          node: process.version
+        },
         database: {
           status: "ok",
           schemaVersion
+        },
+        paths: {
+          configRoot: paths.configRoot,
+          dataRoot: paths.dataRoot,
+          cacheRoot: paths.cacheRoot,
+          databasePath: paths.databasePath
+        },
+        localApi: {
+          origin,
+          authentication: "bearer-token"
         }
       });
       return;
@@ -315,7 +342,8 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
       () => ready,
       schemaVersion,
       apiToken,
-      () => origin
+      () => origin,
+      paths
     )
   );
 

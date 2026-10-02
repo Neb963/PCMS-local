@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P004**
-- Current phase: **P005 — READY**
-- Next phase: **P006 — BLOCKED (P005)**
-- Current milestone: **M01 — Local application foundation**
+- Completed through: **P005**
+- Current phase: **P006 — READY**
+- Next phase: **P007 — BLOCKED (P006)**
+- Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -72,7 +72,7 @@ Target size: **historical size exception**
 ---
 
 ## M01 — Local application foundation
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P001 — Workspace, toolchain and hosted-CI baseline
 Status: **COMPLETE**  
@@ -157,7 +157,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P004 → COMPLETE; P005 → READY; publish to GitHub; **STOP — do not implement P005.**
 
 ### P005 — User-service lifecycle and installable development bundle
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P004  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -167,23 +167,23 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not build the final installer or release-hardening matrix.
 
 **Work:**
-- [ ] T005.1 — Add foreground and user-service launch/diagnostic paths
-- [ ] T005.2 — Build the development/release bundle skeleton
-- [ ] T005.3 — Test clean stop/restart/state preservation and bundle startup
+- [x] T005.1 — Add foreground and user-service launch/diagnostic paths
+- [x] T005.2 — Build the development/release bundle skeleton
+- [x] T005.3 — Test clean stop/restart/state preservation and bundle startup
 
 **Acceptance:**
-- [ ] A01-06
-- [ ] A01-08
+- [x] A01-06
+- [x] A01-08
 
 **Closure:** relevant tests + CI green; phase report finalized; P005 → COMPLETE; P006 → READY; publish to GitHub; **STOP — do not implement P006.**
 
 ---
 
 ## M02 — Updateable module platform
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P006 — Module manifest and safe package parser
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P005  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

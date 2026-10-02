@@ -8,7 +8,7 @@ import { resolvePcmsPaths } from "../config/paths.js";
 import { PcmsApiError, createPcmsApiClient } from "../client/api-client.js";
 
 interface CliArguments {
-  readonly command: "status";
+  readonly command: "status" | "diagnostics";
   readonly json: boolean;
 }
 
@@ -24,12 +24,18 @@ class CliUsageError extends Error {
 function parseArguments(argv: readonly string[]): CliArguments {
   const json = argv.includes("--json");
   const positional = argv.filter((value) => value !== "--json");
+  const command = positional[0];
 
-  if (positional.length !== 1 || positional[0] !== "status") {
-    throw new CliUsageError("Usage: pcms status [--json]");
+  if (
+    positional.length !== 1 ||
+    (command !== "status" && command !== "diagnostics")
+  ) {
+    throw new CliUsageError(
+      "Usage: pcms <status|diagnostics> [--json]"
+    );
   }
 
-  return Object.freeze({ command: "status", json });
+  return Object.freeze({ command, json });
 }
 
 function safeError(error: unknown): Readonly<{ code: string; message: string }> {
@@ -72,19 +78,43 @@ async function run(): Promise<void> {
       token
     });
 
-    const status = await client.status();
+    if (args.command === "status") {
+      const status = await client.status();
+      if (args.json) {
+        process.stdout.write(`${JSON.stringify({ ok: true, status })}\n`);
+        return;
+      }
+
+      process.stdout.write(
+        [
+          "PCMS Local",
+          `Service: ${status.service}`,
+          `Status: ${status.status}`,
+          `Version: ${status.version}`,
+          `Schema: ${status.database.schemaVersion}`
+        ].join("\n") + "\n"
+      );
+      return;
+    }
+
+    const diagnostics = await client.diagnostics();
     if (args.json) {
-      process.stdout.write(`${JSON.stringify({ ok: true, status })}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ ok: true, diagnostics })}\n`
+      );
       return;
     }
 
     process.stdout.write(
       [
-        "PCMS Local",
-        `Service: ${status.service}`,
-        `Status: ${status.status}`,
-        `Version: ${status.version}`,
-        `Schema: ${status.database.schemaVersion}`
+        "PCMS Local diagnostics",
+        `Status: ${diagnostics.status}`,
+        `Node: ${diagnostics.runtime.node}`,
+        `Schema: ${diagnostics.database.schemaVersion}`,
+        `API: ${diagnostics.localApi.origin}`,
+        `Config: ${diagnostics.paths.configRoot}`,
+        `Data: ${diagnostics.paths.dataRoot}`,
+        `Cache: ${diagnostics.paths.cacheRoot}`
       ].join("\n") + "\n"
     );
   } catch (error: unknown) {
