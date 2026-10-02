@@ -33,7 +33,7 @@ A module is an operator-installed/updateable package executed outside the Core p
 
 ## Current status
 
-**P005 service lifecycle/self-contained development bundle is complete; M01 is complete and P006 is READY.** No production-ready PCMS-local release exists yet.
+**P006 module manifest and safe package parser is complete; M02 is in progress and P007 is READY.** No production-ready PCMS-local release exists yet.
 
 The repository is intentionally starting fresh rather than incrementally converting the Firefox extension architecture. PersonaMonkey and earlier PCMS repositories are sources of proven requirements, contracts and selected implementation; they are not architecture authority.
 
