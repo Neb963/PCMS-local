@@ -154,8 +154,8 @@ Reopen if:
 
 ## 14. Phase acceptance strategy
 
-P04 is closed using synthetic/local routing evidence, not real Mullvad credentials.
+M04 routing implementation is closed across P016–P020 using synthetic/local routing evidence, not real Mullvad credentials.
 
 The CI harness exercises the actual router/client/browser path against controlled SOCKS/network endpoints and fault injection. It must prove route-or-block behavior and detect any attempted Direct/control-path escape.
 
-Real Mullvad interoperability and one representative route-loss smoke are deferred to P12. Failure or unavailability of Mullvad during development does not block P04 or later implementation phases.
+Real Mullvad interoperability and one representative route-loss smoke are deferred to P048–P049. Failure or unavailability of Mullvad during development does not block P04 or later implementation phases.

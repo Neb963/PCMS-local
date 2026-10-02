@@ -129,10 +129,10 @@ A compatibility failure should disable/degrade the narrow capability, not every 
 
 ## 11. Provider testing strategy
 
-P06–P11 provider behavior is accepted against the evidence-backed Perchance emulator described in architecture 14.
+P026–P047 provider behavior is accepted against the evidence-backed Perchance emulator described in architecture 14.
 
 The emulator must exercise ProviderAdapter through real Chromium wherever browser behavior matters. Modules do not receive a fake shortcut API that bypasses the provider/browser boundary used in production.
 
-Real Perchance/Cloudflare availability and credentials are not development-phase dependencies. Current-provider compatibility is finally checked in P12 with a small MCP/live smoke.
+Real Perchance/Cloudflare availability and credentials are not development-phase dependencies. Current-provider compatibility is finally checked in P048–P049 with a small MCP/live smoke.
 
 When that live smoke discovers a mismatch, capture a sanitized fixture/contract change and reproduce it in emulator CI before changing production behavior.
