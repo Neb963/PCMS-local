@@ -125,3 +125,14 @@ Acceptance reports must state:
 Unknown page/API shape fails closed for mutation. Read-only parsers may return UNKNOWN rather than false certainty.
 
 A compatibility failure should disable/degrade the narrow capability, not every unrelated Persona/module.
+
+
+## 11. Provider testing strategy
+
+P06–P11 provider behavior is accepted against the evidence-backed Perchance emulator described in architecture 14.
+
+The emulator must exercise ProviderAdapter through real Chromium wherever browser behavior matters. Modules do not receive a fake shortcut API that bypasses the provider/browser boundary used in production.
+
+Real Perchance/Cloudflare availability and credentials are not development-phase dependencies. Current-provider compatibility is finally checked in P12 with a small MCP/live smoke.
+
+When that live smoke discovers a mismatch, capture a sanitized fixture/contract change and reproduce it in emulator CI before changing production behavior.

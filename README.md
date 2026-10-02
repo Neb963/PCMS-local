@@ -57,6 +57,7 @@ The repository is intentionally starting fresh rather than incrementally convert
 - Local Web UI; no Electron/Tauri requirement.
 - Modules are self-contained `.pcmsmod` packages, independently installable/updateable/disableable.
 - GitHub Actions are a first-class verification surface and are not budget-constrained for this repository.
+- Development is CI-first/live-last: P01–P11 use real Chromium + Perchance emulation + synthetic routing; real Perchance/Mullvad/MCP are reserved for final P12 acceptance.
 
 ## Explicit non-goals for the initial implementation
 

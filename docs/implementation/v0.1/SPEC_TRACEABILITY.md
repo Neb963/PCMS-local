@@ -27,3 +27,10 @@ The Product Requirements document is authoritative. This view maps requirement f
 ## Important scope decision
 
 The PRD's Full V1 includes reusable Workflows, Projects/workspaces and scheduling. Scheduling/batch foundations are implemented in P06. A generic Workflow graph/runtime is intentionally not front-loaded: concrete Deployer/Provisioning/Refresher operation plans must first demonstrate common semantics. P10 owns the explicit Full-V1 gap decision and may add an ADR/phase amendment rather than silently omit a requirement.
+
+
+## Acceptance strategy
+
+Implementation ownership remains in P01–P11, but real external-system validation is consolidated in P12.
+
+P01–P11 prove behavior with real Chromium plus Perchance emulator/synthetic network fixtures. P12 validates only the remaining external compatibility assumptions against real Perchance, Mullvad and MCP.

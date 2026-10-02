@@ -1,145 +1,219 @@
 # 14 — Testing and Observability
 
-## 1. Evidence classes
+## 1. Testing doctrine: CI first, live last
 
-- U: unit/deterministic;
-- I: local integration;
-- B: real Chromium browser acceptance;
-- R: real route/network acceptance;
-- P: real Perchance/provider acceptance;
-- A: agent-attachment acceptance;
-- REC: adversarial recovery.
+PCMS-local development must not depend on repeated MCP/manual testing.
 
-Do not substitute U/I mocks for B/R/P/A claims.
+P01–P11 are deterministic/automated phases. They can complete using GitHub Actions, local deterministic tests, real Chromium automation, a Perchance emulator, and synthetic routing/network fixtures.
 
-## 2. Unit
+P12 is the only normal live-system acceptance phase. It validates a small number of end-to-end scenarios against real Perchance, real Mullvad routing and MCP after the implementation is otherwise release-candidate complete.
+
+This split is deliberate:
+- browser/process/storage mechanics are locally controllable and should be tested exhaustively;
+- Perchance/Cloudflare and Mullvad are external systems with nondeterminism and credential complexity;
+- live testing is expensive and poor for combinatorial fault injection;
+- emulator/synthetic tests are reproducible but cannot prove current external compatibility.
+
+## 2. Evidence classes
+
+- U — unit/deterministic;
+- I — local integration;
+- B — real Chromium/Chrome for Testing, controlled automatically without MCP;
+- E — Perchance emulator/contract fixture;
+- N — synthetic network/routing fixture;
+- REC — adversarial crash/recovery/fault injection;
+- L — final live-system acceptance: real Perchance/Mullvad and/or MCP.
+
+P01–P11 acceptance may use U/I/B/E/N/REC.
+
+L evidence is reserved for P12 and is not a prerequisite for advancing through implementation phases.
+
+Never relabel E/N evidence as real Perchance/Mullvad evidence.
+
+## 3. Unit and deterministic tests
 
 Cover:
 - schemas/validation;
 - SQLite repositories/constraints/migrations;
-- operation state machine;
+- operation state machines;
 - scheduling/time semantics;
 - module manifest/capability delta;
-- archive safety;
-- provider parsers/fixtures;
-- path validation/redaction.
+- archive/path safety;
+- provider parsers and recorded fixtures;
+- redaction;
+- retry/uncertainty rules;
+- deterministic property/fuzz tests where valuable.
 
-## 3. Integration
+## 4. Local integration
 
-Run real local components without external provider where possible:
+Run real local components:
 - pcmsd HTTP/API;
 - SQLite;
 - module-runner IPC/crash/update;
-- Chromium launch against local fixture web server;
-- browser reconnect/crash;
-- backup/restore staging.
+- browser lifecycle against local fixture servers;
+- backup/restore staging;
+- child-process death/restart;
+- Unix/TCP socket behavior;
+- filesystem permission/path cases.
 
-## 4. Browser acceptance
+Prefer real processes and files over mocks whenever the boundary is locally controllable.
 
-Real supported Chromium:
-- Persona creation/open/close/reopen persistence;
-- two profiles isolate cookie/localStorage/IndexedDB;
-- multiple active Personas;
-- DevTools attach/detach non-destructive;
+## 5. Real Chromium in CI
+
+Browser mechanics use real Chrome for Testing/Chromium under Actions:
+- Persona create/open/close/reopen persistence;
+- cookies/localStorage/IndexedDB isolation;
+- multiple simultaneous Personas;
+- dynamic DevTools endpoint discovery;
+- generic CDP client attach/detach without closing the browser;
 - browser crash/reconnect;
 - profile ownership conflict;
-- manual + automation same session.
+- manual-visible browser state and automation using the same profile;
+- resource caps and 50+ dormant profile inventory.
 
-Chrome for Testing is suitable for deterministic CI browser mechanics; acceptance against the operator-selected production Chromium binary remains required before release support claims.
+MCP itself is not needed to prove these mechanics. P12 only verifies that the chosen MCP integration interoperates with the already-proven DevTools/Persona boundary.
 
-## 5. Routing acceptance
+## 6. Perchance emulator
 
-On Linux host/self-hosted runner with required privileges/config:
-- daemon start/stop/restart;
-- WireGuard handshake/base SOCKS;
-- Chromium protected egress;
-- DNS/QUIC/WebRTC tests;
-- route-loss no direct fallback;
-- route switch;
-- Direct explicit;
-- Block mode;
-- multiple Persona exits.
+The emulator is not a permissive stub. It is a maintained executable model of the provider behaviors PCMS depends upon.
 
-Do not put real Mullvad private configs in GitHub-hosted CI.
+Its contract is derived from:
+- prior Perchance discovery/evidence;
+- captured sanitized request/response/DOM fixtures;
+- explicit provider assumptions documented by the current Perchance adapter;
+- later P12 observations when real behavior changes.
 
-## 6. Provider acceptance
+At minimum it must be able to model, where relevant:
+- authenticated and unauthenticated sessions;
+- expected/wrong/unknown account identity;
+- generator stable identity versus mutable slug/address;
+- listing/current-state reads;
+- save/update/public-state effects;
+- delayed responses;
+- side effect committed followed by response loss;
+- stale reads/eventual observation delay where discovered;
+- duplicate requests;
+- rate limiting/cooldown signals;
+- CAPTCHA/challenge/verification-required states;
+- session expiry;
+- provider errors;
+- redirects;
+- malformed/unexpected DOM or response shape;
+- compatibility drift.
 
-Disposable/test Perchance state:
-- session identity;
-- read-only generator/listing discovery;
-- save/update verification;
-- response loss/reconciliation;
-- provider drift;
-- wrong-account protection;
-- human challenge continuation where naturally encountered.
+Emulator scenarios must support deterministic fault injection by named scenario/seed.
 
-Mutating acceptance records cleanup and affected test entities.
+Unknown real behavior is not invented into the emulator as fact. Mark assumptions explicitly and fail closed in production code when confidence is insufficient.
 
-## 7. Module acceptance
+## 7. Provider contract loop
 
+When discovery or P12 identifies new real behavior:
+
+real observation
+→ sanitized evidence/fixture
+→ emulator contract update
+→ deterministic regression test
+→ implementation fix
+→ CI green
+→ small targeted live recheck
+
+Do not repeatedly debug directly against Cloudflare/Perchance when the issue can be reproduced locally.
+
+## 8. Synthetic routing/network acceptance
+
+P04/P11 use controlled local network infrastructure rather than real Mullvad credentials.
+
+The test harness should exercise the actual PCMS/router/browser code against:
+- local SOCKS5 relay(s);
+- controlled egress HTTP/DNS endpoints;
+- loopback/namespace/veth/WireGuard fixtures where GitHub-hosted Linux permits them;
+- socket resets/timeouts;
+- relay unavailability;
+- tunnel/forwarder death;
+- route changes;
+- DNS failure/change;
+- attempted Direct fallback detection;
+- multiple independent synthetic exits.
+
+Critical assertion: a PROTECTED Persona reaches only its selected synthetic route or fails; it never reaches the fixture's Direct/control egress path.
+
+Real Mullvad interoperability is P12 only.
+
+## 9. Module acceptance
+
+All official modules use the public module path:
 - install local package;
-- download/update exact hash;
+- update exact hash;
 - capability expansion approval;
-- candidate migration fail leaves old active;
+- candidate migration failure leaves old active;
 - crash isolation;
-- stale runtime generation rejected;
+- stale generation rejection;
 - disable/re-enable;
 - rollback;
-- package bomb/traversal rejection.
+- archive attacks rejected.
 
-Official Deployer/Refresher packages must pass this same path.
+Deployer/Refresher/Explorer/Provisioning behavior is tested primarily against the Perchance emulator, including uncertain remote-effect scenarios.
 
-## 8. Recovery/adversarial
+## 10. Recovery/adversarial matrix
 
-Release matrix includes:
-- pcmsd SIGKILL during operation phases;
-- Chromium crash before/after possible mutation;
+Automate aggressively:
+- pcmsd SIGKILL at every operation state;
+- Chromium crash before/after emulated possible mutation;
 - module crash/update/disable mid-operation;
-- router loss;
+- router/forwarder/socket loss;
 - DB busy/disk-full/corrupt backup;
 - clock rollback/forward/DST;
-- duplicate API request;
-- queue flood;
-- provider rate-limit signal across modules;
+- duplicate API requests;
+- queue floods;
+- emulator rate limits/challenges/provider drift;
 - restore with unresolved operations;
-- profile missing/corrupt;
-- 50+ dormant Persona inventory and bounded active subset.
+- missing/corrupt profiles;
+- 50+ dormant Personas and bounded active subset.
 
-## 9. Structured logging
+These tests are more valuable in CI than repeated manual MCP execution because they are reproducible and can run combinatorially.
 
-Log record minimum:
+## 11. Final P12 live acceptance
+
+P12 is intentionally small. It answers only questions emulation cannot:
+
+1. Can MCP attach to and detach from the actual PCMS-managed Chromium Persona non-destructively?
+2. Does a real protected Persona use the intended Mullvad route and fail closed under a representative route-loss event?
+3. Can PCMS identify the expected real Perchance session/account?
+4. Does the current Perchance surface still match the adapter for a representative read?
+5. Can one disposable real Deployer mutation be performed and independently verified?
+
+Use disposable test generators/state where mutation is necessary.
+
+Do not force artificial CAPTCHA/Cloudflare challenges merely to test them. Human-task mechanics are exercised against the emulator; if a real challenge naturally occurs, it may be recorded as additional evidence.
+
+## 12. Structured logging
+
+Minimum:
 - timestamp/level/component;
-- operationId/requestId where applicable;
-- personaUid/accountId/generatorLocalId/moduleId safe IDs;
+- operationId/requestId;
+- safe Persona/Account/Generator/module identifiers;
 - event code;
 - bounded safe fields.
 
 No secret payloads.
 
-## 10. Metrics/diagnostics
+## 13. Metrics/diagnostics
 
 Local diagnostics expose:
 - pcmsd uptime/version/schema;
 - DB size/health;
 - running Personas/process health;
 - route health/evidence age;
-- module versions/runtime generations/restarts;
-- queue depths/rejections;
-- unresolved/uncertain operations oldest age;
-- provider cooldown/circuit state;
+- module versions/generations/restarts;
+- queue depth/rejections;
+- unresolved/uncertain operations;
+- provider gate state;
 - HumanTasks;
 - backup age/status;
-- recent structured failures.
+- recent failures.
 
 No external telemetry by default.
 
-## 11. Support bundle
+## 14. Support bundle
 
-Generate explicit operator-approved redacted support bundle:
-- versions/config summary;
-- safe logs;
-- module manifests/hashes;
-- diagnostics;
-- selected sanitized screenshots/fixtures only with confirmation.
-
-Never include browser profiles or secrets by default.
+Operator-approved and redacted only. Never include browser profiles or secrets by default.

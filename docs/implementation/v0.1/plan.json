@@ -794,7 +794,7 @@
     },
     {
       "id": "P11",
-      "name": "Adversarial hardening, installer and beta/release acceptance",
+      "name": "CI hardening, installer and release-candidate acceptance",
       "status": "BLOCKED",
       "dependsOn": [
         "P10"
@@ -827,8 +827,9 @@
         "release bundles/checksums/SBOM",
         "adversarial crash/recovery matrix",
         "50+ account/profile resource sanity",
-        "self-hosted route/provider acceptance",
-        "first supported beta/release candidate"
+        "synthetic routing/network acceptance",
+        "Perchance emulator/provider-contract acceptance",
+        "CI-complete release candidate"
       ],
       "tasks": [
         {
@@ -861,11 +862,70 @@
         },
         {
           "id": "T11.8",
-          "name": "live agent/route/provider acceptance"
+          "name": "full synthetic routing and Perchance-emulator integration acceptance"
         },
         {
           "id": "T11.9",
-          "name": "release provenance and beta sign-off"
+          "name": "release-candidate provenance and CI sign-off"
+        }
+      ]
+    },
+    {
+      "id": "P12",
+      "name": "Final live system acceptance — MCP / Perchance / Mullvad",
+      "status": "BLOCKED",
+      "dependsOn": [
+        "P11"
+      ],
+      "specs": [
+        "03",
+        "04",
+        "05",
+        "14",
+        "15"
+      ],
+      "acceptanceIds": [
+        "A12-01",
+        "A12-02",
+        "A12-03",
+        "A12-04",
+        "A12-05"
+      ],
+      "deliverables": [
+        "minimal MCP interoperability acceptance on the actual PCMS-managed Persona",
+        "real Mullvad protected-route/fail-closed smoke",
+        "real Perchance identity/read compatibility smoke",
+        "one disposable real Deployer mutation and independent verification",
+        "final live acceptance report"
+      ],
+      "tasks": [
+        {
+          "id": "T12.1",
+          "name": "prepare supported local installation/test Personas without changing product state unnecessarily"
+        },
+        {
+          "id": "T12.2",
+          "name": "MCP attach/interact/detach and two-Persona identity smoke"
+        },
+        {
+          "id": "T12.3",
+          "name": "real Mullvad protected-route and representative route-loss smoke"
+        },
+        {
+          "id": "T12.4",
+          "name": "real Perchance session identity/read compatibility smoke"
+        },
+        {
+          "id": "T12.5",
+          "name": "one disposable Deployer mutation/verification"
+        },
+        {
+          "id": "T12.6",
+          "name": "feed discovered drift back into emulator/CI and rerun only the targeted live scenario"
+        },
+        {
+          "id": "T12.7",
+          "name": "final release acceptance report"
         }
       ]
     }

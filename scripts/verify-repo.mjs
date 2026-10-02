@@ -88,6 +88,25 @@ for (const phase of phaseMap.values()) {
   }
 }
 
+if (policies.testing?.strategy !== "CI_FIRST_LIVE_LAST") throw new Error("testing strategy must remain CI_FIRST_LIVE_LAST");
+if (policies.testing?.livePhase !== "P12") throw new Error("live acceptance must remain isolated to P12");
+if (!phaseMap.has("P12") || phaseMap.get("P12").dependsOn?.join(",") !== "P11") {
+  throw new Error("P12 final live acceptance phase must depend on P11");
+}
+
+const acceptanceRows = acceptance.split("\n").flatMap((line) => {
+  const match = line.match(/^\| (A\d{2}-\d{2}) \| (P\d{2}) \| ([^|]+) \|/);
+  return match ? [{ id: match[1], phase: match[2], evidence: match[3].trim() }] : [];
+});
+for (const row of acceptanceRows) {
+  if (row.phase !== "P12" && /(^|\/)(L|P|R|A)(\/|$)/.test(row.evidence)) {
+    throw new Error(`${row.id} uses live evidence ${row.evidence} before P12`);
+  }
+  if (row.phase === "P12" && row.evidence !== "L") {
+    throw new Error(`${row.id} must use only final live-system evidence L`);
+  }
+}
+
 if (!Array.isArray(ownership.rules) || ownership.rules.length < 10) throw new Error("requirement ownership ledger unexpectedly small");
 
 const prd = await readFile("docs/product/PRODUCT_REQUIREMENTS.md", "utf8");
@@ -107,7 +126,7 @@ for (const phrase of [
 if (prd.split("\n").length < 1470) throw new Error("product requirements appear truncated");
 
 const agents = await readFile("AGENTS.md", "utf8");
-for (const phrase of ["GitHub is the source of truth", "Actions usage is **not budget-constrained**", "Uncertain external mutation"]) {
+for (const phrase of ["GitHub is the source of truth", "Actions usage is **not budget-constrained**", "Uncertain external mutation", "P01–P11 MUST be closable without MCP"]) {
   if (!agents.includes(phrase)) throw new Error(`AGENTS missing invariant: ${phrase}`);
 }
 
