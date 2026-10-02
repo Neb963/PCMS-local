@@ -152,6 +152,16 @@ export class ModuleManager {
     input: Uint8Array
   ): Promise<InstalledModuleResult> {
     const installed = await this.#packages.install(input);
+    const healthy = await this.#probePackage(
+      installed,
+      1
+    );
+    if (!healthy) {
+      fail(
+        "MODULE_PACKAGE_HEALTH_FAILED",
+        "module package backend failed pre-activation startup"
+      );
+    }
     const authority =
       moduleAuthorityEnvelopeFromManifest(
         installed.manifest
@@ -195,13 +205,28 @@ export class ModuleManager {
       );
     }
 
+    if (
+      current.registration.runtimeGeneration >=
+      Number.MAX_SAFE_INTEGER
+    ) {
+      fail(
+        "MODULE_RUNTIME_GENERATION_EXHAUSTED",
+        "module runtime generation is exhausted"
+      );
+    }
+    const candidateRuntimeGeneration =
+      current.registration.runtimeGeneration + 1;
     const candidate = await this.#state.prepareCandidateState({
       moduleId: installed.moduleId,
       version: installed.version,
       stateSchemaVersion:
         installed.manifest.stateSchemaVersion,
       migrate: ({ state }) => ({ ...state }),
-      healthCheck: () => true
+      healthCheck: () =>
+        this.#probePackage(
+          installed,
+          candidateRuntimeGeneration
+        )
     });
     const authority =
       this.#activation.stageCandidateAuthority(
@@ -317,6 +342,36 @@ export class ModuleManager {
         );
       }
     });
+  }
+
+  async #probePackage(
+    installed: InstalledModulePackage,
+    runtimeGeneration: number
+  ): Promise<boolean> {
+    let runtime: ModuleRuntime | null = null;
+    try {
+      runtime = await startModuleRuntime({
+        moduleId: installed.moduleId,
+        version: installed.version,
+        packageRoot: installed.packageRoot,
+        backendEntry: installed.backendEntry,
+        runtimeGeneration,
+        sdkHandlers: {},
+        authorizeSdkRequest: () => {
+          throw new ModuleManagerError(
+            "MODULE_CANDIDATE_SDK_UNAVAILABLE",
+            "candidate startup health probe cannot mutate Core through the module SDK"
+          );
+        }
+      });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (runtime !== null) {
+        await runtime.stop().catch(() => undefined);
+      }
+    }
   }
 
   public async mountActiveUi(
