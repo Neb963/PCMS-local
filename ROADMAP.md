@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P009**
-- Current phase: **P010 — IN_PROGRESS**
-- Next phase: **P011 — BLOCKED (P010)**
+- Completed through: **P010**
+- Current phase: **P011 — READY**
+- Next phase: **P012 — BLOCKED (P011)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
@@ -266,7 +266,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P009 → COMPLETE; P010 → READY; publish to GitHub; **STOP — do not implement P010.**
 
 ### P010 — Disable, re-enable, rollback and purge guards
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P009  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -278,17 +278,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T010.1 — Implement disable/re-enable while preserving state and unresolved Core evidence
 - [x] T010.2 — Implement rollback via a new runtime generation
-- [~] T010.3 — Implement guarded remove/purge with unresolved-operation/HumanTask refusal tests
+- [x] T010.3 — Implement guarded remove/purge with unresolved-operation/HumanTask refusal tests
 
 **Acceptance:**
-- [ ] A02-08
-- [ ] A02-09
-- [ ] A02-10
+- [x] A02-08
+- [x] A02-09
+- [x] A02-10
 
 **Closure:** relevant tests + CI green; phase report finalized; P010 → COMPLETE; P011 → READY; publish to GitHub; **STOP — do not implement P011.**
 
 ### P011 — Module UI host and reference package acceptance
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P010  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

@@ -573,7 +573,7 @@
       "id": "P010",
       "milestone": "M02",
       "name": "Disable, re-enable, rollback and purge guards",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P009"
       ],
@@ -613,7 +613,7 @@
       "id": "P011",
       "milestone": "M02",
       "name": "Module UI host and reference package acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P010"
       ],
