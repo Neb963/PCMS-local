@@ -24,12 +24,14 @@ import {
   openPcmsDatabase,
   type PcmsDatabase
 } from "../storage/database.js";
+import { ModuleUiHostError, type ModuleUiHost } from "../modules/ui-host.js";
 import { APP_CSS, APP_JS, renderAppShell } from "../ui/app-shell.js";
 import { workspaceMetadata } from "../workspace.js";
 
 export interface StartPcmsdOptions {
   readonly paths?: PcmsPaths;
   readonly port?: number;
+  readonly moduleUiHost?: ModuleUiHost;
 }
 
 export interface PcmsdHandle {
@@ -88,13 +90,132 @@ function requestPath(request: IncomingMessage): string {
   }
 }
 
+function writeBytes(
+  request: IncomingMessage,
+  response: ServerResponse,
+  contentType: string,
+  body: Buffer,
+  extraHeaders: Readonly<Record<string, string>> = {}
+): void {
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-type": contentType,
+    "content-length": body.length.toString(),
+    ...SECURITY_HEADERS,
+    ...extraHeaders
+  });
+  response.end(request.method === "HEAD" ? undefined : body);
+}
+
+function moduleUiStatus(error: ModuleUiHostError): number {
+  switch (error.code) {
+    case "MODULE_UI_SESSION_NOT_FOUND":
+    case "MODULE_UI_ASSET_NOT_FOUND":
+      return 404;
+    case "MODULE_UI_STALE":
+    case "MODULE_UI_FAILED":
+      return 409;
+    case "INVALID_MODULE_UI_ASSET":
+    case "INVALID_MODULE_UI_SESSION":
+      return 400;
+    default:
+      return 500;
+  }
+}
+
+function serveModuleUi(
+  request: IncomingMessage,
+  response: ServerResponse,
+  path: string,
+  moduleUiHost: ModuleUiHost
+): void {
+  const match =
+    /^\/module-ui\/([A-Za-z0-9_-]+)\/([1-9]\d*)(?:\/(.*))?$/.exec(path);
+  if (match === null) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_NOT_FOUND",
+        message: "Module UI endpoint not found"
+      }
+    });
+    return;
+  }
+
+  const sessionId = match[1];
+  const generationText = match[2];
+  if (sessionId === undefined || generationText === undefined) {
+    writeJson(request, response, 404, {
+      error: {
+        code: "MODULE_UI_NOT_FOUND",
+        message: "Module UI endpoint not found"
+      }
+    });
+    return;
+  }
+
+  const uiGeneration = Number(generationText);
+  let assetPath = match[3] ?? "";
+  try {
+    assetPath = decodeURIComponent(assetPath);
+  } catch {
+    writeJson(request, response, 400, {
+      error: {
+        code: "INVALID_MODULE_UI_ASSET",
+        message: "Module UI asset path is not valid URL encoding"
+      }
+    });
+    return;
+  }
+
+  void moduleUiHost
+    .readAsset(sessionId, uiGeneration, assetPath)
+    .then((asset) => {
+      if (response.headersSent || response.destroyed) return;
+      writeBytes(
+        request,
+        response,
+        asset.contentType,
+        asset.bytes,
+        {
+          "content-security-policy":
+            asset.contentSecurityPolicy,
+          "x-frame-options": "SAMEORIGIN"
+        }
+      );
+    })
+    .catch((error: unknown) => {
+      if (response.headersSent || response.destroyed) return;
+      if (error instanceof ModuleUiHostError) {
+        writeJson(
+          request,
+          response,
+          moduleUiStatus(error),
+          {
+            error: {
+              code: error.code,
+              message: error.message
+            }
+          }
+        );
+        return;
+      }
+      writeJson(request, response, 500, {
+        error: {
+          code: "MODULE_UI_HOST_FAILED",
+          message: "Module UI host failed"
+        }
+      });
+    });
+}
+
 function createRequestHandler(
   startedAtMs: number,
   isReady: () => boolean,
   schemaVersion: number,
   apiToken: string,
   currentOrigin: () => string,
-  paths: PcmsPaths
+  paths: PcmsPaths,
+  moduleUiHost: ModuleUiHost | undefined
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     const origin = currentOrigin();
@@ -160,6 +281,14 @@ function createRequestHandler(
 
     if (path === "/app.css") {
       writeText(request, response, "text/css; charset=utf-8", APP_CSS);
+      return;
+    }
+
+    if (
+      moduleUiHost !== undefined &&
+      path.startsWith("/module-ui/")
+    ) {
+      serveModuleUi(request, response, path, moduleUiHost);
       return;
     }
 
@@ -343,7 +472,8 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
       schemaVersion,
       apiToken,
       () => origin,
-      paths
+      paths,
+      options.moduleUiHost
     )
   );
 
