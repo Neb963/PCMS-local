@@ -17,6 +17,7 @@ const SAFE_PERSONA_UID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
 
 export type PersonaLifecycleStatus = "ACTIVE" | "RETIRED";
 export type PersonaProfileState = "CLOSED" | "OPEN";
+export type PersonaProfileDeleteState = "PRESENT" | "DELETE_STAGED" | "DELETED";
 export type PersonaProfileBackupDecision = "BACKED_UP" | "SKIPPED";
 
 export interface PersonaProfileRecord {
@@ -25,6 +26,7 @@ export interface PersonaProfileRecord {
   readonly profileState: PersonaProfileState;
   readonly browserBackend: typeof BACKEND;
   readonly profileRelativePath: string;
+  readonly profileDeleteState: PersonaProfileDeleteState;
   readonly profileDeletedAt: string | null;
   readonly profileBackupDecision: PersonaProfileBackupDecision | null;
   readonly createdAt: string;
@@ -59,13 +61,15 @@ export type PersonaProfileErrorCode =
   | "PERSONA_PROFILE_UNSAFE"
   | "PERSONA_PROFILE_INCOMPATIBLE"
   | "PERSONA_PROFILE_DELETED"
+  | "PERSONA_PROFILE_DELETE_STAGED"
   | "PERSONA_RETIRED"
   | "PERSONA_PROFILE_OPEN"
   | "PERSONA_NOT_RETIRED"
   | "PERSONA_DELETE_CONFIRMATION_REQUIRED"
   | "PERSONA_DELETE_BROWSER_NOT_CLOSED"
   | "PERSONA_DELETE_UNRESOLVED_EVIDENCE"
-  | "PERSONA_DELETE_BACKUP_DECISION_REQUIRED";
+  | "PERSONA_DELETE_BACKUP_DECISION_REQUIRED"
+  | "PERSONA_DELETE_BACKUP_DECISION_MISMATCH";
 
 export class PersonaProfileError extends Error {
   public constructor(
@@ -84,6 +88,7 @@ interface PersonaRow {
   readonly profile_state: unknown;
   readonly browser_backend: unknown;
   readonly profile_relative_path: unknown;
+  readonly profile_delete_state: unknown;
   readonly profile_deleted_at: unknown;
   readonly profile_backup_decision: unknown;
   readonly created_at: unknown;
@@ -92,7 +97,7 @@ interface PersonaRow {
   readonly revision: unknown;
 }
 
-function sqliteErrorCode(error: unknown): string | undefined {
+function systemErrorCode(error: unknown): string | undefined {
   if (
     typeof error === "object" &&
     error !== null &&
@@ -108,7 +113,7 @@ async function lstatOrNull(path: string) {
   try {
     return await lstat(path);
   } catch (error: unknown) {
-    if (sqliteErrorCode(error) === "ENOENT") {
+    if (systemErrorCode(error) === "ENOENT") {
       return null;
     }
     throw error;
@@ -149,6 +154,7 @@ function parseRecord(row: PersonaRow | undefined): PersonaProfileRecord | null {
     profile_state: profileState,
     browser_backend: browserBackend,
     profile_relative_path: profileRelativePath,
+    profile_delete_state: profileDeleteState,
     profile_deleted_at: profileDeletedAt,
     profile_backup_decision: profileBackupDecision,
     created_at: createdAt,
@@ -163,6 +169,9 @@ function parseRecord(row: PersonaRow | undefined): PersonaProfileRecord | null {
     (profileState !== "CLOSED" && profileState !== "OPEN") ||
     browserBackend !== BACKEND ||
     typeof profileRelativePath !== "string" ||
+    (profileDeleteState !== "PRESENT" &&
+      profileDeleteState !== "DELETE_STAGED" &&
+      profileDeleteState !== "DELETED") ||
     (profileDeletedAt !== null && typeof profileDeletedAt !== "string") ||
     (profileBackupDecision !== null &&
       profileBackupDecision !== "BACKED_UP" &&
@@ -185,6 +194,7 @@ function parseRecord(row: PersonaRow | undefined): PersonaProfileRecord | null {
     profileState,
     browserBackend,
     profileRelativePath,
+    profileDeleteState,
     profileDeletedAt,
     profileBackupDecision,
     createdAt,
@@ -213,7 +223,7 @@ async function writeMarker(markerPath: string, personaUid: string): Promise<void
       await handle.close();
     }
   } catch (error: unknown) {
-    if (sqliteErrorCode(error) !== "EEXIST") {
+    if (systemErrorCode(error) !== "EEXIST") {
       throw error;
     }
   }
@@ -283,6 +293,7 @@ export class PersonaProfileLifecycle {
           profile_state,
           browser_backend,
           profile_relative_path,
+          profile_delete_state,
           profile_deleted_at,
           profile_backup_decision,
           created_at,
@@ -443,10 +454,14 @@ export class PersonaProfileLifecycle {
           "Stored Persona profile path does not match its durable Persona UID"
         );
       }
-      if (existing.profileDeletedAt !== null) {
+      if (existing.profileDeleteState !== "PRESENT") {
         throw new PersonaProfileError(
-          "PERSONA_PROFILE_DELETED",
-          "Persona profile was explicitly deleted and will not be auto-recreated"
+          existing.profileDeleteState === "DELETED"
+            ? "PERSONA_PROFILE_DELETED"
+            : "PERSONA_PROFILE_DELETE_STAGED",
+          existing.profileDeleteState === "DELETED"
+            ? "Persona profile was explicitly deleted and will not be auto-recreated"
+            : "Persona profile deletion is staged and must be reconciled before reuse"
         );
       }
       if (existing.lifecycleStatus === "RETIRED") {
@@ -470,13 +485,14 @@ export class PersonaProfileLifecycle {
         profile_state,
         browser_backend,
         profile_relative_path,
+        profile_delete_state,
         profile_deleted_at,
         profile_backup_decision,
         created_at,
         updated_at,
         retired_at,
         revision
-      ) VALUES (?, 'ACTIVE', 'CLOSED', ?, ?, NULL, NULL, ?, ?, NULL, 0)
+      ) VALUES (?, 'ACTIVE', 'CLOSED', ?, ?, 'PRESENT', NULL, NULL, ?, ?, NULL, 0)
       ON CONFLICT(persona_uid) DO NOTHING
     `).run(personaUid, BACKEND, expectedPath, now, now);
 
@@ -520,10 +536,10 @@ export class PersonaProfileLifecycle {
     const record = this.#requireRecord(personaUid);
     if (
       record.lifecycleStatus !== "ACTIVE" ||
-      record.profileDeletedAt !== null
+      record.profileDeleteState !== "PRESENT"
     ) {
       throw new PersonaProfileError(
-        record.profileDeletedAt !== null ? "PERSONA_PROFILE_DELETED" : "PERSONA_RETIRED",
+        record.profileDeleteState !== "PRESENT" ? "PERSONA_PROFILE_DELETED" : "PERSONA_RETIRED",
         "Persona became unavailable while opening its persistent profile"
       );
     }
@@ -663,33 +679,73 @@ export class PersonaProfileLifecycle {
         "Stored Persona profile path does not match its durable Persona UID"
       );
     }
-    if (current.profileDeletedAt !== null) {
+    if (current.profileDeleteState === "DELETED") {
       return current;
     }
 
-    const profilePath = await this.#validateExistingProfileRoot(personaUid);
-    await rm(profilePath, { recursive: true, force: false });
+    let staged = current;
+    if (current.profileDeleteState === "PRESENT") {
+      await this.#validateExistingProfileRoot(personaUid);
+      const stagedAt = this.#now().toISOString();
+      this.#database.prepare(`
+        UPDATE personas
+        SET
+          profile_delete_state = 'DELETE_STAGED',
+          profile_backup_decision = ?,
+          updated_at = ?,
+          revision = revision + 1
+        WHERE
+          persona_uid = ? AND
+          lifecycle_status = 'RETIRED' AND
+          profile_state = 'CLOSED' AND
+          profile_delete_state = 'PRESENT'
+      `).run(options.backupDecision, stagedAt, personaUid);
+      staged = this.#requireRecord(personaUid);
+    }
 
-    const now = this.#now().toISOString();
+    if (staged.profileDeleteState !== "DELETE_STAGED") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Persona profile deletion is not in a recoverable staged state"
+      );
+    }
+    if (staged.profileBackupDecision !== options.backupDecision) {
+      throw new PersonaProfileError(
+        "PERSONA_DELETE_BACKUP_DECISION_MISMATCH",
+        "Persona profile deletion was already staged with a different backup decision"
+      );
+    }
+
+    const expectedProfilePath = join(this.#personasRoot, personaUid, "chromium");
+    const profileInfo = await lstatOrNull(expectedProfilePath);
+    if (profileInfo !== null) {
+      const profilePath = await this.#validateExistingProfileRoot(personaUid);
+      await rm(profilePath, { recursive: true, force: false });
+    }
+
+    const deletedAt = this.#now().toISOString();
     this.#database.prepare(`
       UPDATE personas
       SET
+        profile_delete_state = 'DELETED',
         profile_deleted_at = ?,
-        profile_backup_decision = ?,
         updated_at = ?,
         revision = revision + 1
       WHERE
         persona_uid = ? AND
         lifecycle_status = 'RETIRED' AND
         profile_state = 'CLOSED' AND
-        profile_deleted_at IS NULL
-    `).run(now, options.backupDecision, now, personaUid);
+        profile_delete_state = 'DELETE_STAGED'
+    `).run(deletedAt, deletedAt, personaUid);
 
     const record = this.#requireRecord(personaUid);
-    if (record.profileDeletedAt === null) {
+    if (
+      record.profileDeleteState !== "DELETED" ||
+      record.profileDeletedAt === null
+    ) {
       throw new PersonaProfileError(
         "PERSONA_PROFILE_INCOMPATIBLE",
-        "Persona profile bytes were deleted but metadata did not record the deletion"
+        "Persona profile deletion did not reach durable DELETED state"
       );
     }
     return record;

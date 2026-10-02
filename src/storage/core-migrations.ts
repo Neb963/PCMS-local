@@ -176,6 +176,8 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
           CHECK (browser_backend = 'chromium-v1'),
         profile_relative_path TEXT NOT NULL UNIQUE
           CHECK (length(profile_relative_path) BETWEEN 1 AND 512),
+        profile_delete_state TEXT NOT NULL DEFAULT 'PRESENT'
+          CHECK (profile_delete_state IN ('PRESENT', 'DELETE_STAGED', 'DELETED')),
         profile_deleted_at TEXT,
         profile_backup_decision TEXT
           CHECK (
@@ -188,7 +190,19 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         revision INTEGER NOT NULL DEFAULT 0
           CHECK (revision >= 0),
         CHECK (lifecycle_status <> 'RETIRED' OR profile_state = 'CLOSED'),
-        CHECK (profile_deleted_at IS NULL OR profile_state = 'CLOSED')
+        CHECK (profile_delete_state = 'PRESENT' OR lifecycle_status = 'RETIRED'),
+        CHECK (profile_delete_state = 'PRESENT' OR profile_state = 'CLOSED'),
+        CHECK (
+          (profile_delete_state = 'PRESENT' AND
+            profile_deleted_at IS NULL AND
+            profile_backup_decision IS NULL) OR
+          (profile_delete_state = 'DELETE_STAGED' AND
+            profile_deleted_at IS NULL AND
+            profile_backup_decision IS NOT NULL) OR
+          (profile_delete_state = 'DELETED' AND
+            profile_deleted_at IS NOT NULL AND
+            profile_backup_decision IS NOT NULL)
+        )
       ) STRICT;
     `
   })

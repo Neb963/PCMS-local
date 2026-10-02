@@ -209,6 +209,7 @@ test("retirement is non-destructive and deletion enforces all guards before remo
     );
 
     const deleted = await f.lifecycle.deleteProfile("persona_retire", baseDelete);
+    assert.equal(deleted.profileDeleteState, "DELETED");
     assert.equal(deleted.profileBackupDecision, "SKIPPED");
     assert.notEqual(deleted.profileDeletedAt, null);
     await assert.rejects(() => stat(opened.profilePath), { code: "ENOENT" });
@@ -253,6 +254,44 @@ test("tampered stored relative path cannot redirect destructive deletion", async
 
     assert.equal(await readFile(join(outside, "sentinel.txt"), "utf8"), "outside");
     assert.equal((await stat(allocated.profilePath)).isDirectory(), true);
+  } finally {
+    await cleanup(f);
+  }
+});
+
+test("staged deletion reconciles after profile bytes disappear before metadata finalization", async () => {
+  const f = await fixture("pcms-persona-delete-recovery-");
+  try {
+    const allocated = await f.lifecycle.allocate("persona_delete_recovery");
+    f.lifecycle.retire("persona_delete_recovery");
+
+    f.database.prepare(`
+      UPDATE personas
+      SET
+        profile_delete_state = 'DELETE_STAGED',
+        profile_backup_decision = 'BACKED_UP',
+        updated_at = ?,
+        revision = revision + 1
+      WHERE persona_uid = ?
+    `).run("2026-10-03T00:02:00.000Z", "persona_delete_recovery");
+
+    await rm(allocated.profilePath, { recursive: true, force: false });
+
+    const recovered = await f.lifecycle.deleteProfile(
+      "persona_delete_recovery",
+      {
+        confirmed: true,
+        browserClosed: true,
+        unresolvedOperations: 0,
+        unresolvedHumanTasks: 0,
+        backupDecision: "BACKED_UP"
+      }
+    );
+
+    assert.equal(recovered.profileDeleteState, "DELETED");
+    assert.equal(recovered.profileBackupDecision, "BACKED_UP");
+    assert.notEqual(recovered.profileDeletedAt, null);
+    await assert.rejects(() => stat(allocated.profilePath), { code: "ENOENT" });
   } finally {
     await cleanup(f);
   }
