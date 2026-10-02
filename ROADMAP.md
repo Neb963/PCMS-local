@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P003**
-- Current phase: **P004 — READY**
-- Next phase: **P005 — BLOCKED (P004)**
+- Completed through: **P004**
+- Current phase: **P005 — READY**
+- Next phase: **P006 — BLOCKED (P005)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
 
@@ -136,7 +136,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P003 → COMPLETE; P004 → READY; publish to GitHub; **STOP — do not implement P004.**
 
 ### P004 — Minimal Web UI and typed CLI surfaces
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P003  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -146,18 +146,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement domain feature screens or direct database access from clients.
 
 **Work:**
-- [ ] T004.1 — Implement authenticated/same-origin Web UI shell
-- [ ] T004.2 — Implement typed CLI client with stable JSON mode
-- [ ] T004.3 — Exercise both surfaces against a real pcmsd integration fixture
+- [x] T004.1 — Implement authenticated/same-origin Web UI shell
+- [x] T004.2 — Implement typed CLI client with stable JSON mode
+- [x] T004.3 — Exercise both surfaces against a real pcmsd integration fixture
 
 **Acceptance:**
-- [ ] A01-04
-- [ ] A01-05
+- [x] A01-04
+- [x] A01-05
 
 **Closure:** relevant tests + CI green; phase report finalized; P004 → COMPLETE; P005 → READY; publish to GitHub; **STOP — do not implement P005.**
 
 ### P005 — User-service lifecycle and installable development bundle
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P004  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

@@ -20,6 +20,7 @@ export interface PcmsPaths {
   readonly runtimeRoot: string;
   readonly configFile: string;
   readonly databasePath: string;
+  readonly apiTokenFile: string;
   readonly instanceLockPath: string;
 }
 
@@ -84,6 +85,7 @@ export function resolvePcmsPaths(options: ResolvePcmsPathsOptions = {}): PcmsPat
     runtimeRoot,
     configFile: join(configRoot, "config.json"),
     databasePath: join(dataRoot, "pcms.db"),
+    apiTokenFile: join(configRoot, "api-token"),
     instanceLockPath: join(runtimeRoot, "pcmsd.lock")
   });
 }

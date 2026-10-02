@@ -342,7 +342,7 @@
       "id": "P004",
       "milestone": "M01",
       "name": "Minimal Web UI and typed CLI surfaces",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P003"
       ],
@@ -380,7 +380,7 @@
       "id": "P005",
       "milestone": "M01",
       "name": "User-service lifecycle and installable development bundle",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P004"
       ],
