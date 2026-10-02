@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P003**
-- Current phase: **P004 — READY**
+- Current phase: **P004 — IN_PROGRESS**
 - Next phase: **P005 — BLOCKED (P004)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
@@ -136,7 +136,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P003 → COMPLETE; P004 → READY; publish to GitHub; **STOP — do not implement P004.**
 
 ### P004 — Minimal Web UI and typed CLI surfaces
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P003  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -146,7 +146,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement domain feature screens or direct database access from clients.
 
 **Work:**
-- [ ] T004.1 — Implement authenticated/same-origin Web UI shell
+- [~] T004.1 — Implement authenticated/same-origin Web UI shell
 - [ ] T004.2 — Implement typed CLI client with stable JSON mode
 - [ ] T004.3 — Exercise both surfaces against a real pcmsd integration fixture
 

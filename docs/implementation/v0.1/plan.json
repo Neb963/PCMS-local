@@ -342,7 +342,7 @@
       "id": "P004",
       "milestone": "M01",
       "name": "Minimal Web UI and typed CLI surfaces",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P003"
       ],
