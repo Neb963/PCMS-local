@@ -290,7 +290,6 @@ async function run(): Promise<void> {
     } catch (error: unknown) {
       logFailure("module_runner.protocol_error", error);
       process.exit(70);
-      return;
     }
 
     for (const envelope of envelopes) {
@@ -300,7 +299,6 @@ async function run(): Promise<void> {
           new ModuleRpcProtocolError("runtime generation mismatch")
         );
         process.exit(70);
-        return;
       }
 
       if (envelope.kind === "response") {
@@ -321,7 +319,6 @@ async function run(): Promise<void> {
           new ModuleRpcProtocolError("Core sent an invalid runner envelope")
         );
         process.exit(70);
-        return;
       }
 
       const currentBackend = backend;

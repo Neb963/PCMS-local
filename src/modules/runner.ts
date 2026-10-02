@@ -164,13 +164,13 @@ function runtimeLost(message: string): ModuleRuntimeError {
 class ModuleRuntimeImpl {
   readonly #options: StartModuleRuntimeOptions;
   readonly #limits: ModuleRpcLimits;
-  readonly #backendPath: string;
   readonly #startupNonce: string;
   readonly #sdkHandlers: ReadonlyMap<string, ModuleSdkHandler>;
   readonly #decoder: ModuleRpcFrameDecoder;
   readonly #pending = new Map<string, PendingRequest>();
   readonly #child: ChildProcessWithoutNullStreams;
   readonly #exitPromise: Promise<void>;
+  readonly #startupPromise: Promise<void>;
   #resolveExit!: () => void;
   #startupResolve!: () => void;
   #startupReject!: (error: ModuleRuntimeError) => void;
@@ -188,7 +188,6 @@ class ModuleRuntimeImpl {
     startupNonce: string
   ) {
     this.#options = options;
-    this.#backendPath = backendPath;
     this.#limits = limits;
     this.#startupNonce = startupNonce;
     this.#sdkHandlers = sdkHandlers;
