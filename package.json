@@ -35,7 +35,9 @@
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "package:smoke": "npm run build --silent && node scripts/package-smoke.mjs",
     "pcmsd": "npm run build --silent && node dist/daemon/main.js",
-    "pcms": "npm run build --silent && node dist/cli/main.js"
+    "pcms": "npm run build --silent && node dist/cli/main.js",
+    "bundle:build": "npm run build --silent && node scripts/build-bundle.mjs",
+    "bundle:smoke": "npm run bundle:build --silent && node scripts/bundle-smoke.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",

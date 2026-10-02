@@ -99,8 +99,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install locked workspace
         run: npm ci --ignore-scripts
-      - name: Build and validate package surface
-        run: npm run package:smoke
+      - name: Build and validate package and bundle surfaces
+        run: npm run package:smoke && npm run bundle:smoke
 
   foundation:
     name: Foundation aggregate
