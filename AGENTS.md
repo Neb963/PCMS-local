@@ -90,6 +90,8 @@ Acceptance = evidence required to close that phase
 
 Milestones do not authorize implementation by themselves. An instruction such as "implement M04" must be resolved to the single active phase within M04.
 
+Milestone status is derived, not discretionary: `READY` when its first phase is the active READY phase and none of its phases are complete; `IN_PROGRESS` once at least one constituent phase is complete while another is active; `COMPLETE` only when all constituent phases are complete; otherwise `BLOCKED`.
+
 Normal phase limits:
 - one coherent objective;
 - explicit non-goals;
@@ -119,7 +121,7 @@ After the current phase is complete:
 4. finalize `reports/phases/Pxxx.md`;
 5. mark current phase `COMPLETE`;
 6. mark **only its immediate successor** `READY` if dependencies are satisfied;
-7. update `ROADMAP.md`, `plan.json` and `docs/progress/STATUS.md`;
+7. update `ROADMAP.md`, `plan.json` and `docs/progress/STATUS.md`, including the derived milestone status;
 8. publish the closure commit;
 9. **STOP**.
 
