@@ -305,7 +305,7 @@
       "id": "P003",
       "milestone": "M01",
       "name": "SQLite bootstrap and migration authority",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P002"
       ],
@@ -342,7 +342,7 @@
       "id": "P004",
       "milestone": "M01",
       "name": "Minimal Web UI and typed CLI surfaces",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P003"
       ],

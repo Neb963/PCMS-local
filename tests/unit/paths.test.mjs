@@ -17,6 +17,7 @@ test("resolves standard XDG defaults under the user home", () => {
   assert.equal(paths.dataRoot, "/home/tester/.local/share/pcms-local");
   assert.equal(paths.cacheRoot, "/home/tester/.cache/pcms-local");
   assert.equal(paths.runtimeRoot, "/home/tester/.local/share/pcms-local/runtime");
+  assert.equal(paths.databasePath, "/home/tester/.local/share/pcms-local/pcms.db");
 });
 
 test("honors absolute XDG roots and ignores invalid relative XDG values", () => {
