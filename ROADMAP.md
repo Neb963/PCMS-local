@@ -193,8 +193,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not execute module code or implement update activation.
 
 **Work:**
-- [~] T006.1 — Implement manifest/API/capability schema validation
-- [ ] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
+- [x] T006.1 — Implement manifest/API/capability schema validation
+- [~] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
 - [ ] T006.3 — Add adversarial package fixtures and rejection tests
 
 **Acceptance:**
