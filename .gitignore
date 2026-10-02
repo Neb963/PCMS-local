@@ -1,0 +1,35 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+
+# PCMS runtime / sensitive local state
+data/
+local-data/
+profiles/
+personas/
+backups/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.pcmsmod
+
+# Browser test artifacts
+test-results/
+playwright-report/
+screenshots/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editors/OS
+.DS_Store
+.idea/
+.vscode/
