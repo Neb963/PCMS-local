@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P005**
-- Current phase: **P006 — READY**
+- Current phase: **P006 — IN_PROGRESS**
 - Next phase: **P007 — BLOCKED (P006)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
@@ -183,7 +183,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P006 — Module manifest and safe package parser
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P005  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -193,7 +193,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not execute module code or implement update activation.
 
 **Work:**
-- [ ] T006.1 — Implement manifest/API/capability schema validation
+- [~] T006.1 — Implement manifest/API/capability schema validation
 - [ ] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
 - [ ] T006.3 — Add adversarial package fixtures and rejection tests
 
