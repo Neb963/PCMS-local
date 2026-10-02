@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P010**
-- Current phase: **P011 — READY**
+- Current phase: **P011 — IN_PROGRESS**
 - Next phase: **P012 — BLOCKED (P011)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
@@ -288,7 +288,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P010 → COMPLETE; P011 → READY; publish to GitHub; **STOP — do not implement P011.**
 
 ### P011 — Module UI host and reference package acceptance
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P010  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -298,7 +298,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not special-case first-party modules inside Core.
 
 **Work:**
-- [ ] T011.1 — Implement isolated/resettable module UI host
+- [~] T011.1 — Implement isolated/resettable module UI host
 - [ ] T011.2 — Build/install/update the reference module through the real package path
 - [ ] T011.3 — Exercise UI failure, update and lifecycle integration
 
