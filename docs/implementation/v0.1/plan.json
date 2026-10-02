@@ -268,7 +268,7 @@
       "id": "P002",
       "milestone": "M01",
       "name": "Configuration, data root and single-instance daemon",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P001"
       ],
@@ -305,7 +305,7 @@
       "id": "P003",
       "milestone": "M01",
       "name": "SQLite bootstrap and migration authority",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P002"
       ],

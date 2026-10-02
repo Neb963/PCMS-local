@@ -6,6 +6,7 @@ test("built workspace resolves through the package export", async () => {
   assert.deepEqual(entry.workspaceMetadata, {
     name: "pcms-local",
     baseline: "0.1",
+    version: "0.0.0",
     runtime: "node"
   });
 });

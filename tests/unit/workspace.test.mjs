@@ -7,6 +7,7 @@ test("workspace metadata exposes only inert foundation identity", () => {
   assert.deepEqual(workspaceMetadata, {
     name: "pcms-local",
     baseline: "0.1",
+    version: "0.0.0",
     runtime: "node"
   });
   assert.equal(Object.isFrozen(workspaceMetadata), true);
