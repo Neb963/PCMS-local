@@ -144,6 +144,7 @@ test("rejects archive, entry-count, per-entry and total expansion limits", () =>
       Array.from({ length: 5 }, (_, index) => ({
         name: `large-${index}.bin`,
         data: "x",
+        method: "deflate",
         compressedSize: 128 * 1024,
         uncompressedSize: 7 * 1024 * 1024
       }))
