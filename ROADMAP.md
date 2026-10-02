@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P001**
-- Current phase: **P002 — IN_PROGRESS**
-- Next phase: **P003 — BLOCKED (P002)**
+- Completed through: **P002**
+- Current phase: **P003 — READY**
+- Next phase: **P004 — BLOCKED (P003)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
 
@@ -96,7 +96,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P001 → COMPLETE; P002 → READY; publish to GitHub; **STOP — do not implement P002.**
 
 ### P002 — Configuration, data root and single-instance daemon
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P001  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -108,15 +108,15 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T002.1 — Implement XDG/config/data-root resolution and safe overrides
 - [x] T002.2 — Implement single-instance ownership/stale-owner handling
-- [~] T002.3 — Start loopback pcmsd with health/readiness/version and lifecycle tests
+- [x] T002.3 — Start loopback pcmsd with health/readiness/version and lifecycle tests
 
 **Acceptance:**
-- [ ] A01-02
+- [x] A01-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P002 → COMPLETE; P003 → READY; publish to GitHub; **STOP — do not implement P003.**
 
 ### P003 — SQLite bootstrap and migration authority
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P002  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
