@@ -998,6 +998,7 @@ Workflow       READY
 Result:
 Operation blocked because the required protected route is unavailable.
 ```
+
 The product must distinguish at least:
 
 - healthy;
