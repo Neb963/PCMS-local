@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { readLocalApiToken } from "../auth/local-api.js";
 import {
-  DEFAULT_PCMSD_PORT,
   PCMSD_LOOPBACK_HOST,
   resolvePcmsdPort
 } from "../config/daemon.js";
