@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P006**
-- Current phase: **P007 — READY**
+- Current phase: **P007 — IN_PROGRESS**
 - Next phase: **P008 — BLOCKED (P007)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
@@ -204,7 +204,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P006 → COMPLETE; P007 → READY; publish to GitHub; **STOP — do not implement P007.**
 
 ### P007 — Module runner IPC and crash containment
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P006  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -214,7 +214,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement package updates, storage migration or module UI.
 
 **Work:**
-- [ ] T007.1 — Implement module-runner process lifecycle and typed RPC envelope
+- [~] T007.1 — Implement module-runner process lifecycle and typed RPC envelope
 - [ ] T007.2 — Enforce supported-authority boundary: no raw DB/router/CDP handles
 - [ ] T007.3 — Test crash/timeout/oversize-message containment with unrelated Core responsiveness
 

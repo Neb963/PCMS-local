@@ -457,7 +457,7 @@
       "id": "P007",
       "milestone": "M02",
       "name": "Module runner IPC and crash containment",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P006"
       ],
