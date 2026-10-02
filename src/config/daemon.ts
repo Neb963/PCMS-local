@@ -6,7 +6,7 @@ export const DEFAULT_PCMSD_PORT = 17_380;
 export function resolvePcmsdPort(
   env: Readonly<Record<string, string | undefined>> = process.env
 ): number {
-  const raw = env.PCMS_PORT;
+  const raw = env["PCMS_PORT"];
   if (raw === undefined || raw === "") {
     return DEFAULT_PCMSD_PORT;
   }
