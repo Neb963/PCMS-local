@@ -1,82 +1,70 @@
 # Definition of Done
 
-## Task/checkpoint
+## Task / checkpoint
 
 A task checkpoint is complete when:
-- intended behavior/contracts are implemented;
-- focused tests were actually run;
+- intended current-phase behavior/contracts are implemented;
+- focused tests actually available to the agent were run;
 - relevant docs/schema/API are synchronized;
-- diff contains no secrets/debug artifacts/unrelated changes;
-- commit is pushed to GitHub;
-- progress/claim records identify exact next step.
+- changes contain no secrets/debug artifacts/unrelated work;
+- the checkpoint is published to GitHub;
+- ROADMAP progress identifies the exact next task in the same phase.
 
-## Implementation phase P01–P11
+Local-shell verification is not mandatory for connector-only agents; fabricated local execution is forbidden.
 
-A phase is COMPLETE when:
-1. every owned task is complete or explicitly removed by accepted architecture change;
+## Session-sized implementation phase P001–P047
+
+A phase is COMPLETE only when:
+1. every owned roadmap task is complete or explicitly superseded by an accepted plan change;
 2. every listed acceptance ID is PASS using its required U/I/B/E/N/REC evidence;
-3. emulator/synthetic tests exercise both success and relevant failure/uncertainty paths;
-4. repository verify/lint/typecheck/tests relevant to the phase pass;
-5. CI for the phase head is green or every infrastructure failure is precisely dispositioned;
-6. normative docs/contracts match behavior;
-7. progress report records exact commits/tests/environments/assumptions and next READY phase;
-8. meaningful work is pushed and no hidden local dependency remains.
+3. relevant failure/uncertainty paths are covered, not only the happy path;
+4. repository verification and applicable tests pass;
+5. required GitHub Actions for the phase head are green, or an infrastructure failure is precisely dispositioned;
+6. normative docs/contracts match implementation;
+7. `reports/phases/Pxxx.md` records exact commits, verification, evidence and deviations;
+8. current phase is marked COMPLETE in plan/roadmap;
+9. only the immediate successor is marked READY;
+10. closure state is published to GitHub;
+11. the implementing agent **STOPS without starting the successor**.
 
-MCP, real Perchance, real Mullvad credentials/routes and Cloudflare reachability are not phase gates for P01–P11. Their absence must not block implementation progress.
+MCP, real Perchance, real Mullvad credentials/routes and Cloudflare reachability are not gates for P001–P047.
 
-Do not claim that emulator/synthetic evidence proves current external-system compatibility.
+## Phase-size rule
 
-P00 additionally required exact port provenance/native baseline evidence and is already complete.
+Normal phases have at most 3 work items and at most 5 acceptance IDs. The empirical design target is roughly 20–30 minutes of competent cloud-agent work, but agents must not depend on time awareness.
 
-## Beta / development milestones
+If a phase proves materially oversized, split remaining scope before continuing rather than skipping verification or running indefinitely.
 
-A CI-complete development beta may be produced after the relevant feature phases without MCP/live-provider testing, provided it is labelled as not yet live-accepted.
+P000 is the historical bootstrap size exception.
 
-Through P07 the system should already prove in CI:
-- persistent real Chromium Personas;
-- synthetic protected fail-closed routing;
-- Account↔Persona binding;
-- generic DevTools attach/detach;
-- Perchance emulator identity/provider semantics;
-- OperationCoordinator uncertainty/reconciliation;
-- Deployer installed/updated as a real .pcmsmod.
+## Milestone completion
 
-## Full V1 implementation candidate
+A milestone is complete when every constituent phase is COMPLETE and any milestone-level integration evidence specified by its final phase is green.
 
-P10 closes product feature coverage, subject to the explicit Workflow/Project/workspace gap decision.
+Milestone completion never authorizes the same agent to start the next milestone automatically; the phase stop rule still applies.
 
-## Release candidate
+## CI-complete release candidate
 
-P11 complete means CI-complete release candidate:
+P047 complete means:
 - deterministic/adversarial tests green;
 - real Chromium acceptance green;
 - Perchance emulator contract green;
 - synthetic routing/fail-closed matrix green;
-- packaging/install/restore/security gates green.
+- packaging/install/restore/security gates green;
+- residual external assumptions are explicitly recorded.
 
-It still does not claim current real Perchance/Mullvad/MCP compatibility.
+It does not claim current real Perchance/Mullvad/MCP compatibility.
 
-## Final release
+## Final live acceptance
 
-P12 is the only normal live-system phase.
+P048–P049 are the only normal live-system phases.
 
-Release requires A12-01..A12-05:
-- minimal MCP attach/detach/Persona identity smoke;
-- real Mullvad protected-route/fail-closed smoke;
-- real Perchance session/read compatibility;
-- one disposable real Deployer mutation independently verified.
+Final release requires:
+- P048: MCP attach/detach/Persona distinction and real Mullvad route/fail-closed smoke;
+- P049: real Perchance identity/read compatibility plus one disposable independently verified Deployer mutation.
 
 If live behavior differs from the emulator, first reproduce/update it in deterministic CI, fix there, then rerun the narrow live scenario.
 
 No inaccessible live scenario may be reported PASS.
 
-Release provenance includes:
-- commit/version;
-- Core artifact hash;
-- official module hashes;
-- router provenance/version;
-- emulator/provider-contract version;
-- migrations/schema;
-- CI results;
-- final P12 live report;
-- known limitations/residual uncertainty.
+Release provenance includes commit/version, Core/module hashes, router provenance, emulator/provider-contract version, migrations/schema, CI results, P048/P049 reports and known residual uncertainty.

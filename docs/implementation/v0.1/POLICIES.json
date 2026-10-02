@@ -8,16 +8,18 @@
   },
   "git": {
     "sourceOfTruth": "GitHub",
-    "checkpoint": "Push every meaningful coherent checkpoint; maximum 20 minutes, 250 changed lines, or one acceptance slice.",
-    "branchPattern": "agent/<agent-id>/p<phase>-<task>",
+    "durabilityBoundary": "Every meaningful coherent checkpoint must be published to GitHub; direct local git push is optional when a GitHub connector/API is the available transport.",
+    "checkpoint": "Publish after each completed roadmap task or coherent working checkpoint, and before risky change, handoff or session end.",
+    "branchPattern": "agent/<agent-id>/pNNN",
     "historyRewrite": "Forbidden on published shared branches without explicit authorization."
   },
   "ci": {
     "budget": "UNLIMITED",
     "principle": "Use GitHub Actions aggressively for independent deterministic verification, matrices, packaging and security; optimize for confidence, not minute conservation.",
-    "localStillRequired": true,
+    "localStillRequired": false,
     "untrustedPrSecrets": "FORBIDDEN",
-    "liveRouteProvider": "manual/self-hosted protected environment"
+    "liveRouteProvider": "P048-P049 only in operator-controlled live environment; not a public-CI dependency.",
+    "executionModes": "Local agents run focused local tests plus Actions; connector-only agents use Actions/available remote verification and must not claim nonexistent local execution."
   },
   "module": {
     "artifactExtension": ".pcmsmod",
@@ -83,7 +85,7 @@
   },
   "testing": {
     "strategy": "CI_FIRST_LIVE_LAST",
-    "developmentPhaseRange": "P01-P11",
+    "developmentPhaseRange": "P001-P047",
     "developmentEvidence": [
       "U",
       "I",
@@ -92,12 +94,27 @@
       "N",
       "REC"
     ],
-    "livePhase": "P12",
     "liveEvidence": "L",
     "githubActionsSecrets": "No real Perchance/Mullvad/browser-session credentials or WireGuard private configs are required for CI.",
     "perchance": "Use evidence-backed emulator/fixtures for phase gating; real provider only P12.",
     "routing": "Use synthetic network/SOCKS/WireGuard fixtures for phase gating; real Mullvad only P12.",
-    "mcp": "Not required to close P01-P11; final interoperability/system acceptance only.",
-    "driftRule": "When live behavior disagrees with emulator, encode the observation into emulator/regression CI before continuing live debugging."
+    "mcp": "Not required to close P001-P047; final interoperability/system acceptance only in P048-P049.",
+    "driftRule": "When live behavior disagrees with emulator, encode the observation into emulator/regression CI before continuing live debugging.",
+    "livePhaseRange": "P048-P049"
+  },
+  "execution": {
+    "roadmap": "ROADMAP.md",
+    "plan": "docs/implementation/v0.1/plan.json",
+    "phaseUnit": "one structurally bounded cloud-agent session; empirical target approximately 20-30 minutes",
+    "agentTimeAwareness": "Do not depend on elapsed-time awareness; enforce size through phase scope.",
+    "normalMaxTasksPerPhase": 3,
+    "normalMaxAcceptanceIdsPerPhase": 5,
+    "exactlyOneActivePhase": true,
+    "activeStates": [
+      "READY",
+      "IN_PROGRESS"
+    ],
+    "phaseParallelism": 1,
+    "completion": "Close/test/report/publish current phase, mark only immediate successor READY, then STOP."
   }
 }
