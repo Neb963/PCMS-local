@@ -1,0 +1,84 @@
+{
+  "baseline": "0.1",
+  "normativeStrength": {
+    "INVARIANT": "Architecture/product truth; implementation cannot violate without ADR/product decision.",
+    "V1_REQUIRED": "Required for the owning phase/release boundary.",
+    "V1_CHOICE": "Replaceable implementation choice inside defined interface.",
+    "DEFERRED": "Not required unless promoted by ADR and acceptance change."
+  },
+  "git": {
+    "sourceOfTruth": "GitHub",
+    "checkpoint": "Push every meaningful coherent checkpoint; maximum 20 minutes, 250 changed lines, or one acceptance slice.",
+    "branchPattern": "agent/<agent-id>/p<phase>-<task>",
+    "historyRewrite": "Forbidden on published shared branches without explicit authorization."
+  },
+  "ci": {
+    "budget": "UNLIMITED",
+    "principle": "Use GitHub Actions aggressively for independent deterministic verification, matrices, packaging and security; optimize for confidence, not minute conservation.",
+    "localStillRequired": true,
+    "untrustedPrSecrets": "FORBIDDEN",
+    "liveRouteProvider": "manual/self-hosted protected environment"
+  },
+  "module": {
+    "artifactExtension": ".pcmsmod",
+    "installTimePackageManager": false,
+    "backendExecution": "dedicated module-runner child process",
+    "securityClaim": "operator-trusted same-user executable code; process boundary is not an adversarial sandbox",
+    "capabilityExpansion": "explicit operator approval",
+    "candidateRule": "last-known-good active package/state survives candidate failure",
+    "rawCoreDb": false,
+    "rawRouterSocket": false,
+    "rawCdp": false
+  },
+  "browser": {
+    "personaIdentity": "PCMS PersonaUid",
+    "v1Backend": "dedicated non-default Chromium user-data directory",
+    "maxInstances": "configurable",
+    "debugging": "loopback only; attach/detach non-destructive",
+    "defaultProfileReuse": false
+  },
+  "routing": {
+    "protectedFallback": "BLOCK; never Direct",
+    "direct": "explicit",
+    "privilegedService": "persona-mullvad-router ported baseline",
+    "chromiumForwarder": "distinct loopback-only command/lease; do not weaken authenticated Firefox-compatible prepare_exit path",
+    "kernelNamespace": "DEFERRED pending empirical need"
+  },
+  "operation": {
+    "states": [
+      "PREPARED",
+      "RUNNING",
+      "VERIFYING",
+      "SUCCEEDED",
+      "FAILED_SAFE",
+      "UNCERTAIN",
+      "CANCELLED",
+      "NEEDS_HUMAN"
+    ],
+    "durableBeforeDispatch": true,
+    "uncertainRetry": "Reconcile before re-dispatch; no blind automatic duplicate mutation.",
+    "stableTargetKeys": true
+  },
+  "storage": {
+    "authority": "single SQLite database",
+    "remoteCallsInsideTransactions": false,
+    "browserProfiles": "browser-owned filesystem state, not normalized DB rows",
+    "migrationRule": "ordered immutable migration IDs/checksums; destructive migrations require safety backup"
+  },
+  "secrets": {
+    "ordinarySqliteStorage": false,
+    "logs": false,
+    "preferredBackend": "Linux Secret Service/libsecret-compatible credential store subject to acceptance",
+    "plaintextFallback": "FORBIDDEN without explicit architecture decision"
+  },
+  "porting": {
+    "sourceRepos": [
+      "Neb963/persona-router",
+      "Neb963/PCMS-alt",
+      "Neb963/PCMS"
+    ],
+    "provenanceRequired": true,
+    "firefoxRuntimeCode": "DO_NOT_PORT",
+    "provenNativeRouter": "PORT_BEHAVIOR_PRESERVING_FIRST"
+  }
+}

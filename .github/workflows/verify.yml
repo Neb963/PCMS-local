@@ -1,0 +1,57 @@
+name: verify
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository / governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24.21.0'
+          cache: npm
+          cache-dependency-path: package-lock.json
+        continue-on-error: false
+      - name: Verify repository contracts
+        run: npm run verify:repo
+      - name: Verify exact ported blobs
+        run: npm run verify:port
+
+  native:
+    name: Native routing baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13'
+      - name: Run native tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+
+  bootstrap:
+    name: Bootstrap aggregate
+    runs-on: ubuntu-latest
+    needs: [repository, native]
+    if: always()
+    steps:
+      - name: Enforce prerequisites
+        env:
+          REPO_RESULT: ${{ needs.repository.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+        run: |
+          test "$REPO_RESULT" = success
+          test "$NATIVE_RESULT" = success

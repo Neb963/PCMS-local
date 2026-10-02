@@ -1,0 +1,17 @@
+{
+  "name": "pcms-local",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-first control plane for persistent Perchance Personas",
+  "type": "module",
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
+  "scripts": {
+    "verify:repo": "node scripts/verify-repo.mjs",
+    "verify:port": "node scripts/verify-ported-blobs.mjs",
+    "test:native": "python3 -m unittest discover -s tests -p 'test_*.py'",
+    "test": "npm run verify:repo && npm run verify:port && npm run test:native",
+    "verify": "npm test"
+  }
+}
