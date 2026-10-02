@@ -535,7 +535,7 @@
       "id": "P009",
       "milestone": "M02",
       "name": "Capability approval and atomic module activation",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P008"
       ],

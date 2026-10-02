@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P008**
-- Current phase: **P009 — READY**
+- Current phase: **P009 — IN_PROGRESS**
 - Next phase: **P010 — BLOCKED (P009)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
@@ -246,7 +246,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P008 → COMPLETE; P009 → READY; publish to GitHub; **STOP — do not implement P009.**
 
 ### P009 — Capability approval and atomic module activation
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P008  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -256,7 +256,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement remove/purge/rollback lifecycle yet.
 
 **Work:**
-- [ ] T009.1 — Compute initial/update authority envelopes and expansion deltas
+- [~] T009.1 — Compute initial/update authority envelopes and expansion deltas
 - [ ] T009.2 — Implement approval state and atomic candidate activation
 - [ ] T009.3 — Test decline/reduced-authority/no-expansion paths
 
