@@ -95,11 +95,16 @@ for (const phrase of [
   "A Persona is a persistent and isolated browser identity",
   "one active Account ↔ one dedicated Persona",
   "Unknown external state fails safely",
+  "# 19. Agent and development usability",
   "Reliable agent operation is a product requirement",
-  "Architecture should serve the product"
+  "# 27. Implementation freedom",
+  "# 29. Requirement hierarchy",
+  "Architecture should serve the product, not define it."
 ]) {
   if (!prd.includes(phrase)) throw new Error(`product requirements missing authority marker: ${phrase}`);
 }
+
+if (prd.split("\n").length < 1470) throw new Error("product requirements appear truncated");
 
 const agents = await readFile("AGENTS.md", "utf8");
 for (const phrase of ["GitHub is the source of truth", "Actions usage is **not budget-constrained**", "Uncertain external mutation"]) {
