@@ -106,8 +106,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add SQLite migrations, Web UI or CLI feature surfaces.
 
 **Work:**
-- [~] T002.1 — Implement XDG/config/data-root resolution and safe overrides
-- [ ] T002.2 — Implement single-instance ownership/stale-owner handling
+- [x] T002.1 — Implement XDG/config/data-root resolution and safe overrides
+- [~] T002.2 — Implement single-instance ownership/stale-owner handling
 - [ ] T002.3 — Start loopback pcmsd with health/readiness/version and lifecycle tests
 
 **Acceptance:**
