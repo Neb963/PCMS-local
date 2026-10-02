@@ -179,7 +179,7 @@ test("self-contained bundle stops cleanly and restarts without foundation-state 
       { cwd: bundleRoot, env }
     );
     assert.equal(statusAfter.stderr, "");
-    assert.equal(JSON.parse(statusAfter.stdout).status.database.schemaVersion, 4);
+    assert.equal(JSON.parse(statusAfter.stdout).status.database.schemaVersion, CORE_MIGRATIONS.length);
     assert.equal(statusAfter.stdout.includes(tokenAfter), false);
 
     await stopBundledDaemon(second);
