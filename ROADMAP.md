@@ -180,7 +180,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M02 — Updateable module platform
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P006 — Module manifest and safe package parser
 Status: **COMPLETE**  
