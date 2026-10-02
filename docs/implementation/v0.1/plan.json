@@ -63,7 +63,7 @@
     {
       "id": "M03",
       "name": "Chromium Persona runtime",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P012",
         "P013",
@@ -652,7 +652,7 @@
       "id": "P012",
       "milestone": "M03",
       "name": "Persona profile-root lifecycle",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P011"
       ],
@@ -688,7 +688,7 @@
       "id": "P013",
       "milestone": "M03",
       "name": "Chromium persistence, isolation and simultaneous Personas",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P012"
       ],

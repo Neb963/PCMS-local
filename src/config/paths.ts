@@ -18,6 +18,7 @@ export interface PcmsPaths {
   readonly dataRoot: string;
   readonly cacheRoot: string;
   readonly runtimeRoot: string;
+  readonly personasRoot: string;
   readonly configFile: string;
   readonly databasePath: string;
   readonly apiTokenFile: string;
@@ -77,12 +78,14 @@ export function resolvePcmsPaths(options: ResolvePcmsPathsOptions = {}): PcmsPat
   const dataRoot = explicitRoot(env, "PCMS_DATA_ROOT", join(dataBase, APP_DIR));
   const cacheRoot = explicitRoot(env, "PCMS_CACHE_ROOT", join(cacheBase, APP_DIR));
   const runtimeRoot = join(dataRoot, "runtime");
+  const personasRoot = join(dataRoot, "personas");
 
   return Object.freeze({
     configRoot,
     dataRoot,
     cacheRoot,
     runtimeRoot,
+    personasRoot,
     configFile: join(configRoot, "config.json"),
     databasePath: join(dataRoot, "pcms.db"),
     apiTokenFile: join(configRoot, "api-token"),
@@ -91,7 +94,13 @@ export function resolvePcmsPaths(options: ResolvePcmsPathsOptions = {}): PcmsPat
 }
 
 export async function ensurePcmsDirectories(paths: PcmsPaths): Promise<void> {
-  for (const path of [paths.configRoot, paths.dataRoot, paths.cacheRoot, paths.runtimeRoot]) {
+  for (const path of [
+    paths.configRoot,
+    paths.dataRoot,
+    paths.cacheRoot,
+    paths.runtimeRoot,
+    paths.personasRoot
+  ]) {
     await mkdir(path, { recursive: true, mode: 0o700 });
     await chmod(path, 0o700);
   }

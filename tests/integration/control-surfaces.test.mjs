@@ -10,6 +10,7 @@ import test from "node:test";
 import { readLocalApiToken } from "../../dist/auth/local-api.js";
 import { resolvePcmsPaths } from "../../dist/config/paths.js";
 import { startPcmsd } from "../../dist/daemon/server.js";
+import { CORE_MIGRATIONS } from "../../dist/storage/core-migrations.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -99,7 +100,7 @@ test("Web UI shell bootstraps authenticated same-origin Core status", async () =
       baseline: "0.1",
       database: {
         status: "ok",
-        schemaVersion: 4
+        schemaVersion: CORE_MIGRATIONS.length
       }
     });
 
@@ -143,7 +144,7 @@ test("CLI status uses the same authenticated Core API and emits stable JSON", as
         baseline: "0.1",
         database: {
           status: "ok",
-          schemaVersion: 4
+          schemaVersion: CORE_MIGRATIONS.length
         }
       }
     });
@@ -156,7 +157,10 @@ test("CLI status uses the same authenticated Core API and emits stable JSON", as
     assert.equal(humanResult.stderr, "");
     assert.match(humanResult.stdout, /^PCMS Local\n/m);
     assert.match(humanResult.stdout, /^Status: ready$/m);
-    assert.match(humanResult.stdout, /^Schema: 4$/m);
+    assert.match(
+      humanResult.stdout,
+      new RegExp("^Schema: " + CORE_MIGRATIONS.length + "$", "m")
+    );
     assert.equal(humanResult.stdout.includes(token), false);
   } finally {
     await daemon.close();

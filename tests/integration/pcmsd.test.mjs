@@ -8,6 +8,7 @@ import test from "node:test";
 import { ensurePcmsDirectories, resolvePcmsPaths } from "../../dist/config/paths.js";
 import { startPcmsd } from "../../dist/daemon/server.js";
 import { InstanceAlreadyRunningError } from "../../dist/runtime/instance-lock.js";
+import { CORE_MIGRATIONS } from "../../dist/storage/core-migrations.js";
 import { DatabaseSchemaError } from "../../dist/storage/migrations.js";
 import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
 
@@ -63,7 +64,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(daemon.host, "127.0.0.1");
     assert.ok(daemon.port > 0);
     assert.equal(daemon.origin, `http://127.0.0.1:${daemon.port}`);
-    assert.equal(daemon.schemaVersion, 4);
+    assert.equal(daemon.schemaVersion, CORE_MIGRATIONS.length);
 
     const health = await getJson(daemon.origin, "/api/v1/health");
     assert.equal(health.status, 200);
@@ -73,7 +74,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
     assert.equal(typeof health.body.uptimeMs, "number");
     assert.deepEqual(health.body.database, {
       status: "ok",
-      schemaVersion: 4
+      schemaVersion: CORE_MIGRATIONS.length
     });
 
     const ready = await getJson(daemon.origin, "/api/v1/ready");
@@ -83,7 +84,7 @@ test("pcmsd starts single-instance on IPv4 loopback and reports health/readiness
       status: "ready",
       ready: true,
       version: "0.0.0",
-      schemaVersion: 4
+      schemaVersion: CORE_MIGRATIONS.length
     });
 
     const version = await getJson(daemon.origin, "/api/v1/version");

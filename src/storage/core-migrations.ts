@@ -160,5 +160,50 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
       CREATE INDEX module_lifecycle_unresolved_evidence
         ON module_lifecycle_evidence(module_id, unresolved);
     `
+  }),
+  Object.freeze({
+    version: 5,
+    id: "0005-persona-profile-lifecycle",
+    sql: `
+      CREATE TABLE personas (
+        persona_uid TEXT PRIMARY KEY
+          CHECK (length(persona_uid) BETWEEN 1 AND 128),
+        lifecycle_status TEXT NOT NULL
+          CHECK (lifecycle_status IN ('ACTIVE', 'RETIRED')),
+        profile_state TEXT NOT NULL
+          CHECK (profile_state IN ('CLOSED', 'OPEN')),
+        browser_backend TEXT NOT NULL
+          CHECK (browser_backend = 'chromium-v1'),
+        profile_relative_path TEXT NOT NULL UNIQUE
+          CHECK (length(profile_relative_path) BETWEEN 1 AND 512),
+        profile_delete_state TEXT NOT NULL DEFAULT 'PRESENT'
+          CHECK (profile_delete_state IN ('PRESENT', 'DELETE_STAGED', 'DELETED')),
+        profile_deleted_at TEXT,
+        profile_backup_decision TEXT
+          CHECK (
+            profile_backup_decision IS NULL OR
+            profile_backup_decision IN ('BACKED_UP', 'SKIPPED')
+          ),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        retired_at TEXT,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        CHECK (lifecycle_status <> 'RETIRED' OR profile_state = 'CLOSED'),
+        CHECK (profile_delete_state = 'PRESENT' OR lifecycle_status = 'RETIRED'),
+        CHECK (profile_delete_state = 'PRESENT' OR profile_state = 'CLOSED'),
+        CHECK (
+          (profile_delete_state = 'PRESENT' AND
+            profile_deleted_at IS NULL AND
+            profile_backup_decision IS NULL) OR
+          (profile_delete_state = 'DELETE_STAGED' AND
+            profile_deleted_at IS NULL AND
+            profile_backup_decision IS NOT NULL) OR
+          (profile_delete_state = 'DELETED' AND
+            profile_deleted_at IS NOT NULL AND
+            profile_backup_decision IS NOT NULL)
+        )
+      ) STRICT;
+    `
   })
 ]);
