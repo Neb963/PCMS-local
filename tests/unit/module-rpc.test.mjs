@@ -39,6 +39,25 @@ test("length-prefixed module RPC survives chunking and preserves typed envelopes
   assert.deepEqual(decoded[0], request());
 });
 
+
+test("frame decoder accepts multiple valid frames coalesced into one chunk", () => {
+  const first = encodeModuleRpcFrame(
+    parseModuleRpcEnvelope(request({ requestId: "core:1" })),
+    DEFAULT_MODULE_RPC_LIMITS.maxFrameBytes
+  );
+  const second = encodeModuleRpcFrame(
+    parseModuleRpcEnvelope(request({ requestId: "core:2", params: { value: 2 } })),
+    DEFAULT_MODULE_RPC_LIMITS.maxFrameBytes
+  );
+  const decoder = new ModuleRpcFrameDecoder(
+    DEFAULT_MODULE_RPC_LIMITS.maxFrameBytes
+  );
+  const decoded = decoder.push(Buffer.concat([first, second]));
+  assert.equal(decoded.length, 2);
+  assert.equal(decoded[0].requestId, "core:1");
+  assert.equal(decoded[1].requestId, "core:2");
+});
+
 test("RPC validation rejects unknown fields, invalid generation and ambiguous response", () => {
   assert.throws(
     () => parseModuleRpcEnvelope({ ...request(), extra: true }),

@@ -275,22 +275,40 @@ export class ModuleRpcFrameDecoder {
   public push(chunk: Uint8Array): readonly ModuleRpcEnvelope[] {
     if (chunk.byteLength === 0) return Object.freeze([]);
     const incoming = Buffer.from(chunk);
-    if (this.#buffer.length + incoming.length > this.#maxFrameBytes + 4) {
-      fail("RPC buffered bytes exceed frame limit");
-    }
-    this.#buffer = Buffer.concat([this.#buffer, incoming]);
-
     const envelopes: ModuleRpcEnvelope[] = [];
-    while (this.#buffer.length >= 4) {
+    let offset = 0;
+
+    while (offset < incoming.length) {
+      if (this.#buffer.length < 4) {
+        const headerBytes = Math.min(4 - this.#buffer.length, incoming.length - offset);
+        this.#buffer = Buffer.concat([
+          this.#buffer,
+          incoming.subarray(offset, offset + headerBytes)
+        ]);
+        offset += headerBytes;
+        if (this.#buffer.length < 4) continue;
+      }
+
       const length = this.#buffer.readUInt32BE(0);
       if (length < 1 || length > this.#maxFrameBytes) {
         fail(`RPC declared frame length ${length} is invalid`);
       }
       const frameEnd = 4 + length;
-      if (this.#buffer.length < frameEnd) break;
+      const bodyBytes = Math.min(
+        frameEnd - this.#buffer.length,
+        incoming.length - offset
+      );
+      if (bodyBytes > 0) {
+        this.#buffer = Buffer.concat([
+          this.#buffer,
+          incoming.subarray(offset, offset + bodyBytes)
+        ]);
+        offset += bodyBytes;
+      }
+      if (this.#buffer.length < frameEnd) continue;
 
       const payload = this.#buffer.subarray(4, frameEnd);
-      this.#buffer = this.#buffer.subarray(frameEnd);
+      this.#buffer = Buffer.alloc(0);
 
       let decoded: unknown;
       try {

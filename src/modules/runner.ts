@@ -258,7 +258,7 @@ class ModuleRuntimeImpl {
       );
     }, this.#limits.startupTimeoutMs);
 
-    this.#child.once("exit", (code, signal) => {
+    this.#child.once("close", (code, signal) => {
       const detail =
         signal === null
           ? `exit code ${code ?? "unknown"}`
@@ -567,7 +567,7 @@ class ModuleRuntimeImpl {
         rejectWrite(runtimeLost("module-runner IPC is closed"));
         return;
       }
-      const accepted = this.#child.stdin.write(frame, (error?: Error | null) => {
+      this.#child.stdin.write(frame, (error?: Error | null) => {
         if (error !== undefined && error !== null) {
           rejectWrite(
             new ModuleRuntimeError(
@@ -581,9 +581,6 @@ class ModuleRuntimeImpl {
         }
         resolveWrite();
       });
-      if (!accepted && this.#child.stdin.writableNeedDrain) {
-        this.#child.stdin.once("drain", resolveWrite);
-      }
     });
   }
 
