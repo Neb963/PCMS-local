@@ -138,7 +138,6 @@ async function extractParsedPackage(
   for (const path of new Set(directories)) {
     await chmod(path, 0o500);
   }
-  await chmod(targetRoot, 0o500);
 }
 
 async function verifyExtractedFiles(
@@ -279,6 +278,7 @@ export class ModulePackageStore {
       const destination = join(versionRoot, parsed.sha256);
       try {
         await rename(staging, destination);
+        await chmod(destination, 0o500);
       } catch (error: unknown) {
         const raced = await lstat(destination).catch(() => null);
         if (raced === null) throw error;
