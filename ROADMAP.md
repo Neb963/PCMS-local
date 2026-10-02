@@ -214,8 +214,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement package updates, storage migration or module UI.
 
 **Work:**
-- [~] T007.1 — Implement module-runner process lifecycle and typed RPC envelope
-- [ ] T007.2 — Enforce supported-authority boundary: no raw DB/router/CDP handles
+- [x] T007.1 — Implement module-runner process lifecycle and typed RPC envelope
+- [~] T007.2 — Enforce supported-authority boundary: no raw DB/router/CDP handles
 - [ ] T007.3 — Test crash/timeout/oversize-message containment with unrelated Core responsiveness
 
 **Acceptance:**
