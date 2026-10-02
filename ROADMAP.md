@@ -194,8 +194,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T006.1 — Implement manifest/API/capability schema validation
-- [~] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
-- [ ] T006.3 — Add adversarial package fixtures and rejection tests
+- [x] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
+- [~] T006.3 — Add adversarial package fixtures and rejection tests
 
 **Acceptance:**
 - [ ] A02-01
