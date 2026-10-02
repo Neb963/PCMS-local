@@ -325,8 +325,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T012.1 — Implement safe profile-root allocation keyed by Persona UID
-- [~] T012.2 — Implement open/close persistence semantics
-- [ ] T012.3 — Implement retire/delete guards and profile-path safety tests
+- [x] T012.2 — Implement open/close persistence semantics
+- [~] T012.3 — Implement retire/delete guards and profile-path safety tests
 
 **Acceptance:**
 - [ ] A03-01

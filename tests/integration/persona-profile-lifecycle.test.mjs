@@ -100,3 +100,27 @@ test("refuses traversal identifiers, symlink escapes and incompatible nonempty P
     await cleanup(f);
   }
 });
+
+test("close preserves profile bytes and reopen returns the same persistent root", async () => {
+  const f = await fixture("pcms-persona-persistence-");
+  try {
+    const opened = await f.lifecycle.open("persona_persistent");
+    const sentinel = join(opened.profilePath, "pcms-persistence-probe.txt");
+    await writeFile(sentinel, "persistent-state", "utf8");
+    assert.equal(opened.record.profileState, "OPEN");
+
+    const closed = f.lifecycle.close("persona_persistent");
+    assert.equal(closed.profileState, "CLOSED");
+    assert.equal(await readFile(sentinel, "utf8"), "persistent-state");
+
+    const reopened = await f.lifecycle.open("persona_persistent");
+    assert.equal(reopened.profilePath, opened.profilePath);
+    assert.equal(reopened.record.profileState, "OPEN");
+    assert.equal(await readFile(sentinel, "utf8"), "persistent-state");
+
+    const closedAgain = f.lifecycle.close("persona_persistent");
+    assert.equal(closedAgain.profileState, "CLOSED");
+  } finally {
+    await cleanup(f);
+  }
+});

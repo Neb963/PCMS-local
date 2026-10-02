@@ -357,6 +357,17 @@ export class PersonaProfileLifecycle {
     return canonicalProfile;
   }
 
+  #requireRecord(personaUid: string): PersonaProfileRecord {
+    const record = this.get(personaUid);
+    if (record === null) {
+      throw new PersonaProfileError(
+        "PERSONA_NOT_FOUND",
+        `Persona ${personaUid} does not exist`
+      );
+    }
+    return record;
+  }
+
   public async allocate(personaUid: string): Promise<AllocatedPersonaProfile> {
     assertPersonaUid(personaUid);
     const expectedPath = expectedRelativePath(personaUid);
@@ -421,5 +432,74 @@ export class PersonaProfileLifecycle {
     }
 
     return Object.freeze({ record, profilePath });
+  }
+
+  public async open(personaUid: string): Promise<AllocatedPersonaProfile> {
+    const allocated = await this.allocate(personaUid);
+    if (allocated.record.profileState === "OPEN") {
+      return allocated;
+    }
+
+    const now = this.#now().toISOString();
+    this.#database.prepare(`
+      UPDATE personas
+      SET
+        profile_state = 'OPEN',
+        updated_at = ?,
+        revision = revision + 1
+      WHERE
+        persona_uid = ? AND
+        lifecycle_status = 'ACTIVE' AND
+        profile_deleted_at IS NULL AND
+        profile_state = 'CLOSED'
+    `).run(now, personaUid);
+
+    const record = this.#requireRecord(personaUid);
+    if (
+      record.lifecycleStatus !== "ACTIVE" ||
+      record.profileDeletedAt !== null
+    ) {
+      throw new PersonaProfileError(
+        record.profileDeletedAt !== null ? "PERSONA_PROFILE_DELETED" : "PERSONA_RETIRED",
+        "Persona became unavailable while opening its persistent profile"
+      );
+    }
+    if (record.profileState !== "OPEN") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Persona profile did not enter OPEN state"
+      );
+    }
+
+    return Object.freeze({
+      record,
+      profilePath: allocated.profilePath
+    });
+  }
+
+  public close(personaUid: string): PersonaProfileRecord {
+    const current = this.#requireRecord(personaUid);
+    if (current.profileState === "CLOSED") {
+      return current;
+    }
+
+    const now = this.#now().toISOString();
+    this.#database.prepare(`
+      UPDATE personas
+      SET
+        profile_state = 'CLOSED',
+        updated_at = ?,
+        revision = revision + 1
+      WHERE persona_uid = ? AND profile_state = 'OPEN'
+    `).run(now, personaUid);
+
+    const record = this.#requireRecord(personaUid);
+    if (record.profileState !== "CLOSED") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Persona profile did not enter CLOSED state"
+      );
+    }
+    return record;
   }
 }
