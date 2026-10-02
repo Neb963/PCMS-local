@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P004**  
 Current milestone: **M01 — Local application foundation**  
-Current phase: **P005 — READY**  
+Current phase: **P005 — IN_PROGRESS**  
 Next phase: **P006 — BLOCKED (P005)**
 
 Canonical execution view: `ROADMAP.md`.
