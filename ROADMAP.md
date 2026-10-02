@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P007**
-- Current phase: **P008 — READY**
+- Current phase: **P008 — IN_PROGRESS**
 - Next phase: **P009 — BLOCKED (P008)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
@@ -225,7 +225,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P007 → COMPLETE; P008 → READY; publish to GitHub; **STOP — do not implement P008.**
 
 ### P008 — Module storage generations and candidate migration
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P007  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -235,7 +235,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not activate permission expansion or expose module UI.
 
 **Work:**
-- [ ] T008.1 — Implement module namespace/version storage and generation fencing
+- [~] T008.1 — Implement module namespace/version storage and generation fencing
 - [ ] T008.2 — Implement candidate state copy/migration/health validation
 - [ ] T008.3 — Prove stale runtime rejection and last-known-good survival on candidate failure
 

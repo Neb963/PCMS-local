@@ -496,7 +496,7 @@
       "id": "P008",
       "milestone": "M02",
       "name": "Module storage generations and candidate migration",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P007"
       ],
