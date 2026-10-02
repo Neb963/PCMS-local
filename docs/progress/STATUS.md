@@ -1,27 +1,39 @@
 # PCMS-local Status
 
 Baseline: **v0.1 architecture/bootstrap**  
-Current phase: **P00 — IN PROGRESS**  
-Branch of architecture bootstrap: `agent/architecture-bootstrap`
+Current completed phase: **P00**  
+Next phase: **P01 — READY**
 
-## Completed checkpoints
+## P00 result
 
-- Product Requirements imported as highest product authority.
-- AGENTS contract established.
-- Local-control-plane, Chromium Persona and out-of-process updateable-module decisions accepted.
-- Core architecture specifications 00–18 written.
-- Canonical implementation plan/policies/ownership/acceptance/DoD established.
+P00 architecture/governance/proven-source bootstrap is complete.
 
-## P00 remaining
+- Exact Product Requirements are repository authority.
+- AGENTS contract is self-contained.
+- Architecture specs 00–18 and ADR-001..003 are established.
+- v0.1 machine-readable plan/policies/ownership/acceptance/DoD are established.
+- PersonaMonkey native router baseline + tests are ported byte-identically with exact provenance.
+- Repository/provenance/native bootstrap verification runs in GitHub Actions.
+- Successful push and pull-request workflow runs proved the deterministic P00 gates.
 
-- Port PersonaMonkey native router/sanitizer/systemd baseline with exact provenance.
-- Port/adapt native hardening tests and run deterministic tests.
-- Add repository verifier/toolchain skeleton.
-- Add initial GitHub Actions and validate branch/PR runs.
-- Review all P00 diffs/provenance and close P00 only if A00-* gates are satisfied.
+See `reports/phases/P00.md`.
 
-## Next phase
+## P01 — READY
 
-P01 becomes READY only after P00 closure.
+Goal: executable local shell, SQLite and CI foundation.
 
-P01 goal: an executable local pcmsd/SQLite/Web UI/CLI shell with CI and simple development/service launch; it does not yet implement full Personas or provider automation.
+P01 scope:
+- pinned Node/TypeScript workspace;
+- pcmsd config/data-root/single-instance base;
+- SQLite adapter/migration authority;
+- loopback health/readiness/auth bootstrap;
+- minimal Web UI;
+- CLI typed client/JSON mode;
+- user-service/development launch;
+- broader hosted CI/package smoke.
+
+P01 must not implement Chromium Persona lifecycle, protected routing or provider mutation ahead of their owning phases.
+
+## Known future live gates
+
+No Chromium/route/provider/agent live behavior is claimed by P00. Those remain explicit B/R/P/A/REC acceptance gates in P03+.
