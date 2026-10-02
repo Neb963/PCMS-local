@@ -167,8 +167,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not build the final installer or release-hardening matrix.
 
 **Work:**
-- [~] T005.1 — Add foreground and user-service launch/diagnostic paths
-- [ ] T005.2 — Build the development/release bundle skeleton
+- [x] T005.1 — Add foreground and user-service launch/diagnostic paths
+- [~] T005.2 — Build the development/release bundle skeleton
 - [ ] T005.3 — Test clean stop/restart/state preservation and bundle startup
 
 **Acceptance:**
