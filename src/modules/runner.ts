@@ -183,7 +183,6 @@ class ModuleRuntimeImpl {
 
   public constructor(
     options: StartModuleRuntimeOptions,
-    backendPath: string,
     limits: ModuleRpcLimits,
     sdkHandlers: ReadonlyMap<string, ModuleSdkHandler>,
     startupNonce: string
@@ -194,6 +193,10 @@ class ModuleRuntimeImpl {
     this.#startupNonce = startupNonce;
     this.#sdkHandlers = sdkHandlers;
     this.#decoder = new ModuleRpcFrameDecoder(limits.maxFrameBytes);
+    this.#startupPromise = new Promise<void>((resolveReady, rejectReady) => {
+      this.#startupResolve = resolveReady;
+      this.#startupReject = rejectReady;
+    });
 
     const runnerPath =
       options.runnerPath ??
@@ -246,6 +249,16 @@ class ModuleRuntimeImpl {
         )
       );
     });
+    this.#startupTimer = setTimeout(() => {
+      this.#startupTimer = null;
+      this.#protocolFailure(
+        new ModuleRuntimeError(
+          "MODULE_RUNTIME_START_TIMEOUT",
+          "module-runner did not complete startup handshake"
+        )
+      );
+    }, this.#limits.startupTimeoutMs);
+
     this.#child.once("exit", (code, signal) => {
       const detail =
         signal === null
@@ -284,20 +297,7 @@ class ModuleRuntimeImpl {
   }
 
   public async waitUntilReady(): Promise<void> {
-    const startup = new Promise<void>((resolveReady, rejectReady) => {
-      this.#startupResolve = resolveReady;
-      this.#startupReject = rejectReady;
-    });
-    this.#startupTimer = setTimeout(() => {
-      this.#startupTimer = null;
-      this.#protocolFailure(
-        new ModuleRuntimeError(
-          "MODULE_RUNTIME_START_TIMEOUT",
-          "module-runner did not complete startup handshake"
-        )
-      );
-    }, this.#limits.startupTimeoutMs);
-    await startup;
+    await this.#startupPromise;
   }
 
   public async request(
@@ -685,7 +685,6 @@ export async function startModuleRuntime(
 
   const runtime = new ModuleRuntimeImpl(
     options,
-    backendPath,
     resolveLimits(options.limits),
     handlers,
     startupNonce
