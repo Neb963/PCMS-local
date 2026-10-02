@@ -135,18 +135,10 @@ async function extractParsedPackage(
     await chmod(target, 0o400);
   }
 
-  const archivePath = join(targetRoot, "package.pcmsmod");
   for (const path of new Set(directories)) {
     await chmod(path, 0o500);
   }
   await chmod(targetRoot, 0o500);
-
-  if ((await lstat(archivePath).catch(() => null)) !== null) {
-    fail(
-      "MODULE_PACKAGE_STORE_CORRUPT",
-      "staging package archive already exists"
-    );
-  }
 }
 
 async function verifyExtractedFiles(
