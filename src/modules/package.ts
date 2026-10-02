@@ -282,6 +282,12 @@ function parseCentralDirectory(
         fail(`ZIP directory must be empty: ${path}`);
       }
     } else {
+      if (
+        path === "manifest.json" &&
+        uncompressedSize > MODULE_PACKAGE_LIMITS.manifestBytes
+      ) {
+        fail("manifest.json exceeds manifest size limit");
+      }
       if (uncompressedSize > MODULE_PACKAGE_LIMITS.entryUncompressedBytes) {
         fail(`ZIP entry exceeds uncompressed size limit: ${path}`);
       }
@@ -448,10 +454,11 @@ function parseManifest(bytes: Buffer): ModuleManifestV1 {
 }
 
 export function parsePcmsModulePackage(input: Uint8Array): ParsedModulePackage {
-  const buffer = Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  const buffer = Buffer.from(input);
   if (buffer.length === 0 || buffer.length > MODULE_PACKAGE_LIMITS.archiveBytes) {
     fail(`module archive byte size must be between 1 and ${MODULE_PACKAGE_LIMITS.archiveBytes}`);
   }
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
   const eocdOffset = findEndOfCentralDirectory(buffer);
   const centralOffset = u32(buffer, eocdOffset + 16, "central-directory offset");
   const centralEntries = parseCentralDirectory(buffer, eocdOffset);
@@ -500,7 +507,6 @@ export function parsePcmsModulePackage(input: Uint8Array): ParsedModulePackage {
     fail(`manifest UI entry is missing from package: ${manifest.ui}`);
   }
 
-  const sha256 = createHash("sha256").update(buffer).digest("hex");
   return Object.freeze({
     sha256,
     manifest,

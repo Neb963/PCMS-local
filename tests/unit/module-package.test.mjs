@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -23,8 +24,9 @@ test("parses and fully validates a bounded .pcmsmod ZIP", () => {
     ]
   });
 
+  const expectedDigest = createHash("sha256").update(archive).digest("hex");
   const parsed = parsePcmsModulePackage(archive);
-  assert.match(parsed.sha256, /^[0-9a-f]{64}$/);
+  assert.equal(parsed.sha256, expectedDigest);
   assert.equal(parsed.manifest.id, "fixture.module");
   assert.equal(parsed.manifest.ui, "ui/index.html");
   assert.equal(parsed.readFile("backend/index.mjs").toString(), "export default {};");
