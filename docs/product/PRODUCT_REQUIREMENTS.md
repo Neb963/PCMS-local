@@ -998,3 +998,481 @@ Workflow       READY
 Result:
 Operation blocked because the required protected route is unavailable.
 ```
+The product must distinguish at least:
+
+- healthy;
+- unavailable;
+- degraded;
+- unknown;
+- stale;
+- waiting for human;
+- failed;
+- cancelled.
+
+"Something went wrong" is insufficient for normal operational failures.
+
+---
+
+# 16. Notifications
+
+PCMS should notify the operator when something materially changes that may require attention.
+
+Notifications must complement rather than replace durable operational state.
+
+Repeated failures should not flood the operator with indistinguishable messages.
+
+---
+
+# 17. Backup, portability and recovery
+
+## DATA-01 — PCMS authoritative data
+
+PCMS must support export and restoration of its authoritative state.
+
+This includes as applicable:
+
+- Accounts;
+- Account↔Persona bindings;
+- Persona metadata;
+- routing configuration;
+- Projects;
+- revisions;
+- generator associations;
+- Workflow definitions;
+- module configuration;
+- schedules;
+- operational metadata.
+
+---
+
+## DATA-02 — Portable Persona definition
+
+A Persona must not exist only as an opaque entry in an application database.
+
+The information required to identify, understand and restore its PCMS relationship must be portable.
+
+---
+
+## DATA-03 — Browser-state migration
+
+The product should provide a supported way to back up or migrate persistent Persona browser state where the chosen browser platform permits it.
+
+PCMS must clearly distinguish:
+
+- PCMS-managed metadata;
+- local Persona browser state;
+- provider-owned remote state.
+
+It must never imply that one automatically backs up the others.
+
+---
+
+## DATA-04 — Automatic export
+
+PCMS should support automatic or low-friction recurring export/backup so that recovery does not depend on the user remembering to create manual snapshots.
+
+---
+
+## DATA-05 — Recovery without silent invention
+
+If some external/browser state cannot be restored, PCMS must report what is missing rather than synthesizing a false healthy state.
+
+---
+
+# 18. Privacy and security requirements
+
+PCMS is local-first.
+
+By default:
+
+- operational data remains local;
+- no external analytics service is required;
+- credentials are not ordinary application records;
+- secrets do not appear in logs;
+- modules receive only capabilities they require;
+- protected Personas do not silently fall back to direct network access;
+- uncertain authenticated identity blocks sensitive operations;
+- destructive actions require appropriate confirmation;
+- diagnostics must redact sensitive information.
+
+The goal is practical isolation and recoverability rather than security theatre.
+
+A mechanism that merely appears encrypted or isolated but provides no meaningful protection does not satisfy the requirement.
+
+---
+
+# 19. Agent and development usability
+
+Reliable agent operation is a product requirement because agents will be used to build, test and debug PCMS workflows.
+
+The product must allow an authorized agent to:
+
+1. identify a Persona;
+2. open or connect to it;
+3. observe its health;
+4. inspect its live browser;
+5. interact with the provider;
+6. inspect relevant network/console/page state;
+7. perform test operations;
+8. disconnect without destroying the Persona.
+
+This capability must be suitable for real acceptance testing against persistent authenticated sessions.
+
+The specific automation technology is not prescribed.
+
+---
+
+# 20. Scale requirements
+
+The design target is **50+ managed Accounts/Personas**, with room for further growth.
+
+The product must remain practical with:
+
+- dozens of Personas;
+- many generators per Account;
+- multiple Projects;
+- substantial Run/event history;
+- large batch operations.
+
+Dormant Personas should not require continuously active browser execution.
+
+The number of simultaneously active Personas must be configurable according to available host resources.
+
+---
+
+# 21. UX requirements
+
+PCMS is an operational application, not a decorative dashboard.
+
+The interface should be:
+
+- compact;
+- predictable;
+- low-friction;
+- keyboard-friendly;
+- information-dense without becoming confusing;
+- clear about state and ownership;
+- usable with long identifiers and large tables.
+
+Primary surfaces should favor:
+
+- tables;
+- forms;
+- search;
+- timelines;
+- activity/status views;
+- diagnostics;
+- explicit actions.
+
+The operator should not need to understand implementation details such as browser container IDs, internal ports or transport protocols during normal use.
+
+---
+
+# 22. Explicit non-goals
+
+The following are **not product requirements**.
+
+### A particular browser
+
+The PRD does not require Firefox, Chromium or another browser.
+
+### Firefox containers
+
+Persona does not mean Firefox Contextual Identity.
+
+### Chromium user-data directories
+
+They may be an excellent implementation, but they are not the definition of Persona.
+
+### Browser extension architecture
+
+PCMS does not have to be implemented as an extension.
+
+### Native daemon architecture
+
+PCMS does not have to be implemented as a native daemon.
+
+### CDP / MCP
+
+Agent control is required. CDP, Chrome DevTools MCP or another protocol is an engineering choice.
+
+### A particular proxy implementation
+
+Per-Persona safe routing is required. Local proxies, WireGuard routing, namespaces, nftables or another solution are engineering choices.
+
+### Always-running browser instances
+
+A managed Persona does not need to remain continuously open.
+
+### Fully autonomous CAPTCHA circumvention
+
+Human challenge completion is explicitly supported.
+
+### General-purpose browser-profile manager
+
+The product exists to support managed Accounts and PCMS operations, not to replace general consumer browser profile management.
+
+### Multi-user SaaS
+
+V1 is a local operator tool.
+
+### Supporting every provider
+
+V1 is Perchance-first. The product model should avoid unnecessary Perchance coupling where inexpensive, but implementing additional providers is not a V1 requirement.
+
+---
+
+# 23. MVP product boundary
+
+The first genuinely useful PCMS release must establish the foundation before advanced automation is considered complete.
+
+## MVP — Persona and control foundation
+
+The product is useful when it can reliably:
+
+- manage Accounts;
+- manage persistent Personas;
+- bind one Account to one Persona;
+- open/close Personas;
+- preserve browser state;
+- configure and verify routes;
+- fail closed on protected-route loss;
+- show session/route/Persona health;
+- allow manual browser use;
+- allow agent/browser automation access;
+- execute an isolated operation;
+- accept transient input/secrets;
+- return structured results;
+- pause for human intervention;
+- recover/reconcile interrupted operations;
+- search Accounts and Personas;
+- export important PCMS state.
+
+Until this works reliably, higher-level PCMS automation should not obscure defects in the Persona foundation.
+
+---
+
+# 24. Full V1 product boundary
+
+Full V1 additionally includes:
+
+- generator inventory and ownership;
+- Projects;
+- workspaces and revision history;
+- deployments and external-drift detection;
+- reusable Workflows;
+- scheduling;
+- queues;
+- batch execution;
+- modules;
+- Refresher;
+- Explorer;
+- Account Provisioning;
+- Statistics;
+- Attention;
+- notifications;
+- global search;
+- backup/recovery;
+- operational diagnostics.
+
+---
+
+# 25. Product acceptance scenarios
+
+The following scenarios define the intended product more clearly than any particular implementation.
+
+## Scenario A — Persistent account
+
+1. Account A is bound to Persona A.
+2. The operator logs into Perchance.
+3. Persona A is closed.
+4. PCMS is restarted.
+5. Persona A is opened again.
+
+**Expected:** It is recognizably the same persistent Persona. Where the provider session remains valid, the Perchance session is still available.
+
+---
+
+## Scenario B — Account isolation
+
+1. Persona A is logged into Account A.
+2. Persona B is logged into Account B.
+3. The same Workflow is run against both.
+
+**Expected:** Neither Run can observe or modify the other Account's browser session, Run state or secret inputs.
+
+---
+
+## Scenario C — Route loss
+
+1. Persona A requires a protected route.
+2. The route becomes unavailable during operation.
+
+**Expected:** PCMS does not silently continue through direct host networking. The Persona becomes blocked/degraded and the operator receives an actionable explanation.
+
+---
+
+## Scenario D — Agent debugging
+
+1. Persona A is running and logged in.
+2. An automation/debugging agent attaches.
+3. It inspects and interacts with Perchance.
+4. The agent disconnects.
+
+**Expected:** Persona A remains alive and usable; its persistent profile/session is not destroyed merely because debugging ended.
+
+---
+
+## Scenario E — Human CAPTCHA
+
+1. Account Provisioning reaches a real provider challenge.
+2. Automation pauses.
+3. PCMS presents the task.
+4. The operator opens the correct Persona and completes the challenge.
+5. Automation resumes.
+
+**Expected:** It remains the same logical provisioning operation and the challenge token is not treated as durable ordinary application data.
+
+---
+
+## Scenario F — Response lost after remote mutation
+
+1. PCMS sends a generator/account mutation.
+2. The provider may have executed it.
+3. The response is lost.
+
+**Expected:** PCMS represents the result as uncertain and attempts reconciliation before retrying the mutation.
+
+---
+
+## Scenario G — Browser crash
+
+1. A Persona browser exits unexpectedly.
+2. PCMS remains running or restarts later.
+
+**Expected:** The Persona remains defined. Persistent browser identity is not silently replaced. Interrupted work is reconciled.
+
+---
+
+## Scenario H — Fifty Accounts
+
+1. More than 50 Accounts and Personas exist.
+2. Only several are currently needed.
+3. The operator searches for one Account and opens it.
+
+**Expected:** The system remains manageable without requiring every Persona to have an active browser process.
+
+---
+
+## Scenario I — Portable recovery
+
+1. PCMS state is exported.
+2. The local installation is lost or deliberately replaced.
+3. The backup is restored.
+
+**Expected:** PCMS can reconstruct its authoritative entities and relationships and clearly report any external/browser state that still requires restoration or verification.
+
+---
+
+## Scenario J — Provider changes
+
+1. Perchance changes a behavior that an automation previously depended upon.
+2. PCMS can no longer confidently interpret it.
+
+**Expected:** The affected capability becomes unavailable/degraded/unknown rather than executing a guessed operation.
+
+---
+
+# 26. Product success criteria
+
+PCMS succeeds when managing many Perchance identities feels like managing structured resources rather than juggling browser sessions.
+
+A successful system allows the operator to answer quickly:
+
+```text
+Which account is this?
+Which Persona belongs to it?
+Is that Persona healthy?
+Which route is it actually using?
+Is its Perchance session valid?
+Which generators does it own?
+What is currently running?
+What failed?
+What needs human attention?
+What changed externally?
+Can an agent inspect it safely?
+Can I recover this after a crash?
+```
+
+without manually reconstructing state from browser windows, extension internals and shell commands.
+
+The ultimate product requirement is:
+
+> **Every managed account should behave as a durable, isolated, inspectable and automatable identity, while PCMS provides one reliable control plane for managing those identities and everything being done with them.**
+
+---
+
+# 27. Implementation freedom
+
+Engineering should select the simplest architecture that satisfies this PRD and is reliably testable.
+
+The following should therefore be evaluated as implementation candidates rather than assumed requirements:
+
+```text
+Firefox vs Chromium
+extension vs Linux application
+browser profiles vs another isolation primitive
+local proxy vs network namespace
+native bridge vs local service
+CDP vs another automation protocol
+Chrome DevTools MCP vs another agent interface
+SQLite vs another database
+specific module runtime technology
+```
+
+An implementation should be judged by whether it satisfies the product requirements and acceptance scenarios above, not by whether it resembles the previous PersonaMonkey architecture.
+
+---
+
+# 28. Relationship to existing PersonaMonkey work
+
+PersonaMonkey should be treated as:
+
+1. a source of validated product requirements;
+2. a source of reusable implementation/domain work where useful;
+3. a compatibility or migration concern if retained;
+4. **not the definition of Persona itself**.
+
+Existing concepts worth preserving at the product level include:
+
+- persistent Persona identity;
+- route binding and route health;
+- fail-closed protected operation;
+- isolated browser execution;
+- transient execution inputs and secrets;
+- structured results and failures;
+- owned automation;
+- human-task continuation;
+- interruption reconciliation;
+- Account↔Persona binding.
+
+Browser-specific mechanisms should be reconsidered freely.
+
+---
+
+# 29. Requirement hierarchy
+
+When future specifications conflict, interpret them in this order:
+
+```text
+1. This PRD — product intent
+2. Explicit later product decisions
+3. Functional/domain specifications
+4. Architecture specifications
+5. Implementation plans
+6. Existing code
+```
+
+Existing implementation does not override a product requirement merely because changing it is inconvenient.
+
+Architecture should serve the product, not define it.
