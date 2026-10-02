@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P005**
-- Current phase: **P006 — IN_PROGRESS**
-- Next phase: **P007 — BLOCKED (P006)**
+- Completed through: **P006**
+- Current phase: **P007 — READY**
+- Next phase: **P008 — BLOCKED (P007)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
@@ -183,7 +183,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P006 — Module manifest and safe package parser
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P005  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -195,16 +195,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T006.1 — Implement manifest/API/capability schema validation
 - [x] T006.2 — Implement traversal/duplicate/link/size/bomb-safe archive parsing
-- [~] T006.3 — Add adversarial package fixtures and rejection tests
+- [x] T006.3 — Add adversarial package fixtures and rejection tests
 
 **Acceptance:**
-- [ ] A02-01
-- [ ] A02-02
+- [x] A02-01
+- [x] A02-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P006 → COMPLETE; P007 → READY; publish to GitHub; **STOP — do not implement P007.**
 
 ### P007 — Module runner IPC and crash containment
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P006  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

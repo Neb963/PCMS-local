@@ -50,7 +50,7 @@
     {
       "id": "M02",
       "name": "Updateable module platform",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P006",
         "P007",
@@ -418,7 +418,7 @@
       "id": "P006",
       "milestone": "M02",
       "name": "Module manifest and safe package parser",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P005"
       ],
@@ -457,7 +457,7 @@
       "id": "P007",
       "milestone": "M02",
       "name": "Module runner IPC and crash containment",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P006"
       ],
