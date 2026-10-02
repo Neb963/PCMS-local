@@ -40,7 +40,7 @@ test("applies the ordered bootstrap migration and records its immutable checksum
       FROM schema_migrations
     `).get();
 
-    assert.deepEqual(row, {
+    assert.deepEqual({ ...row }, {
       version: 1,
       migration_id: "0001-schema-migrations",
       checksum: checksumMigration(CORE_MIGRATIONS[0]),
