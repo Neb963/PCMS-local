@@ -613,7 +613,7 @@
       "id": "P011",
       "milestone": "M02",
       "name": "Module UI host and reference package acceptance",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P010"
       ],
@@ -652,7 +652,7 @@
       "id": "P012",
       "milestone": "M03",
       "name": "Persona profile-root lifecycle",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P011"
       ],
