@@ -573,7 +573,7 @@
       "id": "P010",
       "milestone": "M02",
       "name": "Disable, re-enable, rollback and purge guards",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P009"
       ],

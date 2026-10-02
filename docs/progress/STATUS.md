@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P009**  
 Current milestone: **M02 — Updateable module platform**  
-Current phase: **P010 — READY**  
+Current phase: **P010 — IN_PROGRESS**  
 Next phase: **P011 — BLOCKED (P010)**
 
 Canonical execution view: `ROADMAP.md`.
