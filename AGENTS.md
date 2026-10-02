@@ -159,9 +159,23 @@ Do not port:
 - Firefox proxy hooks;
 - old generic workflow/event/lock frameworks.
 
-## 12. Testing
+## 12. Testing — CI first, live last
 
 Every behavior change needs the narrowest useful automated test plus applicable acceptance IDs.
+
+P01–P11 MUST be closable without MCP, real Perchance credentials/sessions, real Mullvad credentials/configs, or Cloudflare availability.
+
+Use:
+- unit/property/fuzz tests;
+- real SQLite/files/processes;
+- real Chromium/Chrome for Testing for profile/CDP/browser mechanics;
+- the evidence-backed Perchance emulator for provider behavior;
+- synthetic SOCKS/WireGuard/network fixtures for protected routing;
+- aggressive deterministic fault injection/recovery tests.
+
+MCP, real Perchance and real Mullvad are reserved for P12 final system acceptance.
+
+Emulated/synthetic evidence never proves current external compatibility. If P12 finds drift, encode the real observation into emulator/fixture regression coverage and fix through CI before repeating the narrow live test.
 
 Run locally where available:
 - formatting/lint;
@@ -170,8 +184,6 @@ Run locally where available:
 - Python native tests;
 - repository/spec verification;
 - focused integration tests.
-
-Live acceptance is required for claims about Chromium profile persistence, browser automation, route fail-closed behavior, Perchance mutations and agent attachment. Mocks/fixtures do not prove those behaviors.
 
 ## 13. GitHub Actions — unlimited but engineered
 
@@ -185,8 +197,8 @@ Still design workflows intentionally:
 - matrix only dimensions with distinct risk;
 - pin or deliberately version third-party actions;
 - grant least-privilege workflow permissions;
-- never expose provider/browser credentials to untrusted PRs;
-- separate deterministic hosted-CI gates from live/self-hosted acceptance;
+- keep public-repository CI free of real Perchance/Mullvad/browser-session credentials by design;
+- use the Perchance emulator and synthetic routing fixtures in hosted CI;
 - require release artifacts to be reproducible/checksummed where practical.
 
 CI supplements, rather than replaces, local focused testing.

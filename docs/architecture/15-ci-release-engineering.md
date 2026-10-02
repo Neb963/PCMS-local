@@ -2,9 +2,13 @@
 
 ## 1. Principle
 
-GitHub Actions is unlimited for this repository. Optimize for confidence and diagnostic quality, not minute conservation. Still avoid redundant work that obscures failures.
+GitHub Actions is the primary engineering acceptance environment and Actions usage is not budget-constrained for this repository.
 
-Hosted CI never receives real production credentials/browser profiles/WireGuard private keys.
+Optimize for confidence, fault coverage, reproducibility and diagnosis.
+
+Public-repository CI is secret-free by design. It does not need real Perchance credentials/sessions, Mullvad account secrets, WireGuard private configurations or personal browser profiles.
+
+Real external-system acceptance occurs only in P12 through the operator-controlled local environment/MCP.
 
 ## 2. Required CI families
 
@@ -14,90 +18,125 @@ Every PR and main push:
 - formatting/lint/typecheck;
 - unit tests;
 - Python native tests;
-- module schema/package tests.
+- module schemas/packages;
+- port provenance checks.
 
 ### integration
-Every PR/main push where implementation exists:
-- pcmsd + SQLite + HTTP API integration;
+Every PR/main push:
+- pcmsd + SQLite + API;
 - module-runner lifecycle;
-- local fixture provider;
-- Chromium/Chrome for Testing profile/CDP tests in Linux matrix.
+- Perchance emulator;
+- real Chrome for Testing/Chromium profile/CDP behavior;
+- synthetic routing/network fixtures;
+- backup/recovery.
+
+### adversarial
+PR/main/nightly according to runtime cost:
+- process kill/restart matrices;
+- response-loss-after-side-effect emulator cases;
+- timeout/socket/network faults;
+- stale runtime generation;
+- rate-limit/provider-drift scenarios;
+- queue/backpressure floods;
+- clock/DST cases;
+- archive/path fuzz/property tests;
+- recovery from interrupted operations.
 
 ### security
-Scheduled + PR-sensitive:
-- CodeQL or equivalent supported analysis;
-- dependency review on PR;
-- secret scanning is GitHub repository configuration where available;
-- archive/path fuzz/property tests;
-- npm audit/advisory reporting with explicit policy.
+- CodeQL or equivalent;
+- dependency review;
+- repository secret scanning/config where available;
+- archive/path/property tests;
+- npm advisory reporting with explicit policy;
+- permissions/action-pin verification.
 
 ### packaging
-Main/release:
-- build Linux release bundle;
+Main/release-candidate:
+- build Core release bundle;
 - build official module packages;
-- verify install tree;
-- reproducibility/digest comparison where practical;
-- generate SHA-256 manifest and SBOM;
-- upload artifacts.
+- install-tree smoke;
+- checksums;
+- SBOM;
+- reproducibility comparison where practical;
+- fresh-install/restore fixture.
 
-### native
-Linux job:
-- sanitizer/router unit tests;
-- systemd unit static assertions;
-- no real privileged WireGuard on ordinary hosted runner.
+### native/network
+Linux jobs:
+- ported router/sanitizer tests;
+- systemd-unit static assertions;
+- synthetic SOCKS/WireGuard/network fixtures where hosted-runner capabilities allow;
+- Chromium protected-route tests against controlled local exits.
 
-### live/self-hosted
-Manual/workflow_dispatch only:
-- privileged route acceptance on dedicated host;
-- real production-like Chromium;
-- optional disposable Perchance acceptance.
+No real Mullvad credential is needed.
 
-Secrets use protected environments and never run on untrusted fork PRs.
+## 3. Perchance emulator as CI infrastructure
 
-## 3. Workflow engineering
+The emulator is versioned with PCMS-local.
+
+Changes to Perchance-dependent behavior must normally include one or more of:
+- sanitized fixture update;
+- emulator scenario update;
+- adapter regression test.
+
+The emulator intentionally models failures and ambiguity, not just successful requests.
+
+An implementation that passes only the happy-path emulator is incomplete.
+
+## 4. Workflow engineering
 
 Use:
-- least-privilege `permissions:`;
-- concurrency groups with cancel-in-progress for superseded PR commits;
+- least-privilege workflow permissions;
+- immutable/deliberately pinned Actions;
+- concurrency cancellation for superseded PR commits;
 - deterministic pinned toolchain;
-- package-manager cache keyed by lockfile;
+- dependency caches keyed by lockfile;
 - explicit timeouts;
-- artifacts on failure;
-- matrix only for meaningful compatibility dimensions;
-- reusable workflows/actions only when they reduce duplication without hiding logic.
+- useful failure artifacts;
+- matrices only for distinct risk;
+- reusable workflows where they clarify rather than hide behavior.
 
-Third-party actions should be pinned deliberately, preferably immutable SHA for security-sensitive release paths.
+Because CI contains no real provider/VPN secrets, fork/PR safety is substantially simpler. Still treat GITHUB_TOKEN permissions and artifact contents carefully.
 
-## 4. Branch/release gates
+## 5. Phase gates
 
-Main should remain green.
+P01–P11 may become COMPLETE solely from U/I/B/E/N/REC evidence.
 
-Recommended required checks once configured:
-- verify;
-- unit/integration;
-- Chromium acceptance;
-- native deterministic tests;
-- package build.
+No phase through P11 may be blocked merely because:
+- MCP is unavailable;
+- real Perchance is behind Cloudflare;
+- a real Perchance account/session is unavailable;
+- Mullvad credentials/config are unavailable;
+- a real external provider is temporarily down.
 
-Live route/Perchance gates may be release-blocking while manual/self-hosted rather than PR-blocking.
+A phase remains blocked if its deterministic/emulated acceptance is incomplete.
 
-## 5. Release provenance
+## 6. Release candidate versus release
 
-Release metadata records:
+P11 produces a CI-complete release candidate.
+
+It does not claim current real Perchance/Mullvad/MCP compatibility.
+
+P12 then runs the minimal final live acceptance defined in the acceptance matrix. Only after P12 can a release claim supported real-system compatibility.
+
+## 7. Release provenance
+
+Record:
 - git commit;
-- toolchain versions;
-- Core artifact SHA-256;
-- each official module artifact SHA-256;
+- toolchain/browser versions;
+- Core artifact hash;
+- official module hashes;
 - router source/version;
+- emulator/provider-contract version/fixtures;
 - SBOM;
-- acceptance report references.
+- CI acceptance;
+- P12 live report for a real release.
 
-## 6. Module releases
+## 8. Module releases
 
-Official modules are built independently through the same package schema users install. Their update manifest references exact package digest.
+Official modules are built independently through the same .pcmsmod path users install.
 
-A Core release does not need to rebuild module code merely to update one module.
+Module-only updates can be fully CI-tested against emulator/network fixtures. A module that changes Perchance assumptions may require a targeted P12-compatible live check before declaring current-provider compatibility, but does not force unrelated implementation phases to reopen.
 
-## 7. CI design review
+## 9. CI design review
 
-Before materially expanding/replacing workflows, execute the review prompt in `docs/prompts/CI_DESIGN_PROMPT.md` and record important architecture decisions if CI becomes part of a release/security boundary.
+Use docs/prompts/CI_DESIGN_PROMPT.md before material CI redesign.

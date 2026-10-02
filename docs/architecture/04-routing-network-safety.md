@@ -150,3 +150,12 @@ Reopen if:
 - supported Chromium can bypass the sole proxy through a relevant path;
 - same-user/malicious-browser threat model becomes stronger;
 - routing guarantees cannot otherwise meet the PRD.
+
+
+## 14. Phase acceptance strategy
+
+P04 is closed using synthetic/local routing evidence, not real Mullvad credentials.
+
+The CI harness exercises the actual router/client/browser path against controlled SOCKS/network endpoints and fault injection. It must prove route-or-block behavior and detect any attempted Direct/control-path escape.
+
+Real Mullvad interoperability and one representative route-loss smoke are deferred to P12. Failure or unavailability of Mullvad during development does not block P04 or later implementation phases.
