@@ -613,7 +613,7 @@
       "id": "P011",
       "milestone": "M02",
       "name": "Module UI host and reference package acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P010"
       ],
