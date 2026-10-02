@@ -10,6 +10,7 @@ import test from "node:test";
 
 import { readLocalApiToken } from "../../dist/auth/local-api.js";
 import { resolvePcmsPaths } from "../../dist/config/paths.js";
+import { CORE_MIGRATIONS } from "../../dist/storage/core-migrations.js";
 import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
 
 const execFileAsync = promisify(execFile);
@@ -158,7 +159,7 @@ test("self-contained bundle stops cleanly and restarts without foundation-state 
     const parsedBefore = JSON.parse(diagnosticsBefore.stdout);
     assert.equal(parsedBefore.ok, true);
     assert.equal(parsedBefore.diagnostics.status, "ready");
-    assert.equal(parsedBefore.diagnostics.database.schemaVersion, 4);
+    assert.equal(parsedBefore.diagnostics.database.schemaVersion, CORE_MIGRATIONS.length);
     assert.equal(parsedBefore.diagnostics.runtime.node, process.version);
     assert.equal(diagnosticsBefore.stdout.includes(tokenBefore), false);
 
