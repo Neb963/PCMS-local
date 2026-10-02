@@ -13,7 +13,7 @@
     {
       "id": "P00",
       "name": "Architecture, governance and proven-source bootstrap",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [],
       "specs": [
         "00",
@@ -69,7 +69,7 @@
     {
       "id": "P01",
       "name": "Executable local shell, SQLite and CI foundation",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P00"
       ],
