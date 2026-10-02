@@ -22,4 +22,4 @@ Source: https://nodejs.org/download/release/latest-v24.x/docs/api/sqlite.html
 
 Puppeteer/Core or a comparable CDP client is an implementation choice behind BrowserDriver. Modules/provider policy do not depend on Puppeteer APIs directly.
 
-Before P03/P06 implementation, record the exact supported Chromium/Chrome and Puppeteer/CDP compatibility matrix in a dated research update.
+Before M03/M06 implementation (P012–P015 and P025–P029), record the exact supported Chromium/Chrome and Puppeteer/CDP compatibility matrix in a dated research update.

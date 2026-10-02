@@ -4,9 +4,9 @@
 
 PCMS-local development must not depend on repeated MCP/manual testing.
 
-P01–P11 are deterministic/automated phases. They can complete using GitHub Actions, local deterministic tests, real Chromium automation, a Perchance emulator, and synthetic routing/network fixtures.
+P001–P047 are deterministic/automated phases. They can complete using GitHub Actions, local deterministic tests, real Chromium automation, a Perchance emulator, and synthetic routing/network fixtures.
 
-P12 is the only normal live-system acceptance phase. It validates a small number of end-to-end scenarios against real Perchance, real Mullvad routing and MCP after the implementation is otherwise release-candidate complete.
+P048–P049 is the only normal live-system acceptance phase. It validates a small number of end-to-end scenarios against real Perchance, real Mullvad routing and MCP after the implementation is otherwise release-candidate complete.
 
 This split is deliberate:
 - browser/process/storage mechanics are locally controllable and should be tested exhaustively;
@@ -24,9 +24,9 @@ This split is deliberate:
 - REC — adversarial crash/recovery/fault injection;
 - L — final live-system acceptance: real Perchance/Mullvad and/or MCP.
 
-P01–P11 acceptance may use U/I/B/E/N/REC.
+P001–P047 acceptance may use U/I/B/E/N/REC.
 
-L evidence is reserved for P12 and is not a prerequisite for advancing through implementation phases.
+L evidence is reserved for P048–P049 and is not a prerequisite for advancing through implementation phases.
 
 Never relabel E/N evidence as real Perchance/Mullvad evidence.
 
@@ -71,7 +71,7 @@ Browser mechanics use real Chrome for Testing/Chromium under Actions:
 - manual-visible browser state and automation using the same profile;
 - resource caps and 50+ dormant profile inventory.
 
-MCP itself is not needed to prove these mechanics. P12 only verifies that the chosen MCP integration interoperates with the already-proven DevTools/Persona boundary.
+MCP itself is not needed to prove these mechanics. P048–P049 only verifies that the chosen MCP integration interoperates with the already-proven DevTools/Persona boundary.
 
 ## 6. Perchance emulator
 
@@ -81,7 +81,7 @@ Its contract is derived from:
 - prior Perchance discovery/evidence;
 - captured sanitized request/response/DOM fixtures;
 - explicit provider assumptions documented by the current Perchance adapter;
-- later P12 observations when real behavior changes.
+- later P048–P049 observations when real behavior changes.
 
 At minimum it must be able to model, where relevant:
 - authenticated and unauthenticated sessions;
@@ -107,7 +107,7 @@ Unknown real behavior is not invented into the emulator as fact. Mark assumption
 
 ## 7. Provider contract loop
 
-When discovery or P12 identifies new real behavior:
+When discovery or P048–P049 identifies new real behavior:
 
 real observation
 → sanitized evidence/fixture
@@ -121,7 +121,7 @@ Do not repeatedly debug directly against Cloudflare/Perchance when the issue can
 
 ## 8. Synthetic routing/network acceptance
 
-P04/P11 use controlled local network infrastructure rather than real Mullvad credentials.
+M04/M11 use controlled local network infrastructure rather than real Mullvad credentials.
 
 The test harness should exercise the actual PCMS/router/browser code against:
 - local SOCKS5 relay(s);
@@ -137,7 +137,7 @@ The test harness should exercise the actual PCMS/router/browser code against:
 
 Critical assertion: a PROTECTED Persona reaches only its selected synthetic route or fails; it never reaches the fixture's Direct/control egress path.
 
-Real Mullvad interoperability is P12 only.
+Real Mullvad interoperability is P048–P049 only.
 
 ## 9. Module acceptance
 
@@ -172,9 +172,9 @@ Automate aggressively:
 
 These tests are more valuable in CI than repeated manual MCP execution because they are reproducible and can run combinatorially.
 
-## 11. Final P12 live acceptance
+## 11. Final P048–P049 live acceptance
 
-P12 is intentionally small. It answers only questions emulation cannot:
+P048–P049 is intentionally small. It answers only questions emulation cannot:
 
 1. Can MCP attach to and detach from the actual PCMS-managed Chromium Persona non-destructively?
 2. Does a real protected Persona use the intended Mullvad route and fail closed under a representative route-loss event?

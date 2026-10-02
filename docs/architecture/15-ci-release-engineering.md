@@ -8,7 +8,7 @@ Optimize for confidence, fault coverage, reproducibility and diagnosis.
 
 Public-repository CI is secret-free by design. It does not need real Perchance credentials/sessions, Mullvad account secrets, WireGuard private configurations or personal browser profiles.
 
-Real external-system acceptance occurs only in P12 through the operator-controlled local environment/MCP.
+Real external-system acceptance occurs only in P048–P049 through the operator-controlled local environment/MCP.
 
 ## 2. Required CI families
 
@@ -99,9 +99,9 @@ Because CI contains no real provider/VPN secrets, fork/PR safety is substantiall
 
 ## 5. Phase gates
 
-P01–P11 may become COMPLETE solely from U/I/B/E/N/REC evidence.
+P001–P047 may become COMPLETE solely from U/I/B/E/N/REC evidence.
 
-No phase through P11 may be blocked merely because:
+No phase through P047 may be blocked merely because:
 - MCP is unavailable;
 - real Perchance is behind Cloudflare;
 - a real Perchance account/session is unavailable;
@@ -112,11 +112,11 @@ A phase remains blocked if its deterministic/emulated acceptance is incomplete.
 
 ## 6. Release candidate versus release
 
-P11 produces a CI-complete release candidate.
+P047 produces a CI-complete release candidate.
 
 It does not claim current real Perchance/Mullvad/MCP compatibility.
 
-P12 then runs the minimal final live acceptance defined in the acceptance matrix. Only after P12 can a release claim supported real-system compatibility.
+P048–P049 then runs the minimal final live acceptance defined in the acceptance matrix. Only after P048–P049 can a release claim supported real-system compatibility.
 
 ## 7. Release provenance
 
@@ -129,13 +129,13 @@ Record:
 - emulator/provider-contract version/fixtures;
 - SBOM;
 - CI acceptance;
-- P12 live report for a real release.
+- P048–P049 live report for a real release.
 
 ## 8. Module releases
 
 Official modules are built independently through the same .pcmsmod path users install.
 
-Module-only updates can be fully CI-tested against emulator/network fixtures. A module that changes Perchance assumptions may require a targeted P12-compatible live check before declaring current-provider compatibility, but does not force unrelated implementation phases to reopen.
+Module-only updates can be fully CI-tested against emulator/network fixtures. A module that changes Perchance assumptions may require a targeted P048–P049-compatible live check before declaring current-provider compatibility, but does not force unrelated implementation phases to reopen.
 
 ## 9. CI design review
 

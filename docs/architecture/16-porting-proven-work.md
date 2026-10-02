@@ -55,7 +55,7 @@ Retain:
 - dynamic module candidate/update hardening concepts;
 - small correctness kernel.
 
-Do not port Firefox sandbox/userScripts P01 implementation or IndexedDB authority.
+Do not port the Firefox sandbox/userScripts implementation from **PCMS-alt P01** or its IndexedDB authority.
 
 ## 6. PCMS — port repository discipline/contracts selectively
 

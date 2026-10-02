@@ -33,18 +33,19 @@ A module is an operator-installed/updateable package executed outside the Core p
 
 ## Current status
 
-**P00 architecture/bootstrap complete; P01 is READY.** No production-ready PCMS-local release exists yet.
+**P000 architecture/bootstrap is complete; P001 is READY.** No production-ready PCMS-local release exists yet.
 
 The repository is intentionally starting fresh rather than incrementally converting the Firefox extension architecture. PersonaMonkey and earlier PCMS repositories are sources of proven requirements, contracts and selected implementation; they are not architecture authority.
 
 ## Start here
 
 1. [Product Requirements](docs/product/PRODUCT_REQUIREMENTS.md) — highest product authority.
-2. [AGENTS.md](AGENTS.md) — mandatory rules for every coding/review agent.
-3. [Principles and scope](docs/architecture/00-principles-scope.md).
-4. [System architecture](docs/architecture/01-system-architecture.md).
-5. [Implementation authority](docs/implementation/v0.1/README.md) once populated.
-6. [ADRs](adr/) for accepted implementation choices.
+2. [AGENTS.md](AGENTS.md) — mandatory one-phase-at-a-time implementation protocol.
+3. [ROADMAP.md](ROADMAP.md) — human execution view of the 50 session-sized phases.
+4. [Principles and scope](docs/architecture/00-principles-scope.md).
+5. [System architecture](docs/architecture/01-system-architecture.md).
+6. [Implementation authority](docs/implementation/v0.1/README.md).
+7. [ADRs](adr/) for accepted implementation choices.
 
 ## V1 implementation choices
 
@@ -57,7 +58,8 @@ The repository is intentionally starting fresh rather than incrementally convert
 - Local Web UI; no Electron/Tauri requirement.
 - Modules are self-contained `.pcmsmod` packages, independently installable/updateable/disableable.
 - GitHub Actions are a first-class verification surface and are not budget-constrained for this repository.
-- Development is CI-first/live-last: P01–P11 use real Chromium + Perchance emulation + synthetic routing; real Perchance/Mullvad/MCP are reserved for final P12 acceptance.
+- Development is CI-first/live-last: P001–P047 use real Chromium + Perchance emulation + synthetic routing; P048–P049 are final real Perchance/Mullvad/MCP acceptance.
+- Implementation is strictly sequential and session-sized: exactly one phase is active, each normal phase has ≤3 work items and ≤5 acceptance gates, and the agent stops after closing it.
 
 ## Explicit non-goals for the initial implementation
 

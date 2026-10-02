@@ -8,7 +8,7 @@ Act as the CI/release engineering owner for PCMS-local.
 
 Read AGENTS.md, ADR-004, architecture 14/15, the canonical v0.1 plan/policies/acceptance matrix, and current workflows before editing.
 
-GitHub Actions usage is UNLIMITED. More importantly, P01–P11 must be closable entirely through deterministic CI/local evidence. Do not introduce real Perchance or Mullvad secrets into CI and do not make MCP a phase gate.
+GitHub Actions usage is UNLIMITED. More importantly, P001–P047 must be closable entirely through deterministic CI/local evidence. Do not introduce real Perchance or Mullvad secrets into CI and do not make MCP a phase gate.
 
 Design from failure modes:
 - clean-checkout/toolchain drift;
@@ -37,8 +37,8 @@ Required CI:
 
 Use immutable/deliberately pinned actions, least-privilege permissions, concurrency cancellation, safe caches, explicit timeouts and useful failure artifacts.
 
-Do NOT add a credentialed live/self-hosted workflow as a normal gate. Real Perchance/Mullvad/MCP testing belongs to P12 on the operator-controlled local environment after P11 is CI-complete.
+Do NOT add a credentialed live/self-hosted workflow as a normal gate. Real Perchance/Mullvad/MCP testing belongs to P048–P049 on the operator-controlled local environment after P047 is CI-complete.
 
-If P12 later discovers drift, add the sanitized behavior to emulator/fixture tests and reproduce it in CI before fixing.
+If P048–P049 later discovers drift, add the sanitized behavior to emulator/fixture tests and reproduce it in CI before fixing.
 
 Run workflows, inspect actual logs, fix root causes, push coherent checkpoints and update acceptance/progress evidence honestly.

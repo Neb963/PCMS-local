@@ -4,25 +4,32 @@ This directory is the implementation authority beneath the Product Requirements,
 
 ## Canonical files
 
-1. `plan.json` — sole manually authoritative phase/dependency/status plan.
-2. `POLICIES.json` — machine-readable cross-cutting policy.
-3. `REQUIREMENT_OWNERSHIP.json` — requirement/spec/phase/code ownership.
-4. `ACCEPTANCE_MATRIX.md` — release/phase gates and evidence class.
-5. `SPEC_TRACEABILITY.md` — human-readable product→architecture→phase mapping.
-6. `DEFINITION_OF_DONE.md` — phase/release completion rules.
+1. `plan.json` — machine-readable milestone/phase/dependency/status authority.
+2. `/ROADMAP.md` — human execution view; task/subtask checklist and phase boundaries.
+3. `POLICIES.json` — machine-readable cross-cutting policy.
+4. `REQUIREMENT_OWNERSHIP.json` — requirement/spec/implementation ownership.
+5. `ACCEPTANCE_MATRIX.md` — acceptance gates, evidence class and owning session phase.
+6. `SPEC_TRACEABILITY.md` — product→architecture→milestone/phase mapping.
+7. `DEFINITION_OF_DONE.md` — phase/milestone/release completion rules.
 
-`docs/progress/STATUS.md` is the current human status view and must match `plan.json`.
+`docs/progress/STATUS.md` is deliberately tiny. It points to the one current execution phase and must match plan/roadmap.
 
 ## Execution rule
 
-A fresh implementation agent should be able to receive:
+A fresh implementation agent should be able to receive only:
 
 > Implement the next READY phase.
 
-The agent reads `AGENTS.md`, this directory, relevant architecture specs and progress records, creates a task claim/branch, implements only that phase, tests, pushes checkpoints and stops after phase closure.
+The agent reads `AGENTS.md`, `ROADMAP.md`, the current phase's linked specs, acceptance gates and preceding phase report, then implements **that one phase only**.
 
-## Current phase
+A normal phase is structurally sized for one approximately 20–30 minute cloud-agent session; the agent does not self-time. At completion it tests, publishes commits/checkpoints to GitHub, finalizes the phase report, marks the immediate successor READY, and **stops without starting it**.
 
-P00 — Architecture, governance and proven-source bootstrap.
+Repository transport may be either a local Git checkout or the GitHub connector. GitHub remains the durability/source-of-truth boundary.
 
-P00 is not complete until the ported router provenance/tests and first repository/CI gates exist and are verified.
+## Current state
+
+- P000 — COMPLETE (historical architecture/bootstrap)
+- P001 — READY
+- P002–P049 — BLOCKED
+- M01 — current milestone
+- M12 / P048–P049 — final live acceptance only

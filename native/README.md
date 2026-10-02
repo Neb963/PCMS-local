@@ -4,7 +4,7 @@ This directory initially contains a byte-identical port from PersonaMonkey at co
 
 See root `PORTING_PROVENANCE.md`.
 
-Do not rename service/config/socket paths or alter semantics during P00 merely for PCMS-local branding. P04 owns controlled Chromium adaptation and any filesystem/service migration.
+Do not rename service/config/socket paths or alter semantics during historical P000 merely for PCMS-local branding. M04 (P016–P020) owns controlled Chromium adaptation and any filesystem/service migration.
 
 Run:
 

@@ -39,11 +39,11 @@ It does **not** prove Chromium SOCKS/proxy compatibility, PCMS-local Core router
 
 ### Planned adaptation
 
-P04 adds a distinct Chromium-compatible loopback forwarder command/path while retaining the current authenticated `prepare_exit` behavior. The baseline source stays unchanged until the imported tests are green in PCMS-local.
+M04, specifically P017, adds a distinct Chromium-compatible loopback forwarder command/path while retaining the current authenticated `prepare_exit` behavior. The baseline source stays unchanged until the imported tests are green in PCMS-local.
 
 ## PCMS / PCMS-alt design ports
 
-No source code is physically copied from PCMS or PCMS-alt in P00.
+No source code is physically copied from PCMS or PCMS-alt in historical P000.
 
 Their validated concepts are rewritten into PCMS-local specifications:
 - PCMS: repository/agent discipline, machine-readable plan/traceability, Provider Adapter boundary.
