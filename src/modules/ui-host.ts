@@ -1,7 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { extname, posix } from "node:path";
 
-import type { ModuleAuthorityEnvelope } from "./authority.js";
+import {
+  normalizeModuleAuthorityEnvelope,
+  type ModuleAuthorityEnvelope
+} from "./authority.js";
 import {
   isSupportedModuleSdkMethod,
   type ModuleSdkAuthorizer,
@@ -26,6 +29,8 @@ export interface ModuleUiSession {
   readonly runtimeGeneration: number;
   readonly uiGeneration: number;
   readonly state: ModuleUiState;
+  readonly hostPath: string;
+  readonly assetPath: string;
   readonly approvedAuthority: ModuleAuthorityEnvelope;
 }
 
@@ -75,6 +80,81 @@ interface SessionRecord {
 
 const MODULE_UI_CSP =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+export const MODULE_UI_HOST_CSP =
+  "default-src 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+export const MODULE_UI_HOST_JS = `const frame = document.querySelector("iframe[data-pcms-module-ui]");
+const sessionId = document.body.dataset.sessionId;
+const uiGeneration = document.body.dataset.uiGeneration;
+
+if (!(frame instanceof HTMLIFrameElement) || !sessionId || !uiGeneration) {
+  throw new Error("module UI host bootstrap is invalid");
+}
+
+window.addEventListener("message", async (event) => {
+  if (event.source !== frame.contentWindow) return;
+  const message = event.data;
+  if (
+    typeof message !== "object" ||
+    message === null ||
+    message.type !== "pcms.moduleSdk.request" ||
+    typeof message.requestId !== "string" ||
+    message.requestId.length < 1 ||
+    message.requestId.length > 128 ||
+    typeof message.method !== "string" ||
+    message.method.length < 1 ||
+    message.method.length > 128
+  ) {
+    return;
+  }
+
+  let payload;
+  let ok = false;
+  try {
+    const response = await fetch(
+      \`/module-ui-sdk/\${sessionId}/\${uiGeneration}\`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          method: message.method,
+          params: Object.hasOwn(message, "params")
+            ? message.params
+            : null
+        })
+      }
+    );
+    payload = await response.json();
+    ok = response.ok;
+  } catch {
+    payload = {
+      error: {
+        code: "MODULE_UI_SDK_TRANSPORT_FAILED",
+        message: "Module UI SDK transport failed"
+      }
+    };
+  }
+
+  frame.contentWindow?.postMessage(
+    ok
+      ? {
+          type: "pcms.moduleSdk.response",
+          requestId: message.requestId,
+          ok: true,
+          result: payload.result
+        }
+      : {
+          type: "pcms.moduleSdk.response",
+          requestId: message.requestId,
+          ok: false,
+          error: payload.error
+        },
+    "*"
+  );
+});
+`;
 
 function fail(
   code: string,
@@ -141,21 +221,16 @@ function validatePackage(options: MountModuleUiOptions): void {
 function copyAuthority(
   authority: ModuleAuthorityEnvelope
 ): ModuleAuthorityEnvelope {
-  if (
-    typeof authority !== "object" ||
-    authority === null ||
-    !Array.isArray(authority.capabilities) ||
-    !Array.isArray(authority.requiredServices)
-  ) {
+  try {
+    return normalizeModuleAuthorityEnvelope(authority);
+  } catch (error: unknown) {
     fail(
       "INVALID_MODULE_UI_SESSION",
-      "approved module UI authority has invalid shape"
+      "approved module UI authority has invalid shape",
+      false,
+      error
     );
   }
-  return Object.freeze({
-    capabilities: Object.freeze([...authority.capabilities]),
-    requiredServices: Object.freeze([...authority.requiredServices])
-  });
 }
 
 function contentType(path: string): string {
@@ -193,6 +268,10 @@ function sessionSnapshot(record: SessionRecord): ModuleUiSession {
     runtimeGeneration: record.runtimeGeneration,
     uiGeneration: record.uiGeneration,
     state: record.state,
+    hostPath:
+      `/module-ui-host/${record.sessionId}/${record.uiGeneration}/`,
+    assetPath:
+      `/module-ui/${record.sessionId}/${record.uiGeneration}/`,
     approvedAuthority: record.approvedAuthority
   });
 }
@@ -325,6 +404,37 @@ export class ModuleUiHost {
 
   public destroy(sessionId: string): void {
     this.#sessions.delete(sessionId);
+  }
+
+  public renderFrameHost(
+    sessionId: string,
+    uiGeneration: number
+  ): string {
+    const record = this.#requireReadyGeneration(
+      sessionId,
+      uiGeneration
+    );
+    const assetPath =
+      `/module-ui/${record.sessionId}/${record.uiGeneration}/`;
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Module UI</title>
+</head>
+<body data-session-id="${record.sessionId}" data-ui-generation="${record.uiGeneration}">
+  <iframe
+    data-pcms-module-ui
+    title="Module UI"
+    sandbox="allow-scripts"
+    referrerpolicy="no-referrer"
+    src="${assetPath}"
+  ></iframe>
+  <script src="/module-ui-host.js"></script>
+</body>
+</html>
+`;
   }
 
   public async readAsset(
