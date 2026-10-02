@@ -117,17 +117,14 @@ async function extractParsedPackage(
   const filesRoot = join(targetRoot, "files");
   await ensurePrivateDirectory(filesRoot);
 
-  const directories: string[] = [filesRoot];
   for (const entry of parsed.entries) {
     const target = packagePath(filesRoot, entry.path);
     if (entry.kind === "directory") {
       await mkdir(target, { recursive: true, mode: 0o700 });
-      directories.push(target);
       continue;
     }
     const parent = dirname(target);
     await mkdir(parent, { recursive: true, mode: 0o700 });
-    directories.push(parent);
     await writeFile(target, parsed.readFile(entry.path), {
       mode: 0o600,
       flag: "wx"
@@ -135,9 +132,6 @@ async function extractParsedPackage(
     await chmod(target, 0o400);
   }
 
-  for (const path of new Set(directories)) {
-    await chmod(path, 0o500);
-  }
 }
 
 async function verifyExtractedFiles(
@@ -278,7 +272,7 @@ export class ModulePackageStore {
       const destination = join(versionRoot, parsed.sha256);
       try {
         await rename(staging, destination);
-        await chmod(destination, 0o500);
+        await chmod(destination, 0o700);
       } catch (error: unknown) {
         const raced = await lstat(destination).catch(() => null);
         if (raced === null) throw error;
