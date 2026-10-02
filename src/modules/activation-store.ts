@@ -372,7 +372,8 @@ export class ModuleActivationStore {
           active_version,
           active_state_generation,
           runtime_generation,
-          state_revision
+          state_revision,
+          lifecycle_status
         FROM module_registry
         WHERE module_id = ?
       `).get(moduleId);
@@ -385,6 +386,7 @@ export class ModuleActivationStore {
         registry["active_state_generation"];
       const runtimeGeneration = registry["runtime_generation"];
       const stateRevision = registry["state_revision"];
+      const lifecycleStatus = registry["lifecycle_status"];
       if (
         typeof previousVersion !== "string" ||
         typeof previousStateGeneration !== "number" ||
@@ -392,11 +394,27 @@ export class ModuleActivationStore {
         typeof runtimeGeneration !== "number" ||
         !Number.isSafeInteger(runtimeGeneration) ||
         typeof stateRevision !== "number" ||
-        !Number.isSafeInteger(stateRevision)
+        !Number.isSafeInteger(stateRevision) ||
+        typeof lifecycleStatus !== "string"
       ) {
         fail(
           "MODULE_ACTIVATION_CORRUPT",
           "module registry activation metadata is invalid"
+        );
+      }
+      if (lifecycleStatus === "REMOVED") {
+        fail(
+          "MODULE_REMOVED",
+          "removed module cannot activate a candidate"
+        );
+      }
+      if (
+        lifecycleStatus !== "ENABLED" &&
+        lifecycleStatus !== "DISABLED"
+      ) {
+        fail(
+          "MODULE_ACTIVATION_CORRUPT",
+          "module lifecycle status is invalid"
         );
       }
       if (runtimeGeneration >= Number.MAX_SAFE_INTEGER) {

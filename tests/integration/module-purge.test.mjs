@@ -5,6 +5,10 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  ModuleActivationError,
+  ModuleActivationStore
+} from "../../dist/modules/activation-store.js";
+import {
   ModuleLifecycleError,
   ModuleLifecycleStore
 } from "../../dist/modules/lifecycle-store.js";
@@ -26,6 +30,7 @@ async function fixture() {
     root,
     database,
     state: new ModuleStateStore(database, { now }),
+    activation: new ModuleActivationStore(database, { now }),
     lifecycle: new ModuleLifecycleStore(database, { now }),
     async cleanup() {
       database.close();
@@ -192,6 +197,22 @@ test("remove is idempotent and does not allow re-enable", async () => {
       1,
       { value: 1 }
     );
+    const candidate = await f.state.prepareCandidateState({
+      moduleId: "fixture.removed",
+      version: "2.0.0",
+      stateSchemaVersion: 2,
+      migrate: () => ({ value: 2 }),
+      healthCheck: () => true
+    });
+    f.activation.stageCandidateAuthority(
+      "fixture.removed",
+      candidate.stateGeneration,
+      {
+        capabilities: [],
+        requiredServices: []
+      }
+    );
+
     const removed = f.lifecycle.removeModule(
       "fixture.removed",
       1
@@ -213,6 +234,27 @@ test("remove is idempotent and does not allow re-enable", async () => {
         ),
       (error) =>
         error instanceof ModuleLifecycleError &&
+        error.code === "MODULE_REMOVED"
+    );
+    assert.throws(
+      () =>
+        f.state.advanceRuntimeGeneration(
+          "fixture.removed",
+          removed.runtimeGeneration,
+          true
+        ),
+      (error) =>
+        error instanceof ModuleStateError &&
+        error.code === "MODULE_REMOVED"
+    );
+    assert.throws(
+      () =>
+        f.activation.activateReadyCandidate(
+          "fixture.removed",
+          candidate.stateGeneration
+        ),
+      (error) =>
+        error instanceof ModuleActivationError &&
         error.code === "MODULE_REMOVED"
     );
   } finally {
