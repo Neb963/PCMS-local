@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P008**
-- Current phase: **P009 — READY**
-- Next phase: **P010 — BLOCKED (P009)**
+- Completed through: **P009**
+- Current phase: **P010 — READY**
+- Next phase: **P011 — BLOCKED (P010)**
 - Current milestone: **M02 — Updateable module platform**
 - Final live milestone: **M12 — P048–P049**
 
@@ -246,7 +246,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P008 → COMPLETE; P009 → READY; publish to GitHub; **STOP — do not implement P009.**
 
 ### P009 — Capability approval and atomic module activation
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P008  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -256,17 +256,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement remove/purge/rollback lifecycle yet.
 
 **Work:**
-- [ ] T009.1 — Compute initial/update authority envelopes and expansion deltas
-- [ ] T009.2 — Implement approval state and atomic candidate activation
-- [ ] T009.3 — Test decline/reduced-authority/no-expansion paths
+- [x] T009.1 — Compute initial/update authority envelopes and expansion deltas
+- [x] T009.2 — Implement approval state and atomic candidate activation
+- [x] T009.3 — Test decline/reduced-authority/no-expansion paths
 
 **Acceptance:**
-- [ ] A02-07
+- [x] A02-07
 
 **Closure:** relevant tests + CI green; phase report finalized; P009 → COMPLETE; P010 → READY; publish to GitHub; **STOP — do not implement P010.**
 
 ### P010 — Disable, re-enable, rollback and purge guards
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P009  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
