@@ -7,10 +7,13 @@ The canonical implementation plan is `docs/implementation/v0.1/plan.json`.
 Typical bootstrap checks:
 
 ```bash
+npm ci
+npm run lint
+npm run typecheck
+npm run build
+npm test
 npm run verify:repo
 npm run verify:port
-npm run test:native
-npm test
 ```
 
 GitHub Actions is a first-class independent verification surface and is not usage-budget constrained. Do not use that as an excuse to skip focused local testing.

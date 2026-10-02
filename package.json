@@ -4,14 +4,38 @@
   "private": true,
   "description": "Local-first control plane for persistent Perchance Personas",
   "type": "module",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./dist/workspace.js",
+  "types": "./dist/workspace.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/workspace.d.ts",
+      "import": "./dist/workspace.js"
+    }
+  },
   "engines": {
-    "node": ">=24.21.0 <25"
+    "node": "24.21.0"
   },
   "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "lint": "node scripts/lint.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "verify:repo": "node scripts/verify-repo.mjs",
     "verify:port": "node scripts/verify-ported-blobs.mjs",
+    "test:unit": "npm run build --silent && node --test tests/unit/*.test.mjs",
     "test:native": "python3 -m unittest discover -s tests -p 'test_*.py'",
-    "test": "npm run verify:repo && npm run verify:port && npm run test:native",
-    "verify": "npm test"
+    "test": "npm run test:unit && npm run test:integration && npm run test:native",
+    "verify": "npm run verify:repo && npm run verify:port && npm run lint && npm run typecheck && npm test",
+    "test:integration": "npm run build --silent && node --test tests/integration/*.test.mjs",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "package:smoke": "npm run build --silent && node scripts/package-smoke.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P000**
-- Current phase: **P001 — READY**
-- Next phase: **P002 — BLOCKED (P001)**
+- Completed through: **P001**
+- Current phase: **P002 — READY**
+- Next phase: **P003 — BLOCKED (P002)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
 
@@ -72,10 +72,10 @@ Target size: **historical size exception**
 ---
 
 ## M01 — Local application foundation
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P001 — Workspace, toolchain and hosted-CI baseline
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P000  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -85,18 +85,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement daemon behavior, SQLite, UI or browser management.
 
 **Work:**
-- [ ] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
-- [ ] T001.2 — Extend hosted CI from bootstrap verification to the implementation skeleton
-- [ ] T001.3 — Prove clean-checkout build/test/package smoke
+- [x] T001.1 — Pin workspace/toolchain and strict build/lint/typecheck/test scripts
+- [x] T001.2 — Extend hosted CI from bootstrap verification to the implementation skeleton
+- [x] T001.3 — Prove clean-checkout build/test/package smoke
 
 **Acceptance:**
-- [ ] A01-01
-- [ ] A01-07
+- [x] A01-01
+- [x] A01-07
 
 **Closure:** relevant tests + CI green; phase report finalized; P001 → COMPLETE; P002 → READY; publish to GitHub; **STOP — do not implement P002.**
 
 ### P002 — Configuration, data root and single-instance daemon
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P001  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

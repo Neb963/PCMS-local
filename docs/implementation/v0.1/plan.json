@@ -38,7 +38,7 @@
     {
       "id": "M01",
       "name": "Local application foundation",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P001",
         "P002",
@@ -230,7 +230,7 @@
       "id": "P001",
       "milestone": "M01",
       "name": "Workspace, toolchain and hosted-CI baseline",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P000"
       ],
@@ -268,7 +268,7 @@
       "id": "P002",
       "milestone": "M01",
       "name": "Configuration, data root and single-instance daemon",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P001"
       ],
