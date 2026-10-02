@@ -109,3 +109,109 @@ test("module-runner surfaces structured backend errors without terminating", asy
     await fixture.cleanup();
   }
 });
+
+test("module SDK exposes semantic serialized calls and rejects raw Core authority", async () => {
+  const fixture = await moduleFixture(`
+    export function createModule(context) {
+      return {
+        async handle(method, params) {
+          if (method === "sdk") {
+            return context.sdk.call(params.method, params.payload);
+          }
+          if (method === "authority") {
+            return {
+              contextKeys: Object.keys(context).sort(),
+              moduleKeys: Object.keys(context.module).sort(),
+              sdkKeys: Object.keys(context.sdk).sort(),
+              hasDb: Object.hasOwn(context, "db"),
+              hasRouter: Object.hasOwn(context, "router"),
+              hasCdp: Object.hasOwn(context, "cdp")
+            };
+          }
+          throw new Error("unknown method");
+        }
+      };
+    }
+  `);
+
+  const runtime = await startModuleRuntime({
+    moduleId: "fixture.authority",
+    version: "1.0.0",
+    packageRoot: fixture.root,
+    backendEntry: "backend/index.mjs",
+    runtimeGeneration: 2,
+    sdkHandlers: {
+      "accounts.read": async (params) => ({
+        source: "core-semantic-handler",
+        params
+      })
+    }
+  });
+
+  try {
+    assert.deepEqual(await runtime.request("authority", null), {
+      contextKeys: ["module", "sdk"],
+      moduleKeys: ["id", "runtimeGeneration", "version"],
+      sdkKeys: ["call"],
+      hasDb: false,
+      hasRouter: false,
+      hasCdp: false
+    });
+
+    assert.deepEqual(
+      await runtime.request("sdk", {
+        method: "accounts.read",
+        payload: { accountUid: "acct-fixture" }
+      }),
+      {
+        source: "core-semantic-handler",
+        params: { accountUid: "acct-fixture" }
+      }
+    );
+
+    for (const method of ["db.query", "router.raw", "browser.cdp.send"]) {
+      await assert.rejects(
+        () => runtime.request("sdk", { method, payload: null }),
+        (error) =>
+          error instanceof ModuleRuntimeError &&
+          error.code === "MODULE_SDK_METHOD_DENIED" &&
+          error.message.includes(method)
+      );
+      assert.equal(runtime.state, "RUNNING");
+    }
+  } finally {
+    await runtime.stop();
+    await fixture.cleanup();
+  }
+});
+
+test("Core refuses to configure raw DB/router/CDP SDK method names", async () => {
+  const fixture = await moduleFixture(`
+    export function createModule() {
+      return { handle() { return "unused"; } };
+    }
+  `);
+
+  try {
+    for (const method of ["db.query", "router.open", "browser.cdp.send"]) {
+      await assert.rejects(
+        () => startModuleRuntime({
+          moduleId: "fixture.invalid-authority",
+          version: "1.0.0",
+          packageRoot: fixture.root,
+          backendEntry: "backend/index.mjs",
+          runtimeGeneration: 1,
+          sdkHandlers: {
+            [method]: () => null
+          }
+        }),
+        (error) =>
+          error instanceof ModuleRuntimeError &&
+          error.code === "INVALID_MODULE_SDK_METHOD" &&
+          error.message.includes(method)
+      );
+    }
+  } finally {
+    await fixture.cleanup();
+  }
+});
