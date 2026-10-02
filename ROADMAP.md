@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P002**
-- Current phase: **P003 — IN_PROGRESS**
-- Next phase: **P004 — BLOCKED (P003)**
+- Completed through: **P003**
+- Current phase: **P004 — READY**
+- Next phase: **P005 — BLOCKED (P004)**
 - Current milestone: **M01 — Local application foundation**
 - Final live milestone: **M12 — P048–P049**
 
@@ -116,7 +116,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P002 → COMPLETE; P003 → READY; publish to GitHub; **STOP — do not implement P003.**
 
 ### P003 — SQLite bootstrap and migration authority
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P002  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -128,15 +128,15 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T003.1 — Implement database open/configuration and required pragmas
 - [x] T003.2 — Implement ordered migration/checksum authority
-- [~] T003.3 — Test fresh, upgraded and incompatible/corrupt-open paths
+- [x] T003.3 — Test fresh, upgraded and incompatible/corrupt-open paths
 
 **Acceptance:**
-- [ ] A01-03
+- [x] A01-03
 
 **Closure:** relevant tests + CI green; phase report finalized; P003 → COMPLETE; P004 → READY; publish to GitHub; **STOP — do not implement P004.**
 
 ### P004 — Minimal Web UI and typed CLI surfaces
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P003  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
