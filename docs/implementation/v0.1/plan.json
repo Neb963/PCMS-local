@@ -23,7 +23,8 @@
     ],
     "sequentialExecution": true,
     "phaseCompletionRule": "complete/test/report/publish current phase, make only its immediate successor READY, then STOP",
-    "repositoryAccess": "local Git or GitHub connector are equivalent transports; published GitHub state is the durability boundary"
+    "repositoryAccess": "local Git or GitHub connector are equivalent transports; published GitHub state is the durability boundary",
+    "milestoneStatusRule": "READY before first constituent phase starts; IN_PROGRESS after at least one constituent phase completes while another is active; COMPLETE only when all constituent phases complete; otherwise BLOCKED"
   },
   "milestones": [
     {
