@@ -648,18 +648,50 @@ export class ModuleStateStore {
         );
       }
 
-      this.#database.prepare(`
+      const lifecycle = this.#database.prepare(`
+        SELECT lifecycle_status
+        FROM module_registry
+        WHERE module_id = ?
+      `).get(moduleId);
+      if (lifecycle?.["lifecycle_status"] === "REMOVED") {
+        fail(
+          "MODULE_REMOVED",
+          "removed module cannot advance runtime generation"
+        );
+      }
+      if (
+        lifecycle?.["lifecycle_status"] !== "ENABLED" &&
+        lifecycle?.["lifecycle_status"] !== "DISABLED"
+      ) {
+        fail(
+          "MODULE_STATE_CORRUPT",
+          "module lifecycle status is invalid"
+        );
+      }
+
+      const result = this.#database.prepare(`
         UPDATE module_registry
         SET runtime_generation = runtime_generation + 1,
             runtime_enabled = ?,
+            lifecycle_status = ?,
+            removed_at = NULL,
             updated_at = ?
-        WHERE module_id = ? AND runtime_generation = ?
+        WHERE module_id = ?
+          AND runtime_generation = ?
+          AND lifecycle_status <> 'REMOVED'
       `).run(
         enabled ? 1 : 0,
+        enabled ? "ENABLED" : "DISABLED",
         now,
         moduleId,
         expectedRuntimeGeneration
       );
+      if (result.changes !== 1) {
+        fail(
+          "MODULE_RUNTIME_STALE",
+          "module runtime generation changed during fence"
+        );
+      }
       return this.getRegistration(moduleId);
     });
   }
