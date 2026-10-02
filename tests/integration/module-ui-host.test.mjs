@@ -90,6 +90,53 @@ test("failed module UI resets independently while pcmsd remains healthy", async 
       requiredServices: []
     });
 
+    const wrapper = await fetch(
+      `${daemon.origin}${session.hostPath}`
+    );
+    assert.equal(wrapper.status, 200);
+    assert.match(
+      wrapper.headers.get("content-security-policy") ?? "",
+      /frame-src 'self'/
+    );
+    const wrapperHtml = await wrapper.text();
+    assert.match(wrapperHtml, /sandbox="allow-scripts"/);
+    assert.doesNotMatch(wrapperHtml, /allow-same-origin/);
+    assert.match(
+      wrapperHtml,
+      new RegExp(
+        `src="${session.assetPath.replaceAll("/", "\\/")}"`
+      )
+    );
+    assert.match(wrapperHtml, /src="\/module-ui-host\.js"/);
+
+    const bridge = await fetch(
+      `${daemon.origin}/module-ui-host.js`
+    );
+    assert.equal(bridge.status, 200);
+    const bridgeJs = await bridge.text();
+    assert.match(bridgeJs, /event\.source !== frame\.contentWindow/);
+    assert.match(bridgeJs, /pcms\.moduleSdk\.request/);
+
+    const deniedOpaqueOrigin = await fetch(
+      `${daemon.origin}/module-ui-sdk/${session.sessionId}/1`,
+      {
+        method: "POST",
+        headers: {
+          origin: "null",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          method: "accounts.read",
+          params: { scope: "summary" }
+        })
+      }
+    );
+    assert.equal(deniedOpaqueOrigin.status, 403);
+    assert.equal(
+      (await deniedOpaqueOrigin.json()).error.code,
+      "INVALID_ORIGIN"
+    );
+
     const initial = await fetch(
       `${daemon.origin}/module-ui/${session.sessionId}/1/`
     );
@@ -110,21 +157,50 @@ test("failed module UI resets independently while pcmsd remains healthy", async 
       /^text\/javascript/
     );
 
-    assert.deepEqual(
-      await host.callSdk(
-        session.sessionId,
-        1,
-        "accounts.read",
-        { scope: "summary" }
-      ),
+    const sdk = await fetch(
+      `${daemon.origin}/module-ui-sdk/${session.sessionId}/1`,
       {
+        method: "POST",
+        headers: {
+          origin: daemon.origin,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          method: "accounts.read",
+          params: { scope: "summary" }
+        })
+      }
+    );
+    assert.equal(sdk.status, 200);
+    assert.deepEqual(await sdk.json(), {
+      result: {
         accepted: true,
         params: { scope: "summary" }
       }
-    );
+    });
     assert.deepEqual(sdkCalls, ["accounts.read"]);
 
     host.markFailed(session.sessionId, 1);
+
+    const failedSdk = await fetch(
+      `${daemon.origin}/module-ui-sdk/${session.sessionId}/1`,
+      {
+        method: "POST",
+        headers: {
+          origin: daemon.origin,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          method: "accounts.read",
+          params: {}
+        })
+      }
+    );
+    assert.equal(failedSdk.status, 409);
+    assert.equal(
+      (await failedSdk.json()).error.code,
+      "MODULE_UI_FAILED"
+    );
 
     const failed = await fetch(
       `${daemon.origin}/module-ui/${session.sessionId}/1/`
@@ -164,6 +240,20 @@ test("failed module UI resets independently while pcmsd remains healthy", async 
     assert.equal(
       (await stale.json()).error.code,
       "MODULE_UI_STALE"
+    );
+
+    const staleWrapper = await fetch(
+      `${daemon.origin}${session.hostPath}`
+    );
+    assert.equal(staleWrapper.status, 409);
+
+    const recoveredWrapperResponse = await fetch(
+      `${daemon.origin}${reset.hostPath}`
+    );
+    assert.equal(recoveredWrapperResponse.status, 200);
+    assert.doesNotMatch(
+      await recoveredWrapperResponse.text(),
+      /allow-same-origin/
     );
 
     const recovered = await fetch(
