@@ -1,3 +1,5 @@
+import type { DatabaseSync } from "node:sqlite";
+
 import type { MigrationDefinition } from "./migrations.js";
 import {
   DatabaseMigrationError,
@@ -36,7 +38,7 @@ export function openPcmsDatabase(
   path: string,
   options: OpenPcmsDatabaseOptions = {}
 ): PcmsDatabase {
-  let database = null;
+  let database: DatabaseSync | null = null;
 
   try {
     database = openConfiguredSqliteDatabase(path);
