@@ -277,8 +277,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T010.1 — Implement disable/re-enable while preserving state and unresolved Core evidence
-- [~] T010.2 — Implement rollback via a new runtime generation
-- [ ] T010.3 — Implement guarded remove/purge with unresolved-operation/HumanTask refusal tests
+- [x] T010.2 — Implement rollback via a new runtime generation
+- [~] T010.3 — Implement guarded remove/purge with unresolved-operation/HumanTask refusal tests
 
 **Acceptance:**
 - [ ] A02-08

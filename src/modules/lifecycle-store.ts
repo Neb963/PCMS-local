@@ -1,5 +1,11 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import {
+  parseSerializedModuleAuthorityEnvelope,
+  serializeModuleAuthorityEnvelope,
+  type ModuleAuthorityEnvelope
+} from "./authority.js";
+
 const MODULE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 const EVIDENCE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/;
 
@@ -31,6 +37,17 @@ export interface ModuleLifecycleEvidence {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly resolvedAt: string | null;
+}
+
+export interface ModuleRollbackResult {
+  readonly moduleId: string;
+  readonly previousVersion: string;
+  readonly activeVersion: string;
+  readonly previousStateGeneration: number;
+  readonly activeStateGeneration: number;
+  readonly runtimeGeneration: number;
+  readonly approvedAuthority: ModuleAuthorityEnvelope;
+  readonly activatedAt: string;
 }
 
 export interface ModuleLifecycleStoreOptions {
@@ -320,6 +337,196 @@ export class ModuleLifecycleStore {
       expectedRuntimeGeneration,
       true
     );
+  }
+
+  public rollbackToRetainedGeneration(
+    moduleId: string,
+    targetStateGeneration: number,
+    expectedRuntimeGeneration: number
+  ): ModuleRollbackResult {
+    validateModuleId(moduleId);
+    validateGeneration(
+      targetStateGeneration,
+      "targetStateGeneration"
+    );
+    validateGeneration(
+      expectedRuntimeGeneration,
+      "expectedRuntimeGeneration"
+    );
+    const activatedAt = this.#now().toISOString();
+
+    return transaction(this.#database, () => {
+      const current = this.getLifecycle(moduleId);
+      if (
+        current.runtimeGeneration !==
+        expectedRuntimeGeneration
+      ) {
+        fail(
+          "MODULE_RUNTIME_STALE",
+          `expected runtime generation ${expectedRuntimeGeneration}, current generation is ${current.runtimeGeneration}`
+        );
+      }
+      if (current.status === "REMOVED") {
+        fail(
+          "MODULE_REMOVED",
+          "removed module cannot be rolled back"
+        );
+      }
+      if (
+        current.runtimeGeneration ===
+        Number.MAX_SAFE_INTEGER
+      ) {
+        fail(
+          "MODULE_RUNTIME_GENERATION_EXHAUSTED",
+          "module runtime generation is exhausted"
+        );
+      }
+
+      const target = this.#database.prepare(`
+        SELECT
+          module_version,
+          schema_version,
+          status
+        FROM module_state_generations
+        WHERE module_id = ?
+          AND state_generation = ?
+      `).get(moduleId, targetStateGeneration);
+      if (target === undefined) {
+        fail(
+          "MODULE_ROLLBACK_TARGET_MISSING",
+          "retained rollback generation does not exist"
+        );
+      }
+      if (target["status"] !== "RETAINED") {
+        fail(
+          "MODULE_ROLLBACK_TARGET_NOT_RETAINED",
+          "rollback target is not a retained generation"
+        );
+      }
+
+      const targetVersion = target["module_version"];
+      const targetSchemaVersion = target["schema_version"];
+      if (
+        typeof targetVersion !== "string" ||
+        typeof targetSchemaVersion !== "number" ||
+        !Number.isSafeInteger(targetSchemaVersion)
+      ) {
+        fail(
+          "MODULE_LIFECYCLE_CORRUPT",
+          "retained rollback metadata is invalid"
+        );
+      }
+
+      const authorityRow = this.#database.prepare(`
+        SELECT requested_authority_json, activated_at
+        FROM module_generation_authority
+        WHERE module_id = ?
+          AND state_generation = ?
+      `).get(moduleId, targetStateGeneration);
+      if (
+        authorityRow === undefined ||
+        typeof authorityRow["requested_authority_json"] !==
+          "string" ||
+        typeof authorityRow["activated_at"] !== "string"
+      ) {
+        fail(
+          "MODULE_ROLLBACK_AUTHORITY_MISSING",
+          "retained rollback generation lacks prior activation authority"
+        );
+      }
+
+      let approvedAuthority: ModuleAuthorityEnvelope;
+      try {
+        approvedAuthority =
+          parseSerializedModuleAuthorityEnvelope(
+            authorityRow["requested_authority_json"]
+          );
+      } catch (error: unknown) {
+        fail(
+          "MODULE_LIFECYCLE_CORRUPT",
+          "retained rollback authority is invalid",
+          false,
+          error
+        );
+      }
+
+      this.#database.prepare(`
+        UPDATE module_state_generations
+        SET status = 'RETAINED'
+        WHERE module_id = ?
+          AND state_generation = ?
+          AND status = 'ACTIVE'
+      `).run(
+        moduleId,
+        current.activeStateGeneration
+      );
+      const promoted = this.#database.prepare(`
+        UPDATE module_state_generations
+        SET status = 'ACTIVE'
+        WHERE module_id = ?
+          AND state_generation = ?
+          AND status = 'RETAINED'
+      `).run(moduleId, targetStateGeneration);
+      if (promoted.changes !== 1) {
+        fail(
+          "MODULE_ROLLBACK_TARGET_CHANGED",
+          "rollback target changed during activation",
+          true
+        );
+      }
+
+      const nextRuntimeGeneration =
+        current.runtimeGeneration + 1;
+      this.#database.prepare(`
+        UPDATE module_registry
+        SET active_version = ?,
+            active_state_generation = ?,
+            runtime_generation = ?,
+            state_schema_version = ?,
+            state_revision = 0,
+            approved_authority_json = ?,
+            activated_at = ?,
+            updated_at = ?
+        WHERE module_id = ?
+          AND runtime_generation = ?
+      `).run(
+        targetVersion,
+        targetStateGeneration,
+        nextRuntimeGeneration,
+        targetSchemaVersion,
+        serializeModuleAuthorityEnvelope(
+          approvedAuthority
+        ),
+        activatedAt,
+        activatedAt,
+        moduleId,
+        expectedRuntimeGeneration
+      );
+
+      this.#database.prepare(`
+        UPDATE module_generation_authority
+        SET activated_at = ?
+        WHERE module_id = ?
+          AND state_generation = ?
+      `).run(
+        activatedAt,
+        moduleId,
+        targetStateGeneration
+      );
+
+      return Object.freeze({
+        moduleId,
+        previousVersion: current.activeVersion,
+        activeVersion: targetVersion,
+        previousStateGeneration:
+          current.activeStateGeneration,
+        activeStateGeneration:
+          targetStateGeneration,
+        runtimeGeneration: nextRuntimeGeneration,
+        approvedAuthority,
+        activatedAt
+      });
+    });
   }
 
   public recordUnresolvedEvidence(
