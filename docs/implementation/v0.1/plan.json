@@ -457,7 +457,7 @@
       "id": "P007",
       "milestone": "M02",
       "name": "Module runner IPC and crash containment",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P006"
       ],
@@ -496,7 +496,7 @@
       "id": "P008",
       "milestone": "M02",
       "name": "Module storage generations and candidate migration",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P007"
       ],
