@@ -28,6 +28,28 @@ function validateToken(token: string): string {
   return token;
 }
 
+export async function readLocalApiToken(path: string): Promise<string> {
+  try {
+    const info = await lstat(path);
+    if (!info.isFile() || info.isSymbolicLink()) {
+      throw new LocalApiAuthError(
+        "Local API token path must be a regular file"
+      );
+    }
+
+    const existing = (await readFile(path, "utf8")).trim();
+    return validateToken(existing);
+  } catch (error: unknown) {
+    if (error instanceof LocalApiAuthError) {
+      throw error;
+    }
+    throw new LocalApiAuthError(
+      `Failed to read local API token at ${path}`,
+      error
+    );
+  }
+}
+
 export async function ensureLocalApiToken(path: string): Promise<string> {
   const token = randomBytes(TOKEN_BYTES).toString("base64url");
   let handle = null;
@@ -58,10 +80,8 @@ export async function ensureLocalApiToken(path: string): Promise<string> {
         "Local API token path must be a regular file"
       );
     }
-
     await chmod(path, 0o600);
-    const existing = (await readFile(path, "utf8")).trim();
-    return validateToken(existing);
+    return await readLocalApiToken(path);
   } catch (error: unknown) {
     if (error instanceof LocalApiAuthError) {
       throw error;

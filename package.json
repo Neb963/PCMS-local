@@ -34,10 +34,14 @@
     "test:integration": "npm run build --silent && node --test tests/integration/*.test.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "package:smoke": "npm run build --silent && node scripts/package-smoke.mjs",
-    "pcmsd": "npm run build --silent && node dist/daemon/main.js"
+    "pcmsd": "npm run build --silent && node dist/daemon/main.js",
+    "pcms": "npm run build --silent && node dist/cli/main.js"
   },
   "devDependencies": {
     "typescript": "5.9.3",
     "@types/node": "24.10.0"
+  },
+  "bin": {
+    "pcms": "./dist/cli/main.js"
   }
 }
