@@ -49,7 +49,7 @@ await chmod(join(bundleRoot, "runtime", "node"), 0o755);
 const daemonLauncher = `#!/bin/sh
 set -eu
 case "$0" in
-  */*) SCRIPT_DIR=${0%/*} ;;
+  */*) SCRIPT_DIR=\${0%/*} ;;
   *) SCRIPT_DIR=. ;;
 esac
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
@@ -58,7 +58,7 @@ exec "$ROOT/runtime/node" "$ROOT/app/dist/daemon/main.js" "$@"
 const cliLauncher = `#!/bin/sh
 set -eu
 case "$0" in
-  */*) SCRIPT_DIR=${0%/*} ;;
+  */*) SCRIPT_DIR=\${0%/*} ;;
   *) SCRIPT_DIR=. ;;
 esac
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
