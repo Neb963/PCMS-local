@@ -134,6 +134,80 @@ async function extractParsedPackage(
 
 }
 
+function expectedInstalledTree(
+  parsed: ParsedModulePackage
+): Readonly<{
+  files: ReadonlySet<string>;
+  directories: ReadonlySet<string>;
+}> {
+  const files = new Set<string>();
+  const directories = new Set<string>();
+
+  for (const entry of parsed.entries) {
+    const segments = entry.path.split("/");
+    for (let index = 1; index < segments.length; index += 1) {
+      directories.add(segments.slice(0, index).join("/"));
+    }
+    if (entry.kind === "directory") {
+      directories.add(entry.path);
+    } else {
+      files.add(entry.path);
+    }
+  }
+
+  return Object.freeze({ files, directories });
+}
+
+async function verifyNoUnexpectedEntries(
+  parsed: ParsedModulePackage,
+  filesRoot: string
+): Promise<void> {
+  const expected = expectedInstalledTree(parsed);
+
+  const walk = async (
+    directory: string,
+    relativeDirectory: string
+  ): Promise<void> => {
+    const entries = await readdir(directory, {
+      withFileTypes: true
+    });
+    for (const entry of entries) {
+      const relativePath =
+        relativeDirectory === ""
+          ? entry.name
+          : `${relativeDirectory}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (!expected.directories.has(relativePath)) {
+          fail(
+            "MODULE_PACKAGE_STORE_CORRUPT",
+            `unexpected directory in installed package: ${relativePath}`
+          );
+        }
+        await walk(
+          join(directory, entry.name),
+          relativePath
+        );
+        continue;
+      }
+      if (entry.isFile()) {
+        if (!expected.files.has(relativePath)) {
+          fail(
+            "MODULE_PACKAGE_STORE_CORRUPT",
+            `unexpected file in installed package: ${relativePath}`
+          );
+        }
+        continue;
+      }
+      fail(
+        "MODULE_PACKAGE_STORE_CORRUPT",
+        `unsafe filesystem entry in installed package: ${relativePath}`
+      );
+    }
+  };
+
+  await walk(filesRoot, "");
+}
+
 async function verifyExtractedFiles(
   parsed: ParsedModulePackage,
   filesRoot: string
@@ -170,6 +244,8 @@ async function verifyExtractedFiles(
       );
     }
   }
+
+  await verifyNoUnexpectedEntries(parsed, filesRoot);
 }
 
 function descriptor(
