@@ -5,7 +5,8 @@ import {
   open,
   readFile,
   readdir,
-  realpath
+  realpath,
+  rm
 } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
@@ -43,6 +44,14 @@ export interface PersonaProfileLifecycleOptions {
   readonly now?: () => Date;
 }
 
+export interface PersonaProfileDeleteOptions {
+  readonly confirmed: boolean;
+  readonly browserClosed: boolean;
+  readonly unresolvedOperations: number;
+  readonly unresolvedHumanTasks: number;
+  readonly backupDecision?: PersonaProfileBackupDecision;
+}
+
 export type PersonaProfileErrorCode =
   | "PERSONA_UID_INVALID"
   | "PERSONA_NOT_FOUND"
@@ -50,7 +59,13 @@ export type PersonaProfileErrorCode =
   | "PERSONA_PROFILE_UNSAFE"
   | "PERSONA_PROFILE_INCOMPATIBLE"
   | "PERSONA_PROFILE_DELETED"
-  | "PERSONA_RETIRED";
+  | "PERSONA_RETIRED"
+  | "PERSONA_PROFILE_OPEN"
+  | "PERSONA_NOT_RETIRED"
+  | "PERSONA_DELETE_CONFIRMATION_REQUIRED"
+  | "PERSONA_DELETE_BROWSER_NOT_CLOSED"
+  | "PERSONA_DELETE_UNRESOLVED_EVIDENCE"
+  | "PERSONA_DELETE_BACKUP_DECISION_REQUIRED";
 
 export class PersonaProfileError extends Error {
   public constructor(
@@ -368,6 +383,54 @@ export class PersonaProfileLifecycle {
     return record;
   }
 
+  async #validateExistingProfileRoot(personaUid: string): Promise<string> {
+    const rootInfo = await lstatOrNull(this.#personasRoot);
+    if (rootInfo === null || !rootInfo.isDirectory() || rootInfo.isSymbolicLink()) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Configured Persona root is missing or unsafe"
+      );
+    }
+
+    const canonicalRoot = await realpath(this.#personasRoot);
+    const personaDir = join(this.#personasRoot, personaUid);
+    const personaInfo = await lstatOrNull(personaDir);
+    if (personaInfo === null || !personaInfo.isDirectory() || personaInfo.isSymbolicLink()) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Owned Persona directory is missing or unsafe"
+      );
+    }
+
+    const canonicalPersona = await realpath(personaDir);
+    if (!isStrictDescendant(canonicalRoot, canonicalPersona)) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_UNSAFE",
+        "Persona directory escapes the configured Persona root"
+      );
+    }
+
+    const profilePath = join(personaDir, "chromium");
+    const profileInfo = await lstatOrNull(profilePath);
+    if (profileInfo === null || !profileInfo.isDirectory() || profileInfo.isSymbolicLink()) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Owned Persona Chromium profile is missing or unsafe"
+      );
+    }
+
+    const canonicalProfile = await realpath(profilePath);
+    if (!isStrictDescendant(canonicalRoot, canonicalProfile)) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_UNSAFE",
+        "Persona Chromium profile escapes the configured Persona root"
+      );
+    }
+
+    await validateMarker(join(profilePath, PROFILE_MARKER), personaUid);
+    return canonicalProfile;
+  }
+
   public async allocate(personaUid: string): Promise<AllocatedPersonaProfile> {
     assertPersonaUid(personaUid);
     const expectedPath = expectedRelativePath(personaUid);
@@ -394,7 +457,7 @@ export class PersonaProfileLifecycle {
       }
       return Object.freeze({
         record: existing,
-        profilePath: await this.#ensureCompatibleProfileRoot(personaUid)
+        profilePath: await this.#validateExistingProfileRoot(personaUid)
       });
     }
 
@@ -498,6 +561,135 @@ export class PersonaProfileLifecycle {
       throw new PersonaProfileError(
         "PERSONA_PROFILE_INCOMPATIBLE",
         "Persona profile did not enter CLOSED state"
+      );
+    }
+    return record;
+  }
+
+  public retire(personaUid: string): PersonaProfileRecord {
+    const current = this.#requireRecord(personaUid);
+    if (current.lifecycleStatus === "RETIRED") {
+      return current;
+    }
+    if (current.profileState !== "CLOSED") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_OPEN",
+        "Persona must be closed before retirement"
+      );
+    }
+
+    const now = this.#now().toISOString();
+    this.#database.prepare(`
+      UPDATE personas
+      SET
+        lifecycle_status = 'RETIRED',
+        retired_at = ?,
+        updated_at = ?,
+        revision = revision + 1
+      WHERE
+        persona_uid = ? AND
+        lifecycle_status = 'ACTIVE' AND
+        profile_state = 'CLOSED'
+    `).run(now, now, personaUid);
+
+    const record = this.#requireRecord(personaUid);
+    if (record.lifecycleStatus !== "RETIRED") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Persona did not enter RETIRED state"
+      );
+    }
+    return record;
+  }
+
+  public async deleteProfile(
+    personaUid: string,
+    options: PersonaProfileDeleteOptions
+  ): Promise<PersonaProfileRecord> {
+    assertPersonaUid(personaUid);
+
+    if (!options.confirmed) {
+      throw new PersonaProfileError(
+        "PERSONA_DELETE_CONFIRMATION_REQUIRED",
+        "Destructive Persona profile deletion requires explicit confirmation"
+      );
+    }
+    if (!options.browserClosed) {
+      throw new PersonaProfileError(
+        "PERSONA_DELETE_BROWSER_NOT_CLOSED",
+        "Persona browser must be confirmed closed before deleting its profile"
+      );
+    }
+    if (
+      !Number.isSafeInteger(options.unresolvedOperations) ||
+      options.unresolvedOperations < 0 ||
+      !Number.isSafeInteger(options.unresolvedHumanTasks) ||
+      options.unresolvedHumanTasks < 0
+    ) {
+      throw new RangeError("Unresolved evidence counts must be non-negative integers");
+    }
+    if (
+      options.unresolvedOperations !== 0 ||
+      options.unresolvedHumanTasks !== 0
+    ) {
+      throw new PersonaProfileError(
+        "PERSONA_DELETE_UNRESOLVED_EVIDENCE",
+        "Persona profile deletion is blocked by unresolved operation or HumanTask evidence"
+      );
+    }
+    if (options.backupDecision === undefined) {
+      throw new PersonaProfileError(
+        "PERSONA_DELETE_BACKUP_DECISION_REQUIRED",
+        "Persona profile deletion requires an explicit backup decision"
+      );
+    }
+
+    const current = this.#requireRecord(personaUid);
+    if (current.lifecycleStatus !== "RETIRED") {
+      throw new PersonaProfileError(
+        "PERSONA_NOT_RETIRED",
+        "Persona must be retired before destructive profile deletion"
+      );
+    }
+    if (current.profileState !== "CLOSED") {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_OPEN",
+        "Persona profile must be closed before deletion"
+      );
+    }
+    if (current.profileRelativePath !== expectedRelativePath(personaUid)) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_PATH_MISMATCH",
+        "Stored Persona profile path does not match its durable Persona UID"
+      );
+    }
+    if (current.profileDeletedAt !== null) {
+      return current;
+    }
+
+    const profilePath = await this.#validateExistingProfileRoot(personaUid);
+    await rm(profilePath, { recursive: true, force: false });
+
+    const now = this.#now().toISOString();
+    this.#database.prepare(`
+      UPDATE personas
+      SET
+        profile_deleted_at = ?,
+        profile_backup_decision = ?,
+        updated_at = ?,
+        revision = revision + 1
+      WHERE
+        persona_uid = ? AND
+        lifecycle_status = 'RETIRED' AND
+        profile_state = 'CLOSED' AND
+        profile_deleted_at IS NULL
+    `).run(now, options.backupDecision, now, personaUid);
+
+    const record = this.#requireRecord(personaUid);
+    if (record.profileDeletedAt === null) {
+      throw new PersonaProfileError(
+        "PERSONA_PROFILE_INCOMPATIBLE",
+        "Persona profile bytes were deleted but metadata did not record the deletion"
       );
     }
     return record;

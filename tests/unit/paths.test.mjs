@@ -17,6 +17,7 @@ test("resolves standard XDG defaults under the user home", () => {
   assert.equal(paths.dataRoot, "/home/tester/.local/share/pcms-local");
   assert.equal(paths.cacheRoot, "/home/tester/.cache/pcms-local");
   assert.equal(paths.runtimeRoot, "/home/tester/.local/share/pcms-local/runtime");
+  assert.equal(paths.personasRoot, "/home/tester/.local/share/pcms-local/personas");
   assert.equal(paths.databasePath, "/home/tester/.local/share/pcms-local/pcms.db");
   assert.equal(paths.apiTokenFile, "/home/tester/.config/pcms-local/api-token");
 });
@@ -82,7 +83,13 @@ test("creates private configuration, data, cache and runtime directories", async
 
   await ensurePcmsDirectories(paths);
 
-  for (const path of [paths.configRoot, paths.dataRoot, paths.cacheRoot, paths.runtimeRoot]) {
+  for (const path of [
+    paths.configRoot,
+    paths.dataRoot,
+    paths.cacheRoot,
+    paths.runtimeRoot,
+    paths.personasRoot
+  ]) {
     const info = await stat(path);
     assert.equal(info.isDirectory(), true);
     assert.equal(info.mode & 0o777, 0o700);
