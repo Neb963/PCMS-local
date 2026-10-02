@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { resolvePcmsPaths } from "../../dist/config/paths.js";
+import { ensurePcmsDirectories, resolvePcmsPaths } from "../../dist/config/paths.js";
 import { startPcmsd } from "../../dist/daemon/server.js";
 import { InstanceAlreadyRunningError } from "../../dist/runtime/instance-lock.js";
 import { DatabaseSchemaError } from "../../dist/storage/migrations.js";
@@ -143,6 +143,7 @@ test("bootstrap endpoints reject unsupported methods and unknown paths", async (
 
 test("database bootstrap failure prevents readiness and releases instance ownership", async () => {
   const paths = await createFixturePaths("pcmsd-db-reject-");
+  await ensurePcmsDirectories(paths);
   const raw = openConfiguredSqliteDatabase(paths.databasePath);
   raw.exec("PRAGMA application_id = 12345");
   raw.close();
