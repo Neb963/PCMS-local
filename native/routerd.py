@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
 
-NATIVE_BRIDGE_VERSION = "0.3.0"
+NATIVE_BRIDGE_VERSION = "0.4.0"
 ROOT = Path(os.environ.get("PRM_ROOT", "/etc/persona-mullvad-router"))
 ENTRIES = ROOT / "configs"
 ACTIVE = ROOT / "prm-mv.conf"
@@ -38,6 +38,11 @@ FETCH_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,160}$")
 FORWARDER_USERNAME = "persona"
 FORWARDER_TOKEN_RE = re.compile(r"^[0-9a-f]{64}$")
 FORWARDER_TOKEN_TTL_SECONDS = 60 * 60
+CHROMIUM_LEASE_ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,160}$")
+CHROMIUM_LEASE_TTL_SECONDS = 60
+CHROMIUM_LEASE_TTL_MIN_SECONDS = 1
+CHROMIUM_LEASE_TTL_MAX_SECONDS = 5 * 60
+CHROMIUM_LEASE_GENERATION_MAX = 2 ** 31 - 1
 MAX_REQ = 2 * 1024 * 1024
 MAX_FETCH_RESPONSE = 650 * 1024
 
@@ -709,6 +714,24 @@ def authenticate_forwarder_client(client, token):
         return False
 
 
+def negotiate_no_auth_socks_client(client):
+    """Terminate Chromium's unauthenticated local SOCKS5 greeting."""
+    try:
+        greeting = socket_read_exact(client, 2)
+        if len(greeting) != 2 or greeting[0] != 5 or greeting[1] == 0:
+            return False
+        methods = socket_read_exact(client, greeting[1])
+        if len(methods) != greeting[1]:
+            return False
+        if 0 not in methods:
+            client.sendall(b"\x05\xff")
+            return False
+        client.sendall(b"\x05\x00")
+        return True
+    except (ConnectionError, OSError, ValueError, IndexError):
+        return False
+
+
 class ExitForwarder:
     def __init__(self, route_id, relay_ip, relay_port, listen_port, forwarder_token):
         self.route_id = route_id
@@ -948,6 +971,204 @@ class ExitForwarder:
             raise RuntimeError("one or more forwarder resources failed to close") from errors[0]
 
 
+class ChromiumExitForwarder:
+    """Loopback-only SOCKS5 bridge scoped to one Core runtime lease."""
+
+    def __init__(self, route_id, relay_ip, relay_port, listen_port, lease_id, lease_generation, lease_ttl_seconds):
+        self.route_id = route_id
+        self.relay_ip = relay_ip
+        self.relay_port = relay_port
+        self.listen_port = listen_port
+        self.lease_id = lease_id
+        self.lease_generation = lease_generation
+        self.lease_ttl_seconds = lease_ttl_seconds
+        self.lease_expires_at = time.monotonic() + lease_ttl_seconds
+        self.revocation_generation = 0
+        self.server = None
+        self.thread = None
+        self.active_sockets = set()
+        self.active_clients_lock = threading.RLock()
+        self.stopping = False
+
+    def start(self):
+        relay_ip, relay_port = self.relay_ip, self.relay_port
+        forwarder = self
+
+        class Handler(socketserver.BaseRequestHandler):
+            def handle(inner_self):
+                downstream = inner_self.request
+                upstream = None
+                try:
+                    generation = forwarder._register_downstream(downstream)
+                    if generation is None:
+                        return
+                    downstream.settimeout(7)
+                    if not negotiate_no_auth_socks_client(downstream):
+                        return
+
+                    upstream, connect_result = forwarder._begin_upstream_connect(
+                        relay_ip, relay_port, generation
+                    )
+                    forwarder._finish_upstream_connect(upstream, connect_result, generation)
+                    if not forwarder._send_upstream_greeting(upstream, generation):
+                        return
+                    if socket_read_exact(upstream, 2) != b"\x05\x00":
+                        return
+                    if not forwarder._generation_is_current(generation):
+                        return
+
+                    upstream.settimeout(None)
+                    downstream.settimeout(None)
+                    sockets = [downstream, upstream]
+                    while True:
+                        readable, _, exceptional = select.select(sockets, [], sockets, 60)
+                        if exceptional:
+                            break
+                        if not readable:
+                            continue
+                        for src in readable:
+                            data = src.recv(65536)
+                            if not data:
+                                return
+                            dst = upstream if src is downstream else downstream
+                            dst.sendall(data)
+                except (OSError, ValueError):
+                    return
+                finally:
+                    with forwarder.active_clients_lock:
+                        forwarder.active_sockets.discard(downstream)
+                        if upstream is not None:
+                            forwarder.active_sockets.discard(upstream)
+                    for sock in (downstream, upstream):
+                        if sock is not None:
+                            try:
+                                sock.close()
+                            except OSError:
+                                pass
+
+        class Server(socketserver.ThreadingTCPServer):
+            allow_reuse_address = False
+            daemon_threads = True
+
+        self.server = Server(("127.0.0.1", self.listen_port), Handler)
+        self.listen_port = self.server.server_address[1]
+        self.thread = threading.Thread(
+            target=self.server.serve_forever,
+            name=f"chromium-exit-{self.route_id}-{self.lease_generation}",
+            daemon=True,
+        )
+        self.thread.start()
+
+    def is_expired(self, now=None):
+        now = time.monotonic() if now is None else now
+        return now >= self.lease_expires_at
+
+    def matches_lease(self, lease_id, lease_generation):
+        return self.lease_id == lease_id and self.lease_generation == lease_generation
+
+    def _lease_is_current_locked(self, generation):
+        return (
+            not self.stopping
+            and generation == self.revocation_generation
+            and not self.is_expired()
+        )
+
+    def _register_downstream(self, downstream):
+        with self.active_clients_lock:
+            if not self._lease_is_current_locked(self.revocation_generation):
+                return None
+            self.active_sockets.add(downstream)
+            return self.revocation_generation
+
+    def _generation_is_current(self, generation):
+        with self.active_clients_lock:
+            return self._lease_is_current_locked(generation)
+
+    def _begin_upstream_connect(self, relay_ip, relay_port, generation):
+        with self.active_clients_lock:
+            if not self._lease_is_current_locked(generation):
+                raise OSError("Chromium forwarder lease expired or revoked")
+            upstream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.active_sockets.add(upstream)
+            try:
+                upstream.setblocking(False)
+                upstream.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, (WG_IF + "\0").encode())
+                result = upstream.connect_ex((relay_ip, int(relay_port)))
+            except Exception:
+                self.active_sockets.discard(upstream)
+                upstream.close()
+                raise
+        in_progress = {errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY, errno.EINTR}
+        if result not in (0, errno.EISCONN) and result not in in_progress:
+            with self.active_clients_lock:
+                self.active_sockets.discard(upstream)
+            upstream.close()
+            raise OSError(result, os.strerror(result))
+        return upstream, result
+
+    def _finish_upstream_connect(self, upstream, result, generation, timeout=7):
+        deadline = time.monotonic() + timeout
+        while result not in (0, errno.EISCONN):
+            if self.stopping:
+                raise OSError("Chromium forwarder stopped while connecting")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise socket.timeout("timed out connecting to Mullvad relay")
+            _readable, writable, exceptional = select.select([], [upstream], [upstream], min(0.1, remaining))
+            if writable or exceptional:
+                result = upstream.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                if result:
+                    raise OSError(result, os.strerror(result))
+                break
+        with self.active_clients_lock:
+            if not self._lease_is_current_locked(generation):
+                raise OSError("Chromium forwarder lease expired or revoked")
+            upstream.settimeout(7)
+
+    def _send_upstream_greeting(self, upstream, generation):
+        with self.active_clients_lock:
+            if not self._lease_is_current_locked(generation):
+                return False
+            upstream.sendall(b"\x05\x01\x00")
+            return True
+
+    def stop(self):
+        with self.active_clients_lock:
+            self.stopping = True
+            self.revocation_generation += 1
+            sockets = list(self.active_sockets)
+            server, thread = self.server, self.thread
+            self.server = None
+            self.thread = None
+
+        errors = []
+        if server:
+            try:
+                server.shutdown()
+            except Exception as exc:
+                errors.append(exc)
+            try:
+                server.server_close()
+            except Exception as exc:
+                errors.append(exc)
+        for sock in sockets:
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                sock.close()
+            except OSError as exc:
+                errors.append(exc)
+        if thread and thread is not threading.current_thread():
+            try:
+                thread.join(timeout=2)
+            except RuntimeError as exc:
+                errors.append(exc)
+        if errors:
+            raise RuntimeError("one or more Chromium forwarder resources failed to close") from errors[0]
+
+
 class Router:
     def __init__(self):
         self.lock = threading.RLock()
@@ -955,6 +1176,7 @@ class Router:
         self.active_fetches = {}
         self.cancelled_fetches = {}
         self.forwarders = {}
+        self.chromium_forwarders = {}
 
     def status(self):
         selected = read_selected()
@@ -991,6 +1213,20 @@ class Router:
                 }
                 for f in self.forwarders.values()
             ],
+            "active_chromium_exits": [
+                {
+                    "route_id": f.route_id,
+                    "relay_ip": f.relay_ip,
+                    "relay_port": f.relay_port,
+                    "local_host": "127.0.0.1",
+                    "local_port": f.listen_port,
+                    "lease_id": f.lease_id,
+                    "lease_generation": f.lease_generation,
+                    "lease_ttl_seconds": f.lease_ttl_seconds,
+                }
+                for f in self.chromium_forwarders.values()
+                if not f.is_expired()
+            ],
         }
 
     def ensure_up(self):
@@ -1002,7 +1238,7 @@ class Router:
                 interface_up_direct()
             add_route(BASE_PROXY_IP)
             # Re-add routes for all already configured forwarders after restart.
-            for f in self.forwarders.values():
+            for f in list(self.forwarders.values()) + list(self.chromium_forwarders.values()):
                 add_route(f.relay_ip)
             deadline = time.time() + 12
             while time.time() < deadline:
@@ -1016,9 +1252,10 @@ class Router:
             return st
 
     def _stop_forwarders(self):
-        # Revoke credentials before taking the tunnel down or switching entries.
-        forwarders = list(self.forwarders.values())
+        # Revoke all local listeners before taking the tunnel down or switching entries.
+        forwarders = list(self.forwarders.values()) + list(self.chromium_forwarders.values())
         self.forwarders.clear()
+        self.chromium_forwarders.clear()
         errors = []
         for forwarder in forwarders:
             try:
@@ -1154,6 +1391,103 @@ class Router:
                 f.stop()
             return {"ok": True, "released": bool(f)}
 
+    @staticmethod
+    def _validate_chromium_lease(lease_id, lease_generation, lease_ttl_seconds):
+        if not isinstance(lease_id, str) or not CHROMIUM_LEASE_ID_RE.fullmatch(lease_id):
+            raise ValueError("invalid Chromium lease id")
+        if (
+            isinstance(lease_generation, bool)
+            or not isinstance(lease_generation, int)
+            or lease_generation < 1
+            or lease_generation > CHROMIUM_LEASE_GENERATION_MAX
+        ):
+            raise ValueError("invalid Chromium lease generation")
+        if (
+            isinstance(lease_ttl_seconds, bool)
+            or not isinstance(lease_ttl_seconds, int)
+            or lease_ttl_seconds < CHROMIUM_LEASE_TTL_MIN_SECONDS
+            or lease_ttl_seconds > CHROMIUM_LEASE_TTL_MAX_SECONDS
+        ):
+            raise ValueError("invalid Chromium lease TTL")
+        return lease_id, lease_generation, lease_ttl_seconds
+
+    def prepare_chromium_exit(
+        self,
+        route_id,
+        relay_ip,
+        relay_port=1080,
+        start=True,
+        lease_id=None,
+        lease_generation=None,
+        lease_ttl_seconds=CHROMIUM_LEASE_TTL_SECONDS,
+    ):
+        if not isinstance(route_id, str) or not ROUTE_ID_RE.fullmatch(route_id):
+            raise ValueError("invalid route id")
+        lease_id, lease_generation, lease_ttl_seconds = self._validate_chromium_lease(
+            lease_id, lease_generation, lease_ttl_seconds
+        )
+        ip_obj, port = self._validate_relay_target(relay_ip, relay_port)
+
+        with self.lock:
+            existing = self.chromium_forwarders.get(route_id)
+            if existing and existing.is_expired():
+                self.chromium_forwarders.pop(route_id, None)
+                existing.stop()
+                existing = None
+            if existing:
+                if not existing.matches_lease(lease_id, lease_generation):
+                    raise ValueError("route already has an active Chromium forwarder lease")
+                if existing.relay_ip != str(ip_obj) or existing.relay_port != port:
+                    raise ValueError("Chromium forwarder lease is bound to a different relay")
+
+            self._prepare_exit_network(relay_ip, relay_port, start)
+            if existing is None:
+                existing = ChromiumExitForwarder(
+                    route_id,
+                    str(ip_obj),
+                    port,
+                    0,
+                    lease_id,
+                    lease_generation,
+                    lease_ttl_seconds,
+                )
+                existing.start()
+                self.chromium_forwarders[route_id] = existing
+
+            return {
+                "ok": True,
+                "ready": True,
+                "route_id": route_id,
+                "relay_ip": str(ip_obj),
+                "relay_port": port,
+                "local_host": "127.0.0.1",
+                "local_port": existing.listen_port,
+                "lease_id": existing.lease_id,
+                "lease_generation": existing.lease_generation,
+                "lease_ttl_seconds": existing.lease_ttl_seconds,
+                "selected_entry": read_selected(),
+            }
+
+    def release_chromium_exit(self, route_id, lease_id, lease_generation):
+        if not isinstance(route_id, str) or not ROUTE_ID_RE.fullmatch(route_id):
+            raise ValueError("invalid route id")
+        lease_id, lease_generation, _ttl = self._validate_chromium_lease(
+            lease_id, lease_generation, CHROMIUM_LEASE_TTL_SECONDS
+        )
+        with self.lock:
+            f = self.chromium_forwarders.get(route_id)
+            if f is None:
+                return {"ok": True, "released": False}
+            if f.is_expired():
+                self.chromium_forwarders.pop(route_id, None)
+                f.stop()
+                return {"ok": True, "released": False}
+            if not f.matches_lease(lease_id, lease_generation):
+                raise ValueError("Chromium forwarder lease mismatch")
+            self.chromium_forwarders.pop(route_id, None)
+            f.stop()
+            return {"ok": True, "released": True}
+
     def fetch_exit(self, route_id, relay_ip, relay_port, request):
         # prepare_exit protects forwarder/interface mutation with self.lock. Do not
         # hold the router-wide lock during the network request: automation may
@@ -1256,6 +1590,17 @@ class Router:
             )
         if cmd == "release_exit":
             return self.release_exit(req.get("route_id"))
+        if cmd == "prepare_chromium_exit":
+            return self.prepare_chromium_exit(
+                req.get("route_id"), req.get("relay_ip"), req.get("relay_port", 1080),
+                bool(req.get("start", True)), req.get("lease_id"),
+                req.get("lease_generation"),
+                req.get("lease_ttl_seconds", CHROMIUM_LEASE_TTL_SECONDS),
+            )
+        if cmd == "release_chromium_exit":
+            return self.release_chromium_exit(
+                req.get("route_id"), req.get("lease_id"), req.get("lease_generation")
+            )
         if cmd == "fetch_exit":
             return self.fetch_exit(req.get("route_id"), req.get("relay_ip"), req.get("relay_port", 1080), req.get("request") or {})
         if cmd == "cancel_fetch":
