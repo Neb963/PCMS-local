@@ -247,5 +247,84 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
           ON DELETE CASCADE
       ) STRICT;
     `
+  }),
+  Object.freeze({
+    version: 7,
+    id: "0007-account-persona-inventory",
+    sql: `
+      CREATE TABLE accounts (
+        account_id TEXT PRIMARY KEY
+          CHECK (length(account_id) BETWEEN 1 AND 128),
+        display_name TEXT NOT NULL
+          CHECK (length(display_name) BETWEEN 1 AND 256),
+        lifecycle_status TEXT NOT NULL
+          CHECK (lifecycle_status IN ('ACTIVE', 'INACTIVE')),
+        persona_uid TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        FOREIGN KEY (persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE UNIQUE INDEX accounts_one_active_account_per_persona
+        ON accounts(persona_uid)
+        WHERE lifecycle_status = 'ACTIVE' AND persona_uid IS NOT NULL;
+
+      CREATE INDEX accounts_persona_lookup
+        ON accounts(persona_uid);
+
+      CREATE TABLE persona_bindings_history (
+        binding_event_id INTEGER PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        event_kind TEXT NOT NULL
+          CHECK (event_kind IN ('BIND', 'REBIND', 'UNBIND')),
+        previous_persona_uid TEXT,
+        next_persona_uid TEXT,
+        reason TEXT NOT NULL
+          CHECK (length(reason) BETWEEN 1 AND 256),
+        changed_at TEXT NOT NULL,
+        account_revision INTEGER NOT NULL
+          CHECK (account_revision > 0),
+        CHECK (
+          (event_kind = 'BIND' AND
+            previous_persona_uid IS NULL AND
+            next_persona_uid IS NOT NULL) OR
+          (event_kind = 'REBIND' AND
+            previous_persona_uid IS NOT NULL AND
+            next_persona_uid IS NOT NULL AND
+            previous_persona_uid <> next_persona_uid) OR
+          (event_kind = 'UNBIND' AND
+            previous_persona_uid IS NOT NULL AND
+            next_persona_uid IS NULL)
+        ),
+        FOREIGN KEY (account_id)
+          REFERENCES accounts(account_id)
+          ON DELETE RESTRICT,
+        FOREIGN KEY (previous_persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE RESTRICT,
+        FOREIGN KEY (next_persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE INDEX persona_bindings_history_account
+        ON persona_bindings_history(account_id, binding_event_id);
+
+      CREATE TRIGGER persona_bindings_history_append_only_update
+      BEFORE UPDATE ON persona_bindings_history
+      BEGIN
+        SELECT RAISE(ABORT, 'persona binding history is append-only');
+      END;
+
+      CREATE TRIGGER persona_bindings_history_append_only_delete
+      BEFORE DELETE ON persona_bindings_history
+      BEGIN
+        SELECT RAISE(ABORT, 'persona binding history is append-only');
+      END;
+    `
   })
 ]);

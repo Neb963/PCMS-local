@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P020**
-- Current phase: **P021 — READY**
-- Next phase: **P022 — BLOCKED (P021)**
+- Completed through: **P021**
+- Current phase: **P022 — READY**
+- Next phase: **P023 — BLOCKED (P022)**
 - Current milestone: **M05 — Accounts, Generator identity and inventory**
 - Final live milestone: **M12 — P048–P049**
 
@@ -513,10 +513,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M05 — Accounts, Generator identity and inventory
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P021 — Account-Persona binding invariants
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P020  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -526,18 +526,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement provider session probing or search.
 
 **Work:**
-- [ ] T021.1 — Add Account/Persona schema and repositories
-- [ ] T021.2 — Enforce transactional active binding uniqueness
-- [ ] T021.3 — Implement explicit rebind history and tests
+- [x] T021.1 — Add Account/Persona schema and repositories
+- [x] T021.2 — Enforce transactional active binding uniqueness
+- [x] T021.3 — Implement explicit rebind history and tests
 
 **Acceptance:**
-- [ ] A05-01
-- [ ] A05-02
+- [x] A05-01
+- [x] A05-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P021 → COMPLETE; P022 → READY; publish to GitHub; **STOP — do not implement P022.**
 
 ### P022 — Stable GeneratorRef identity and atomic import
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P021  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
