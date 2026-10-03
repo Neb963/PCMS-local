@@ -99,8 +99,12 @@ export class RefresherAdmission {
     }
     const cooldown = this.#coordinator.providerGate.observeSignal({
       provider: input.scope.provider,
-      accountId: input.scope.accountId,
-      personaUid: input.scope.personaUid,
+      ...(input.scope.accountId === undefined
+        ? {}
+        : { accountId: input.scope.accountId }),
+      ...(input.scope.personaUid === undefined
+        ? {}
+        : { personaUid: input.scope.personaUid }),
       kind: signal.kind,
       cooldownMs: signal.cooldownMs,
       reason: signal.reason,
