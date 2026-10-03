@@ -526,8 +526,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement provider session probing or search.
 
 **Work:**
-- [~] T021.1 — Add Account/Persona schema and repositories
-- [ ] T021.2 — Enforce transactional active binding uniqueness
+- [x] T021.1 — Add Account/Persona schema and repositories
+- [~] T021.2 — Enforce transactional active binding uniqueness
 - [ ] T021.3 — Implement explicit rebind history and tests
 
 **Acceptance:**
