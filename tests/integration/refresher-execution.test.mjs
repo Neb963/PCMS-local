@@ -7,7 +7,8 @@ import test from "node:test";
 import { AccountRepository } from "../../dist/accounts/account-repository.js";
 import { PersonaBindingService } from "../../dist/accounts/persona-binding.js";
 import {
-  OperationCoordinator
+  OperationCoordinator,
+  OperationCoordinatorError
 } from "../../dist/operations/operation-coordinator.js";
 import {
   PerchanceMutationError
@@ -58,9 +59,14 @@ function remoteAdapter(
 ) {
   return {
     async saveRefresh(input) {
+      const signal =
+        typeof options.abortAfterMs === "number"
+          ? AbortSignal.timeout(options.abortAfterMs)
+          : undefined;
       const response = await fetch(new URL("/api/save", emulator.origin), {
         method: "POST",
         headers: { "content-type": "application/json" },
+        ...(signal === undefined ? {} : { signal }),
         body: JSON.stringify({
           email: identity,
           sessionToken,
@@ -222,7 +228,7 @@ function executionInput(
   operationId,
   idempotencyKey,
   refreshToken,
-  publishAfterSave = false
+  remoteOptions = {}
 ) {
   return {
     operationId,
@@ -241,7 +247,7 @@ function executionInput(
       emulator,
       "owner@example.test",
       "fixture-session-p036",
-      { publishAfterSave }
+      remoteOptions
     )
   };
 }
@@ -304,6 +310,93 @@ test("P036 manual refresh verifies emulator effect and public state before recor
       ).length,
       1
     );
+  } finally {
+    await emulator.close();
+    await f.cleanup();
+  }
+});
+
+test("P036 uncertain refresh blocks duplicate target until read-first reconciliation", async () => {
+  const f = await fixture();
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "owner@example.test",
+      sessionToken: "fixture-session-p036",
+      generators: [{
+        publicId: "public-p036",
+        slug: "generator-p036",
+        isPublic: true
+      }]
+    }]
+  });
+
+  try {
+    emulator.setScenario("RESPONSE_LOSS_AFTER_EFFECT");
+    const uncertainInput = executionInput(
+      f,
+      emulator,
+      "MANUAL",
+      "operation-p036-uncertain",
+      "idempotency-p036-uncertain",
+      "refresh-uncertain",
+      { abortAfterMs: 25 }
+    );
+
+    await assert.rejects(
+      () => f.service.execute(uncertainInput),
+      (error) =>
+        error?.code === "REFRESHER_EXECUTION_MUTATION_FAILED"
+    );
+    assert.equal(
+      f.coordinator.require("operation-p036-uncertain").state,
+      "UNCERTAIN"
+    );
+    assert.equal(f.history.list("generator-p036").length, 0);
+
+    await assert.rejects(
+      () => f.service.execute(
+        executionInput(
+          f,
+          emulator,
+          "MANUAL",
+          "operation-p036-duplicate",
+          "idempotency-p036-duplicate",
+          "refresh-duplicate"
+        )
+      ),
+      (error) =>
+        error instanceof OperationCoordinatorError &&
+        error.code === "OPERATION_TARGET_CLAIMED"
+    );
+
+    const savesBeforeReconciliation =
+      emulator.requests().filter((request) =>
+        request.path === "/api/save"
+      ).length;
+    assert.equal(savesBeforeReconciliation, 1);
+
+    emulator.setScenario("NORMAL");
+    const reconciled = await f.service.execute(
+      executionInput(
+        f,
+        emulator,
+        "MANUAL",
+        "operation-p036-uncertain",
+        "idempotency-p036-uncertain",
+        "refresh-uncertain"
+      )
+    );
+
+    assert.equal(reconciled.disposition, "RECONCILED_APPLIED");
+    assert.equal(reconciled.operation.state, "SUCCEEDED");
+    assert.equal(reconciled.history.refreshToken, "refresh-uncertain");
+    assert.equal(
+      emulator.requests().filter((request) =>
+        request.path === "/api/save"
+      ).length,
+      savesBeforeReconciliation
+    );
+    assert.equal(f.history.list("generator-p036").length, 1);
   } finally {
     await emulator.close();
     await f.cleanup();
@@ -377,7 +470,7 @@ test("P036 scheduled and recent-visibility modes record per-generator verified e
         "operation-p036-recent",
         "idempotency-p036-recent",
         "refresh-recent",
-        true
+        { publishAfterSave: true }
       )
     );
     assert.equal(recent.history.mode, "RECENT_VISIBILITY");
