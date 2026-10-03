@@ -974,7 +974,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M10 — Statistics, backup, restore and operational UX
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P041 — Statistics and coherent Core/module backup
 Status: **READY**  
