@@ -102,12 +102,14 @@ test("module-runner loads exactly one backend and exchanges bounded typed RPC", 
 });
 
 test("module-runner surfaces structured backend errors without terminating", async () => {
+  const sensitiveValue =
+    "P040-SENSITIVE-MODULE-ERROR-DO-NOT-ECHO";
   const fixture = await moduleFixture(`
     export function createModule() {
       return {
         handle(method) {
           if (method === "fail") {
-            const error = new Error("fixture failure");
+            const error = new Error(${JSON.stringify(sensitiveValue)});
             error.code = "FIXTURE_FAILED";
             throw error;
           }
@@ -130,7 +132,8 @@ test("module-runner surfaces structured backend errors without terminating", asy
       (error) =>
         error instanceof ModuleRuntimeError &&
         error.code === "FIXTURE_FAILED" &&
-        error.message === "Module request failed"
+        error.message === "Module request failed" &&
+        !error.message.includes(sensitiveValue)
     );
     assert.equal(await runtime.request("ok", null), "ok");
     assert.equal(runtime.state, "RUNNING");
