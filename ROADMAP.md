@@ -346,8 +346,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T013.1 — Launch real Chromium with owned non-default user-data-dir and DevTools endpoint
-- [~] T013.2 — Test cookie/localStorage/IndexedDB persistence and cross-Persona isolation
-- [ ] T013.3 — Test two simultaneous Personas with distinct process/profile/DevTools ownership
+- [x] T013.2 — Test cookie/localStorage/IndexedDB persistence and cross-Persona isolation
+- [~] T013.3 — Test two simultaneous Personas with distinct process/profile/DevTools ownership
 
 **Acceptance:**
 - [ ] A03-02
