@@ -308,7 +308,10 @@ function historyRecord(
     refreshToken: effect.refreshToken,
     refreshSequence: effect.refreshSequence,
     effectState: effect.state,
-    recentRank:\n      recentRank === null || recentRank < 0\n        ? null\n        : recentRank,
+    recentRank:
+      recentRank === null || recentRank < 0
+        ? null
+        : recentRank,
     publicStateVerified: true,
     verifiedAt: effect.observedAt
   });
