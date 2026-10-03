@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P035**
-- Current phase: **P036 — READY**
+- Current phase: **P036 — IN_PROGRESS**
 - Next phase: **P037 — BLOCKED (P036)**
 - Current milestone: **M08 — Refresh measurement and Refresher**
 - Final live milestone: **M12 — P048–P049**
@@ -857,7 +857,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P035 → COMPLETE; P036 → READY; publish to GitHub; **STOP — do not implement P036.**
 
 ### P036 — Refresher execution, history, uncertainty and package lifecycle
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P035  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -867,7 +867,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not claim live provider refresh semantics beyond emulator contract.
 
 **Work:**
-- [ ] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
+- [~] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
 - [ ] T036.2 — Block duplicate work while refresh outcome is uncertain and reconcile first
 - [ ] T036.3 — Package/update/rollback Refresher through standard .pcmsmod lifecycle
 
