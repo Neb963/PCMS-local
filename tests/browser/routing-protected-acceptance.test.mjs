@@ -416,3 +416,158 @@ test("protected route switch closes old browser and verifies fresh egress before
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test("multiple protected Personas remain isolated on independent synthetic exits", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pcms-multi-protected-"));
+  const alpha = await startSyntheticSocksExit({
+    routeIdentity: "synthetic-exit-alpha"
+  });
+  const beta = await startSyntheticSocksExit({
+    routeIdentity: "synthetic-exit-beta"
+  });
+  const exitsByRoute = new Map([
+    ["route-alpha", alpha],
+    ["route-beta", beta]
+  ]);
+  const routerFixture = await startRouterControlFixture(root, exitsByRoute);
+  const profile = await profileFixture(root);
+  let requestId = 0;
+  const router = createNativeRouterClient({
+    socketPath: routerFixture.socketPath,
+    requestIdFactory: () => `p020-multi-${++requestId}`
+  });
+  const routing = protectedRoutingFixture({
+    browser: profile.browser,
+    router,
+    exitsByRoute
+  });
+  let alphaSession;
+  let betaSession;
+
+  try {
+    alphaSession = await routing.launch({
+      mode: "PROTECTED",
+      personaUid: "persona_multi_alpha",
+      routeId: "route-alpha",
+      relayIp: "10.124.0.9",
+      leaseId: "lease-multi-alpha",
+      leaseGeneration: 1,
+      leaseTtlSeconds: 60,
+      expectedEgressIdentity: "synthetic-exit-alpha",
+      browser: {
+        headless: true,
+        disableSandboxForTesting: true
+      }
+    });
+
+    betaSession = await routing.launch({
+      mode: "PROTECTED",
+      personaUid: "persona_multi_beta",
+      routeId: "route-beta",
+      relayIp: "10.124.0.10",
+      leaseId: "lease-multi-beta",
+      leaseGeneration: 1,
+      leaseTtlSeconds: 60,
+      expectedEgressIdentity: "synthetic-exit-beta",
+      browser: {
+        headless: true,
+        disableSandboxForTesting: true
+      }
+    });
+
+    assert.notEqual(alphaSession.browser.pid, betaSession.browser.pid);
+    assert.notEqual(
+      alphaSession.browser.profilePath,
+      betaSession.browser.profilePath
+    );
+    assert.notEqual(
+      alphaSession.browser.devTools.port,
+      betaSession.browser.devTools.port
+    );
+    assert.deepEqual(routing.mutationAdmission("persona_multi_alpha"), {
+      allowed: true,
+      mode: "PROTECTED",
+      routeId: "route-alpha",
+      reason: "PROTECTED_VERIFIED"
+    });
+    assert.deepEqual(routing.mutationAdmission("persona_multi_beta"), {
+      allowed: true,
+      mode: "PROTECTED",
+      routeId: "route-beta",
+      reason: "PROTECTED_VERIFIED"
+    });
+
+    const alphaObserved = await observeBrowserEgress(
+      alphaSession.browser,
+      "/active-alpha"
+    );
+    const betaObserved = await observeBrowserEgress(
+      betaSession.browser,
+      "/active-beta"
+    );
+    assert.equal(alphaObserved.routeIdentity, "synthetic-exit-alpha");
+    assert.equal(betaObserved.routeIdentity, "synthetic-exit-beta");
+
+    assert.ok(
+      alpha.observations.some(
+        (value) => value.requestedPath === "/active-alpha"
+      )
+    );
+    assert.equal(
+      alpha.observations.some(
+        (value) => value.requestedPath === "/active-beta"
+      ),
+      false,
+      "alpha synthetic exit must not observe beta Persona traffic"
+    );
+    assert.ok(
+      beta.observations.some(
+        (value) => value.requestedPath === "/active-beta"
+      )
+    );
+    assert.equal(
+      beta.observations.some(
+        (value) => value.requestedPath === "/active-alpha"
+      ),
+      false,
+      "beta synthetic exit must not observe alpha Persona traffic"
+    );
+
+    assert.deepEqual(
+      routerFixture.requests.map((request) => [
+        request.command,
+        request.route_id
+      ]),
+      [
+        ["prepare_chromium_exit", "route-alpha"],
+        ["prepare_chromium_exit", "route-beta"]
+      ]
+    );
+
+    await alphaSession.close();
+    alphaSession = undefined;
+    await betaSession.close();
+    betaSession = undefined;
+
+    assert.deepEqual(
+      routerFixture.requests.map((request) => [
+        request.command,
+        request.route_id
+      ]),
+      [
+        ["prepare_chromium_exit", "route-alpha"],
+        ["prepare_chromium_exit", "route-beta"],
+        ["release_chromium_exit", "route-alpha"],
+        ["release_chromium_exit", "route-beta"]
+      ]
+    );
+  } finally {
+    if (alphaSession !== undefined) await alphaSession.close();
+    if (betaSession !== undefined) await betaSession.close();
+    profile.database.close();
+    await routerFixture.close();
+    await Promise.all([alpha.close(), beta.close()]);
+    await rm(root, { recursive: true, force: true });
+  }
+});
