@@ -260,9 +260,6 @@ export class ExactCommitRepositoryScanner {
         continue;
       }
       const size = validateOptionalSize(entry.size);
-      if (size !== null && size > MAX_ARTIFACT_BYTES) {
-        continue;
-      }
       files.push(Object.freeze({
         path,
         blobSha: entry.sha,
