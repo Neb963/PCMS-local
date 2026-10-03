@@ -810,7 +810,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M08 — Refresh measurement and Refresher
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P034 — Refresh and recent-listing emulator contract
 Status: **IN_PROGRESS**  
