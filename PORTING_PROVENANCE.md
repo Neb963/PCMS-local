@@ -42,6 +42,7 @@ It does **not** prove Chromium SOCKS/proxy compatibility, PCMS-local Core router
 The imported `native/routerd.py` baseline blob remains `345911a056c4a01db86e6a805d49b7d44233e7a1`. After P016 re-proved that exact baseline in CI, P017 intentionally begins PCMS-local-specific adaptation.
 
 - `5c4fc952f56b6a020090b998e2ec585aaf780374` — adds the distinct `prepare_chromium_exit` / `release_chromium_exit` route-lease contract and leaves the authenticated Firefox-compatible `prepare_exit` path intact.
+- `399079541a1b09e44f8fa04a4eeea0592ce74034` — adds active TTL expiry for Chromium leases so the matching loopback listener and sockets are revoked and removed from Router ownership.
 
 All other files still listed by `scripts/verify-ported-blobs.mjs` remain byte/Git-blob identical to their recorded upstream PersonaMonkey blobs.
 
