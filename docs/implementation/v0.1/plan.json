@@ -141,7 +141,7 @@
     {
       "id": "M10",
       "name": "Statistics, backup, restore and operational UX",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P041",
         "P042",
@@ -1748,7 +1748,7 @@
       "id": "P041",
       "milestone": "M10",
       "name": "Statistics and coherent Core/module backup",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P040"
       ],
@@ -1787,7 +1787,7 @@
       "id": "P042",
       "milestone": "M10",
       "name": "Optional profile backup and recovery-hold restore",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P041"
       ],
