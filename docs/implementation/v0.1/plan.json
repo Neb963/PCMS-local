@@ -871,7 +871,7 @@
       "id": "P018",
       "milestone": "M04",
       "name": "Protected synthetic egress and independent verification",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P017"
       ],
@@ -908,7 +908,7 @@
       "id": "P019",
       "milestone": "M04",
       "name": "Leak resistance and route-loss fail-closed behavior",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P018"
       ],
