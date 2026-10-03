@@ -318,7 +318,6 @@ test("P037 completed claim reconstructs verified reservation after process-local
     const restartedReservations = new ExplorerReservationLedger();
     const restarted = new ExplorerClaimService({
       database: f.database,
-      coordinator: f.coordinator,
       reservations: restartedReservations,
       now: f.now
     });
