@@ -918,8 +918,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T038.1 — Implement staged import and duplicate detection before external effects
-- [~] T038.2 — Allocate/bind dedicated Persona under invariants
-- [ ] T038.3 — Drive signup/login emulator flow in the same human-visible browser session
+- [x] T038.2 — Allocate/bind dedicated Persona under invariants
+- [~] T038.3 — Drive signup/login emulator flow in the same human-visible browser session
 
 **Acceptance:**
 - [ ] A09-04
