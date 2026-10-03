@@ -835,7 +835,7 @@
       "id": "P017",
       "milestone": "M04",
       "name": "Chromium-compatible loopback forwarder lease",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P016"
       ],
