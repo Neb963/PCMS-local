@@ -109,7 +109,7 @@
     {
       "id": "M07",
       "name": "Deployer",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P030",
         "P031",
@@ -1340,7 +1340,7 @@
       "id": "P030",
       "milestone": "M07",
       "name": "Deployer GitHub scanner and artifact selection",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P029"
       ],
@@ -1378,7 +1378,7 @@
       "id": "P031",
       "milestone": "M07",
       "name": "Stable target mapping and initial emulated deployment",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P030"
       ],

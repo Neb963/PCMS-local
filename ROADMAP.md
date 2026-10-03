@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P029**
-- Current phase: **P030 — READY**
-- Next phase: **P031 — BLOCKED (P030)**
+- Completed through: **P030**
+- Current phase: **P031 — READY**
+- Next phase: **P032 — BLOCKED (P031)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
 
@@ -717,10 +717,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M07 — Deployer
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P030 — Deployer GitHub scanner and artifact selection
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P029  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -730,18 +730,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not mutate Perchance or guess ambiguous versions/layouts.
 
 **Work:**
-- [ ] T030.1 — Implement exact-commit repository tree scan
-- [ ] T030.2 — Validate ZIP/layout/required files and compute SHA-256
-- [ ] T030.3 — Implement deterministic version selection and explicit ambiguity failure
+- [x] T030.1 — Implement exact-commit repository tree scan
+- [x] T030.2 — Validate ZIP/layout/required files and compute SHA-256
+- [x] T030.3 — Implement deterministic version selection and explicit ambiguity failure
 
 **Acceptance:**
-- [ ] A07-01
-- [ ] A07-02
+- [x] A07-01
+- [x] A07-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P030 → COMPLETE; P031 → READY; publish to GitHub; **STOP — do not implement P031.**
 
 ### P031 — Stable target mapping and initial emulated deployment
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P030  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
