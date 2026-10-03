@@ -54,6 +54,8 @@ function uiPackage() {
 }
 
 test("failed module UI resets independently while pcmsd remains healthy", async () => {
+  const sensitiveValue =
+    "P040-SENSITIVE-UI-SDK-ERROR-DO-NOT-ECHO";
   const fixture = await fixturePaths();
   const host = new ModuleUiHost();
   const sdkCalls = [];
@@ -70,10 +72,21 @@ test("failed module UI resets independently while pcmsd remains healthy", async 
       sdkCalls.push(context.method);
     },
     sdkHandlers: {
-      "accounts.read": (params) => ({
-        accepted: true,
-        params
-      })
+      "accounts.read": (params) => {
+        if (
+          typeof params === "object" &&
+          params !== null &&
+          params.triggerSensitiveFailure === true
+        ) {
+          const error = new Error(sensitiveValue);
+          error.code = "SENSITIVE_UI_FAILURE";
+          throw error;
+        }
+        return {
+          accepted: true,
+          params
+        };
+      }
     }
   });
   const daemon = await startPcmsd({
@@ -179,6 +192,36 @@ test("failed module UI resets independently while pcmsd remains healthy", async 
       }
     });
     assert.deepEqual(sdkCalls, ["accounts.read"]);
+
+    const sensitiveFailure = await fetch(
+      `${daemon.origin}/module-ui-sdk/${session.sessionId}/1`,
+      {
+        method: "POST",
+        headers: {
+          origin: daemon.origin,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          method: "accounts.read",
+          params: { triggerSensitiveFailure: true }
+        })
+      }
+    );
+    assert.equal(sensitiveFailure.status, 500);
+    const sensitiveFailureBody =
+      await sensitiveFailure.json();
+    assert.deepEqual(sensitiveFailureBody, {
+      error: {
+        code: "SENSITIVE_UI_FAILURE",
+        message: "Module UI SDK request failed"
+      }
+    });
+    assert.equal(
+      JSON.stringify(sensitiveFailureBody).includes(
+        sensitiveValue
+      ),
+      false
+    );
 
     host.markFailed(session.sessionId, 1);
 

@@ -67,6 +67,13 @@ export interface BatchCancellationResult {
   readonly errorChildren: number;
 }
 
+export interface BatchChildCancellationResult {
+  readonly batch: BatchSnapshot;
+  readonly child: BatchChildSnapshot;
+  readonly attempted: boolean;
+  readonly error: boolean;
+}
+
 export interface BatchStoreOptions {
   readonly database: DatabaseSync;
   readonly coordinator: OperationCoordinator;
@@ -76,6 +83,7 @@ export interface BatchStoreOptions {
 export type BatchStoreErrorCode =
   | "BATCH_INVALID_INPUT"
   | "BATCH_NOT_FOUND"
+  | "BATCH_CHILD_NOT_FOUND"
   | "BATCH_CONFLICT"
   | "BATCH_ROW_INVALID";
 
@@ -473,6 +481,103 @@ export class BatchStore {
       batch: this.require(batchId),
       attemptedChildren,
       errorChildren
+    });
+  }
+
+  public requestChildCancellation(
+    batchId: string,
+    operationId: string
+  ): BatchChildCancellationResult {
+    validateId(batchId, "batchId");
+    validateId(operationId, "operationId");
+    const now = this.#currentIso();
+
+    const row = this.#database.prepare(`
+      SELECT
+        ordinal,
+        operation_id,
+        cancellation_requested_at,
+        cancellation_outcome,
+        cancellation_error_code
+      FROM batch_children
+      WHERE batch_id = ?
+        AND operation_id = ?
+    `).get(batchId, operationId) as unknown as BatchChildRow | undefined;
+
+    if (row === undefined) {
+      this.require(batchId);
+      fail(
+        "BATCH_CHILD_NOT_FOUND",
+        `operation ${operationId} is not a child of batch ${batchId}`
+      );
+    }
+
+    const current = this.#coordinator.require(operationId);
+    let outcome: BatchCancellationOutcome;
+    let errorCode: string | null = null;
+    let attempted = false;
+    let error = false;
+
+    if (isTerminal(current.state)) {
+      outcome = "TERMINAL_UNCHANGED";
+    } else {
+      attempted = true;
+      try {
+        const cancelled = this.#coordinator.requestCancellation(
+          current.operationId,
+          current.claimEpoch,
+          "batch-child-cancellation-requested"
+        );
+        outcome = cancellationOutcomeFor(cancelled);
+      } catch (caught: unknown) {
+        outcome = "ERROR";
+        error = true;
+        errorCode =
+          caught instanceof OperationCoordinatorError
+            ? caught.code
+            : "UNEXPECTED";
+      }
+    }
+
+    transaction(this.#database, () => {
+      this.#database.prepare(`
+        UPDATE batch_children
+        SET cancellation_requested_at = ?,
+            cancellation_outcome = ?,
+            cancellation_error_code = ?
+        WHERE batch_id = ?
+          AND operation_id = ?
+      `).run(
+        now,
+        outcome,
+        errorCode,
+        batchId,
+        operationId
+      );
+      this.#database.prepare(`
+        UPDATE batches
+        SET updated_at = ?,
+            revision = revision + 1
+        WHERE batch_id = ?
+      `).run(now, batchId);
+    });
+
+    const batch = this.require(batchId);
+    const child = batch.children.find(
+      (candidate) => candidate.operation.operationId === operationId
+    );
+    if (child === undefined) {
+      fail(
+        "BATCH_ROW_INVALID",
+        "batch child disappeared after cancellation accounting"
+      );
+    }
+
+    return Object.freeze({
+      batch,
+      child,
+      attempted,
+      error
     });
   }
 

@@ -102,12 +102,14 @@ test("module-runner loads exactly one backend and exchanges bounded typed RPC", 
 });
 
 test("module-runner surfaces structured backend errors without terminating", async () => {
+  const sensitiveValue =
+    "P040-SENSITIVE-MODULE-ERROR-DO-NOT-ECHO";
   const fixture = await moduleFixture(`
     export function createModule() {
       return {
         handle(method) {
           if (method === "fail") {
-            const error = new Error("fixture failure");
+            const error = new Error(${JSON.stringify(sensitiveValue)});
             error.code = "FIXTURE_FAILED";
             throw error;
           }
@@ -130,7 +132,8 @@ test("module-runner surfaces structured backend errors without terminating", asy
       (error) =>
         error instanceof ModuleRuntimeError &&
         error.code === "FIXTURE_FAILED" &&
-        error.message === "fixture failure"
+        error.message === "Module request failed" &&
+        !error.message.includes(sensitiveValue)
     );
     assert.equal(await runtime.request("ok", null), "ok");
     assert.equal(runtime.state, "RUNNING");
@@ -141,12 +144,27 @@ test("module-runner surfaces structured backend errors without terminating", asy
 });
 
 test("module SDK exposes semantic serialized calls and rejects raw Core authority", async () => {
+  const sensitiveCoreValue =
+    "P040-SENSITIVE-CORE-SDK-ERROR-DO-NOT-ECHO";
   const fixture = await moduleFixture(`
     export function createModule(context) {
       return {
         async handle(method, params) {
           if (method === "sdk") {
             return context.sdk.call(params.method, params.payload);
+          }
+          if (method === "sdkCaptureError") {
+            try {
+              return await context.sdk.call(
+                params.method,
+                params.payload
+              );
+            } catch (error) {
+              return {
+                code: error.code,
+                message: error.message
+              };
+            }
           }
           if (method === "authority") {
             return {
@@ -174,7 +192,12 @@ test("module SDK exposes semantic serialized calls and rejects raw Core authorit
       "accounts.read": async (params) => ({
         source: "core-semantic-handler",
         params
-      })
+      }),
+      "accounts.readSensitive": async () => {
+        const error = new Error(sensitiveCoreValue);
+        error.code = "SENSITIVE_CORE_FAILURE";
+        throw error;
+      }
     }
   });
 
@@ -199,13 +222,24 @@ test("module SDK exposes semantic serialized calls and rejects raw Core authorit
       }
     );
 
+    assert.deepEqual(
+      await runtime.request("sdkCaptureError", {
+        method: "accounts.readSensitive",
+        payload: null
+      }),
+      {
+        code: "SENSITIVE_CORE_FAILURE",
+        message: "Core SDK handler failed"
+      }
+    );
+
     for (const method of ["db.query", "router.raw", "browser.cdp.send"]) {
       await assert.rejects(
         () => runtime.request("sdk", { method, payload: null }),
         (error) =>
           error instanceof ModuleRuntimeError &&
           error.code === "MODULE_SDK_METHOD_DENIED" &&
-          error.message.includes(method)
+          error.message === "Module request failed"
       );
       assert.equal(runtime.state, "RUNNING");
     }

@@ -205,10 +205,7 @@ function safeStructuredError(error: unknown): Readonly<{
   ) {
     return Object.freeze({
       code: (error as { readonly code: string }).code,
-      message:
-        error instanceof Error
-          ? error.message.slice(0, 512)
-          : "Module UI SDK request failed"
+      message: "Module UI SDK request failed"
     });
   }
   return Object.freeze({

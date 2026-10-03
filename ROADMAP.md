@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P039**
-- Current phase: **P040 — READY**
-- Next phase: **P041 — BLOCKED (P040)**
-- Current milestone: **M09 — Explorer and Account Provisioning**
+- Completed through: **P040**
+- Current phase: **P041 — READY**
+- Next phase: **P042 — BLOCKED (P041)**
+- Current milestone: **M10 — Statistics, backup, restore and operational UX**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -882,7 +882,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M09 — Explorer and Account Provisioning
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P037 — Explorer observation, claim and stable handoff
 Status: **COMPLETE**  
@@ -950,7 +950,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P039 → COMPLETE; P040 → READY; publish to GitHub; **STOP — do not implement P040.**
 
 ### P040 — Provisioning batches, module lifecycle and secret hygiene
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P039  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -960,24 +960,24 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not store credentials in ordinary module/history/statistics state.
 
 **Work:**
-- [ ] T040.1 — Implement isolated per-account batch state/result/cancellation
-- [ ] T040.2 — Exercise independent Explorer/Provisioning package update/rollback
-- [ ] T040.3 — Audit secret inputs across logs/history/module/statistics records
+- [x] T040.1 — Implement isolated per-account batch state/result/cancellation
+- [x] T040.2 — Exercise independent Explorer/Provisioning package update/rollback
+- [x] T040.3 — Audit secret inputs across logs/history/module/statistics records
 
 **Acceptance:**
-- [ ] A09-09
-- [ ] A09-10
-- [ ] A09-11
+- [x] A09-09
+- [x] A09-10
+- [x] A09-11
 
 **Closure:** relevant tests + CI green; phase report finalized; P040 → COMPLETE; P041 → READY; publish to GitHub; **STOP — do not implement P041.**
 
 ---
 
 ## M10 — Statistics, backup, restore and operational UX
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P041 — Statistics and coherent Core/module backup
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P040  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

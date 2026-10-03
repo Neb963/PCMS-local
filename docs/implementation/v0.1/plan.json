@@ -130,7 +130,7 @@
     {
       "id": "M09",
       "name": "Explorer and Account Provisioning",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P037",
         "P038",
@@ -141,7 +141,7 @@
     {
       "id": "M10",
       "name": "Statistics, backup, restore and operational UX",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P041",
         "P042",
@@ -1712,7 +1712,7 @@
       "id": "P040",
       "milestone": "M09",
       "name": "Provisioning batches, module lifecycle and secret hygiene",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P039"
       ],
@@ -1748,7 +1748,7 @@
       "id": "P041",
       "milestone": "M10",
       "name": "Statistics and coherent Core/module backup",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P040"
       ],
