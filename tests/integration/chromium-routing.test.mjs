@@ -122,3 +122,124 @@ test("Block is a distinct routed mode with its own owned loopback guard", async 
   await session.close();
   assert.deepEqual(events, ["browser.close:persona-block"]);
 });
+
+
+test("protected route switch blocks mutation admission until verified relaunch completes", async () => {
+  const events = [];
+  let secondResolve;
+  const secondLaunch = new Promise((resolve) => {
+    secondResolve = resolve;
+  });
+  let launchCount = 0;
+
+  const protectedChromium = {
+    async launch(request) {
+      launchCount += 1;
+      events.push(`protected.launch:${request.routeId}`);
+      assert.equal("mode" in request, false);
+
+      if (launchCount === 2) {
+        await secondLaunch;
+      }
+
+      const browser = fakeBrowserSession(request.personaUid, events);
+      return {
+        personaUid: request.personaUid,
+        routeId: request.routeId,
+        lease: {
+          routeId: request.routeId,
+          relayIp: request.relayIp,
+          relayPort: request.relayPort ?? 1080,
+          localHost: "127.0.0.1",
+          localPort: launchCount === 1 ? 43001 : 43002,
+          leaseId: request.leaseId,
+          leaseGeneration: request.leaseGeneration,
+          leaseTtlSeconds: request.leaseTtlSeconds ?? 60,
+          selectedEntry: "synthetic"
+        },
+        browser,
+        forwarderEgress: {
+          routeIdentity: request.expectedEgressIdentity,
+          checkedAt: Date.now()
+        },
+        browserEgress: {
+          routeIdentity: request.expectedEgressIdentity,
+          checkedAt: Date.now()
+        },
+        async close() {
+          events.push(`protected.close:${request.routeId}`);
+          await browser.close();
+        }
+      };
+    }
+  };
+
+  const manager = new ChromiumRoutingManager({
+    browser: {
+      async reconcile() {
+        return null;
+      },
+      async launch() {
+        throw new Error("raw browser launch must not run for protected mode");
+      }
+    },
+    protectedChromium
+  });
+
+  const alpha = await manager.launch({
+    mode: "PROTECTED",
+    personaUid: "persona-switch",
+    routeId: "route-alpha",
+    relayIp: "10.124.0.9",
+    leaseId: "lease-alpha",
+    leaseGeneration: 1,
+    expectedEgressIdentity: "synthetic-alpha"
+  });
+
+  assert.equal(alpha.mode, "PROTECTED");
+  assert.deepEqual(manager.mutationAdmission("persona-switch"), {
+    allowed: true,
+    mode: "PROTECTED",
+    routeId: "route-alpha",
+    reason: "PROTECTED_VERIFIED"
+  });
+
+  const switching = manager.switchProtectedRoute("persona-switch", {
+    mode: "PROTECTED",
+    personaUid: "persona-switch",
+    routeId: "route-beta",
+    relayIp: "10.124.0.10",
+    leaseId: "lease-beta",
+    leaseGeneration: 2,
+    expectedEgressIdentity: "synthetic-beta"
+  });
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(manager.mutationAdmission("persona-switch"), {
+    allowed: false,
+    mode: null,
+    routeId: null,
+    reason: "ROUTE_TRANSITION"
+  });
+  assert.deepEqual(events, [
+    "protected.launch:route-alpha",
+    "protected.close:route-alpha",
+    "browser.close:persona-switch",
+    "protected.launch:route-beta"
+  ]);
+
+  secondResolve();
+  const beta = await switching;
+
+  assert.equal(beta.mode, "PROTECTED");
+  assert.equal(beta.routeId, "route-beta");
+  assert.equal(beta.expectedEgressIdentity, "synthetic-beta");
+  assert.deepEqual(manager.mutationAdmission("persona-switch"), {
+    allowed: true,
+    mode: "PROTECTED",
+    routeId: "route-beta",
+    reason: "PROTECTED_VERIFIED"
+  });
+
+  await beta.close();
+});
