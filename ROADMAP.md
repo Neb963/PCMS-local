@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P019**
-- Current phase: **P020 — READY**
+- Current phase: **P020 — IN_PROGRESS**
 - Next phase: **P021 — BLOCKED (P020)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
@@ -488,7 +488,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P019 → COMPLETE; P020 → READY; publish to GitHub; **STOP — do not implement P020.**
 
 ### P020 — Direct, Block, route switch and multi-route acceptance
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P019  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -498,7 +498,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add real Mullvad/MCP live acceptance.
 
 **Work:**
-- [ ] T020.1 — Implement/test explicit Direct and Block launch modes
+- [~] T020.1 — Implement/test explicit Direct and Block launch modes
 - [ ] T020.2 — Implement safe route switch/relaunch with fresh egress verification
 - [ ] T020.3 — Test multiple active protected Personas on independent synthetic exits
 

@@ -945,7 +945,7 @@
       "id": "P020",
       "milestone": "M04",
       "name": "Direct, Block, route switch and multi-route acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P019"
       ],
