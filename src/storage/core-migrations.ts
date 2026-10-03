@@ -493,4 +493,5 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
           'NEEDS_HUMAN'
         );
     `
-]);\n
+  })
+]);
