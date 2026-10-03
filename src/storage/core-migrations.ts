@@ -493,5 +493,31 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
           'NEEDS_HUMAN'
         );
     `
+  }),
+  Object.freeze({
+    version: 10,
+    id: "0010-provider-gate-state",
+    sql: `
+      CREATE TABLE provider_state (
+        provider_id TEXT NOT NULL
+          CHECK (length(provider_id) BETWEEN 1 AND 64),
+        scope_kind TEXT NOT NULL
+          CHECK (scope_kind IN ('PROVIDER', 'ACCOUNT', 'PERSONA')),
+        scope_key TEXT NOT NULL
+          CHECK (length(scope_key) BETWEEN 1 AND 128),
+        signal_kind TEXT NOT NULL
+          CHECK (signal_kind IN ('RATE_LIMIT', 'CHALLENGE', 'OUTAGE')),
+        cooldown_until TEXT NOT NULL,
+        reason TEXT NOT NULL
+          CHECK (length(reason) BETWEEN 1 AND 256),
+        observed_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        PRIMARY KEY (provider_id, scope_kind, scope_key)
+      ) STRICT;
+
+      CREATE INDEX provider_state_active_cooldown
+        ON provider_state(provider_id, cooldown_until);
+    `
   })
 ]);

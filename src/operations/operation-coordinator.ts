@@ -1,5 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import {
+  ProviderGate,
+  type ProviderGateLimits
+} from "./provider-gate.js";
+
 const SAFE_EVIDENCE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/u;
 const SAFE_OPAQUE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/u;
 const SAFE_KIND = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/u;
@@ -127,6 +132,7 @@ export interface OperationRecord {
 export interface OperationCoordinatorOptions {
   readonly database: DatabaseSync;
   readonly now?: () => Date;
+  readonly providerGate?: ProviderGateLimits;
 }
 
 export type OperationCoordinatorErrorCode =
@@ -866,10 +872,16 @@ function selectOperationSql(where: string): string {
 export class OperationCoordinator {
   readonly #database: DatabaseSync;
   readonly #now: () => Date;
+  public readonly providerGate: ProviderGate;
 
   public constructor(options: OperationCoordinatorOptions) {
     this.#database = options.database;
     this.#now = options.now ?? (() => new Date());
+    this.providerGate = new ProviderGate({
+      database: options.database,
+      now: this.#now,
+      ...options.providerGate
+    });
   }
 
   public get(operationId: string): OperationRecord | null {

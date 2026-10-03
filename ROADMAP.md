@@ -682,8 +682,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T028.1 — Implement emulator response-loss-after-effect reconciliation
-- [~] T028.2 — Implement provider/account/Persona admission cooldown/concurrency gate
-- [ ] T028.3 — Implement durable HumanTask + transient input continuation through the same Persona
+- [x] T028.2 — Implement provider/account/Persona admission cooldown/concurrency gate
+- [~] T028.3 — Implement durable HumanTask + transient input continuation through the same Persona
 
 **Acceptance:**
 - [ ] A06-07
