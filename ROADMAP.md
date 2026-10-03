@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P032**
-- Current phase: **P033 — IN_PROGRESS**
-- Next phase: **P034 — BLOCKED (P033)**
-- Current milestone: **M07 — Deployer**
+- Completed through: **P033**
+- Current phase: **P034 — READY**
+- Next phase: **P035 — BLOCKED (P034)**
+- Current milestone: **M08 — Refresh measurement and Refresher**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -717,7 +717,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M07 — Deployer
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P030 — Deployer GitHub scanner and artifact selection
 Status: **COMPLETE**  
@@ -784,7 +784,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P032 → COMPLETE; P033 → READY; publish to GitHub; **STOP — do not implement P033.**
 
 ### P033 — Deployer polling, module lifecycle and CI vertical slice
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P032  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -796,24 +796,24 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T033.1 — Implement/coalesce polling under shared provider backpressure
 - [x] T033.2 — Exercise update/disable/crash/rollback while preserving Core operation evidence
-- [~] T033.3 — Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance
+- [x] T033.3 — Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance
 
 **Acceptance:**
-- [ ] A07-08
-- [ ] A07-09
-- [ ] A07-10
-- [ ] A07-11
-- [ ] A07-12
+- [x] A07-08
+- [x] A07-09
+- [x] A07-10
+- [x] A07-11
+- [x] A07-12
 
 **Closure:** relevant tests + CI green; phase report finalized; P033 → COMPLETE; P034 → READY; publish to GitHub; **STOP — do not implement P034.**
 
 ---
 
 ## M08 — Refresh measurement and Refresher
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P034 — Refresh and recent-listing emulator contract
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P033  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

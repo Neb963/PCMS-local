@@ -1455,7 +1455,7 @@
       "id": "P033",
       "milestone": "M07",
       "name": "Deployer polling, module lifecycle and CI vertical slice",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P032"
       ],
@@ -1496,7 +1496,7 @@
       "id": "P034",
       "milestone": "M08",
       "name": "Refresh and recent-listing emulator contract",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P033"
       ],
