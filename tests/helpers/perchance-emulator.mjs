@@ -50,12 +50,45 @@ async function readJson(request) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
+function normalizedDeploymentFile(file) {
+  if (
+    file === null ||
+    typeof file !== "object" ||
+    Array.isArray(file) ||
+    typeof file.path !== "string" ||
+    file.path.length < 1 ||
+    file.path.length > 512 ||
+    typeof file.contentBase64 !== "string"
+  ) {
+    throw new TypeError("generator deployment file is invalid");
+  }
+  return {
+    path: file.path,
+    contentBase64: file.contentBase64
+  };
+}
+
 function normalizedGenerator(generator) {
   assertText(generator.publicId, "generator publicId", 256);
   assertText(generator.slug, "generator slug", 512);
+  const artifactSha256 = generator.artifactSha256 ?? "0".repeat(64);
+  if (
+    typeof artifactSha256 !== "string" ||
+    !/^[a-f0-9]{64}$/u.test(artifactSha256)
+  ) {
+    throw new TypeError("generator artifactSha256 is invalid");
+  }
+  const files = (generator.files ?? []).map(normalizedDeploymentFile);
+  const isPublic = generator.isPublic ?? false;
+  if (typeof isPublic !== "boolean") {
+    throw new TypeError("generator isPublic must be boolean");
+  }
   return {
     publicId: generator.publicId,
-    slug: generator.slug
+    slug: generator.slug,
+    artifactSha256,
+    files,
+    isPublic
   };
 }
 
@@ -198,6 +231,140 @@ export async function startPerchanceEmulator(options = {}) {
     }
 
     if (
+      request.method === "POST" &&
+      (
+        requestUrl.pathname === "/api/save" ||
+        requestUrl.pathname === "/api/getGeneratorPageData"
+      )
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end("invalid request");
+        return;
+      }
+
+      const email =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.email
+          : undefined;
+      const sessionToken =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.sessionToken
+          : undefined;
+      const publicId =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.publicId
+          : undefined;
+
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: requestUrl.pathname,
+        email: typeof email === "string" ? email : null,
+        publicId: typeof publicId === "string" ? publicId : null,
+        sessionPresent:
+          typeof sessionToken === "string" && sessionToken.length > 0,
+        scenario
+      }));
+
+      const accountKey =
+        typeof sessionToken === "string" ? sessions.get(sessionToken) : undefined;
+      const suppliedKey =
+        typeof email === "string" ? asciiLowercase(email) : null;
+      if (
+        accountKey === undefined ||
+        suppliedKey === null ||
+        suppliedKey !== accountKey
+      ) {
+        jsonResponse(response, 200, { status: "session-token-error" });
+        return;
+      }
+      const account = accounts.get(accountKey);
+      const generator =
+        account?.generators.find((candidate) => candidate.publicId === publicId);
+      if (generator === undefined) {
+        jsonResponse(response, 200, { status: "generator-does-not-exist" });
+        return;
+      }
+
+      if (requestUrl.pathname === "/api/getGeneratorPageData") {
+        jsonResponse(response, 200, {
+          status: "success",
+          publicId: generator.publicId,
+          slug: generator.slug,
+          artifactSha256: generator.artifactSha256,
+          files: generator.files.map((file) => ({ ...file })),
+          isPublic: generator.isPublic
+        });
+        return;
+      }
+
+      if (scenario === "PERIMETER_HTML") {
+        const body = "<!doctype html><html><title>synthetic perimeter</title></html>";
+        response.writeHead(403, {
+          "content-type": "text/html; charset=utf-8",
+          "content-length": Buffer.byteLength(body),
+          "cache-control": "no-store"
+        });
+        response.end(body);
+        return;
+      }
+      if (scenario === "HTTP_ERROR") {
+        jsonResponse(response, 503, { status: "server-error" });
+        return;
+      }
+      if (scenario === "UNKNOWN_STATUS") {
+        jsonResponse(response, 200, { status: "future-save-status" });
+        return;
+      }
+
+      const slug = payload.slug;
+      const artifactSha256 = payload.artifactSha256;
+      const files = payload.files;
+      const isPublic = payload.isPublic;
+      if (
+        slug !== generator.slug ||
+        typeof artifactSha256 !== "string" ||
+        !/^[a-f0-9]{64}$/u.test(artifactSha256) ||
+        !Array.isArray(files) ||
+        files.length < 1 ||
+        typeof isPublic !== "boolean"
+      ) {
+        jsonResponse(response, 200, { status: "stale" });
+        return;
+      }
+      let normalizedFiles;
+      try {
+        normalizedFiles = files.map(normalizedDeploymentFile);
+      } catch {
+        jsonResponse(response, 200, { status: "too-big" });
+        return;
+      }
+      generator.artifactSha256 = artifactSha256;
+      generator.files = normalizedFiles;
+      generator.isPublic = isPublic;
+
+      if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
+        setTimeout(() => {
+          if (!response.destroyed) {
+            jsonResponse(response, 200, {
+              status: "saved",
+              publicId: generator.publicId
+            });
+          }
+        }, 1_000);
+        return;
+      }
+      jsonResponse(response, 200, {
+        status: "saved",
+        publicId: generator.publicId
+      });
+      return;
+    }
+
+    if (
       request.method !== "POST" ||
       requestUrl.pathname !== "/api/getGeneratorsByUser"
     ) {
@@ -326,6 +493,18 @@ export async function startPerchanceEmulator(options = {}) {
     replaceGeneratorStableId(publicId, replacementPublicId) {
       assertText(replacementPublicId, "replacement publicId", 256);
       findGenerator(publicId).publicId = replacementPublicId;
+    },
+    readGenerator(publicId) {
+      const generator = findGenerator(publicId);
+      return Object.freeze({
+        publicId: generator.publicId,
+        slug: generator.slug,
+        artifactSha256: generator.artifactSha256,
+        files: Object.freeze(
+          generator.files.map((file) => Object.freeze({ ...file }))
+        ),
+        isPublic: generator.isPublic
+      });
     },
     sessionFor(identity) {
       const account = accounts.get(asciiLowercase(identity));

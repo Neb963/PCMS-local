@@ -93,6 +93,45 @@ export interface PerchanceHumanChallengeEvidence {
   readonly observedAt: string;
 }
 
+export interface PerchanceDeploymentFile {
+  readonly path: string;
+  readonly contentBase64: string;
+}
+
+export interface PerchanceDesiredDeployment {
+  readonly artifactSha256: string;
+  readonly files: readonly PerchanceDeploymentFile[];
+  readonly isPublic: boolean;
+}
+
+export interface PerchanceDeploymentObservation {
+  readonly publicId: string;
+  readonly slug: string;
+  readonly artifactSha256: string;
+  readonly files: readonly PerchanceDeploymentFile[];
+  readonly isPublic: boolean;
+  readonly observedAt: string;
+}
+
+export type PerchanceMutationEffectState =
+  | "NOT_DISPATCHED"
+  | "MAY_HAVE_OCCURRED";
+
+export type PerchanceMutationErrorCode =
+  | "PERCHANCE_MUTATION_REJECTED"
+  | "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN";
+
+export class PerchanceMutationError extends Error {
+  public constructor(
+    public readonly code: PerchanceMutationErrorCode,
+    message: string,
+    public readonly effectState: PerchanceMutationEffectState
+  ) {
+    super(message);
+    this.name = "PerchanceMutationError";
+  }
+}
+
 interface ProviderPageProbeResult {
   readonly kind?: unknown;
   readonly observedIdentity?: unknown;
@@ -570,6 +609,260 @@ export function providerEvidenceFreshness(
     : "CURRENT";
 }
 
+const SHA256_HEX = /^[a-f0-9]{64}$/u;
+const MAX_DEPLOYMENT_FILES = 512;
+const MAX_DEPLOYMENT_BASE64_CHARS = 48 * 1024 * 1024;
+
+function normalizeDeploymentFile(
+  value: PerchanceDeploymentFile
+): PerchanceDeploymentFile {
+  if (
+    !plainObject(value) ||
+    typeof value.path !== "string" ||
+    value.path.length < 1 ||
+    value.path.length > 512 ||
+    value.path.startsWith("/") ||
+    value.path.includes("\\") ||
+    value.path.split("/").some((part) =>
+      part.length === 0 || part === "." || part === ".."
+    ) ||
+    typeof value.contentBase64 !== "string" ||
+    value.contentBase64.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/u.test(value.contentBase64)
+  ) {
+    throw new TypeError("Perchance deployment file is invalid");
+  }
+  return Object.freeze({
+    path: value.path,
+    contentBase64: value.contentBase64
+  });
+}
+
+function normalizeDesiredDeployment(
+  value: PerchanceDesiredDeployment
+): PerchanceDesiredDeployment {
+  if (
+    !plainObject(value) ||
+    typeof value.artifactSha256 !== "string" ||
+    !SHA256_HEX.test(value.artifactSha256) ||
+    typeof value.isPublic !== "boolean" ||
+    !Array.isArray(value.files) ||
+    value.files.length < 1 ||
+    value.files.length > MAX_DEPLOYMENT_FILES
+  ) {
+    throw new TypeError("Perchance desired deployment is invalid");
+  }
+  const files = value.files.map(normalizeDeploymentFile);
+  files.sort((left, right) => left.path.localeCompare(right.path, "en"));
+  if (new Set(files.map((file) => file.path)).size !== files.length) {
+    throw new TypeError("Perchance deployment contains duplicate file paths");
+  }
+  const encodedChars = files.reduce(
+    (total, file) => total + file.contentBase64.length,
+    0
+  );
+  if (encodedChars > MAX_DEPLOYMENT_BASE64_CHARS) {
+    throw new TypeError("Perchance deployment payload is too large");
+  }
+  return Object.freeze({
+    artifactSha256: value.artifactSha256,
+    files: Object.freeze(files),
+    isPublic: value.isPublic
+  });
+}
+
+function buildDeploymentRequestExpression(
+  sessionStateExpression: string,
+  expectedIdentity: string,
+  endpoint: string,
+  payload: Readonly<Record<string, unknown>>
+): string {
+  const expected = JSON.stringify(expectedIdentity);
+  const endpointJson = JSON.stringify(endpoint);
+  const payloadJson = JSON.stringify(payload);
+  return `(async () => {
+    let sessionState;
+    try {
+      sessionState = await Promise.resolve((${sessionStateExpression}));
+    } catch {
+      return { kind: "SESSION_UNAVAILABLE" };
+    }
+    const sessionToken =
+      sessionState && typeof sessionState === "object" &&
+      typeof sessionState.sessionToken === "string" &&
+      sessionState.sessionToken.length > 0
+        ? sessionState.sessionToken
+        : null;
+    if (sessionToken === null) {
+      return { kind: "SESSION_UNAVAILABLE" };
+    }
+    let response;
+    try {
+      response = await fetch(${endpointJson}, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          email: ${expected},
+          sessionToken,
+          ...${payloadJson}
+        })
+      });
+    } catch {
+      return { kind: "TRANSPORT_UNKNOWN" };
+    }
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      try { await response.arrayBuffer(); } catch {}
+      return {
+        kind: "RESPONSE",
+        httpStatus: response.status,
+        contentType,
+        jsonParsed: false,
+        body: null
+      };
+    }
+    try {
+      return {
+        kind: "RESPONSE",
+        httpStatus: response.status,
+        contentType,
+        jsonParsed: true,
+        body: await response.json()
+      };
+    } catch {
+      return {
+        kind: "RESPONSE",
+        httpStatus: response.status,
+        contentType,
+        jsonParsed: false,
+        body: null
+      };
+    }
+  })()`;
+}
+
+function decodeDeploymentResponse(raw: unknown): Readonly<Record<string, unknown>> {
+  if (!plainObject(raw)) {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+      "Perchance mutation returned an invalid result",
+      "MAY_HAVE_OCCURRED"
+    );
+  }
+  if (raw["kind"] === "SESSION_UNAVAILABLE") {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_REJECTED",
+      "Perchance session material is unavailable",
+      "NOT_DISPATCHED"
+    );
+  }
+  if (raw["kind"] === "TRANSPORT_UNKNOWN") {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+      "Perchance mutation transport outcome is unknown",
+      "MAY_HAVE_OCCURRED"
+    );
+  }
+  if (
+    raw["kind"] !== "RESPONSE" ||
+    typeof raw["httpStatus"] !== "number" ||
+    raw["jsonParsed"] !== true ||
+    !plainObject(raw["body"])
+  ) {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+      "Perchance mutation response is not a verified JSON result",
+      "MAY_HAVE_OCCURRED"
+    );
+  }
+  const body = raw["body"];
+  const status = body["status"];
+  if (raw["httpStatus"] < 200 || raw["httpStatus"] > 299) {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+      "Perchance mutation returned an HTTP error",
+      "MAY_HAVE_OCCURRED"
+    );
+  }
+  if (status === "saved") {
+    return body;
+  }
+  if (
+    status === "stale" ||
+    status === "captcha-needed" ||
+    status === "session-token-error" ||
+    status === "invalid-edit-key" ||
+    status === "too-many-requests" ||
+    status === "too-big" ||
+    status === "generator-does-not-exist"
+  ) {
+    throw new PerchanceMutationError(
+      "PERCHANCE_MUTATION_REJECTED",
+      `Perchance mutation was rejected: ${status}`,
+      "NOT_DISPATCHED"
+    );
+  }
+  throw new PerchanceMutationError(
+    "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+    "Perchance mutation returned an unknown status",
+    "MAY_HAVE_OCCURRED"
+  );
+}
+
+function decodeDeploymentObservation(
+  raw: unknown,
+  observedAt: string
+): PerchanceDeploymentObservation {
+  if (
+    !plainObject(raw) ||
+    raw["kind"] !== "RESPONSE" ||
+    typeof raw["httpStatus"] !== "number" ||
+    raw["httpStatus"] < 200 ||
+    raw["httpStatus"] > 299 ||
+    raw["jsonParsed"] !== true ||
+    !plainObject(raw["body"])
+  ) {
+    throw new Error("Perchance deployment read returned an invalid response");
+  }
+  const body = raw["body"];
+  if (body["status"] !== "success") {
+    throw new Error("Perchance deployment read did not return success");
+  }
+  const publicId = body["publicId"];
+  const slug = body["slug"];
+  const artifactSha256 = body["artifactSha256"];
+  const isPublic = body["isPublic"];
+  const rawFiles = body["files"];
+  if (
+    !boundedText(publicId, 256) ||
+    !boundedText(slug, 512) ||
+    typeof artifactSha256 !== "string" ||
+    !SHA256_HEX.test(artifactSha256) ||
+    typeof isPublic !== "boolean" ||
+    !Array.isArray(rawFiles) ||
+    rawFiles.length < 1 ||
+    rawFiles.length > MAX_DEPLOYMENT_FILES
+  ) {
+    throw new Error("Perchance deployment read schema is invalid");
+  }
+  const files = rawFiles.map((file) =>
+    normalizeDeploymentFile(file as PerchanceDeploymentFile)
+  );
+  files.sort((left, right) => left.path.localeCompare(right.path, "en"));
+  if (new Set(files.map((file) => file.path)).size !== files.length) {
+    throw new Error("Perchance deployment read contains duplicate files");
+  }
+  return Object.freeze({
+    publicId,
+    slug,
+    artifactSha256,
+    files: Object.freeze(files),
+    isPublic,
+    observedAt
+  });
+}
+
 export class PerchanceProvider {
   readonly #browserProfile: PerchanceBrowserReadProfile;
   readonly #now: () => Date;
@@ -815,4 +1108,82 @@ export class PerchanceProvider {
       reasonCode: "GENERATOR_NOT_OWNED"
     });
   }
+  public async saveGeneratorDeployment(
+    page: BrowserPage,
+    expectedIdentity: string,
+    target: Readonly<{
+      providerStableId: string;
+      currentSlug: string;
+    }>,
+    desired: PerchanceDesiredDeployment,
+    commandOptions: BrowserDriverCommandOptions = {}
+  ): Promise<Readonly<{
+    status: "SAVED";
+    publicId: string;
+    observedAt: string;
+  }>> {
+    validateIdentity(expectedIdentity);
+    if (!boundedText(target.providerStableId, 256)) {
+      throw new TypeError("Perchance deployment target stable ID is invalid");
+    }
+    if (!boundedText(target.currentSlug, 512)) {
+      throw new TypeError("Perchance deployment target slug is invalid");
+    }
+    const normalized = normalizeDesiredDeployment(desired);
+    const raw = await page.evaluate(
+      buildDeploymentRequestExpression(
+        this.#browserProfile.sessionStateExpression,
+        expectedIdentity,
+        "/api/save",
+        {
+          publicId: target.providerStableId,
+          slug: target.currentSlug,
+          artifactSha256: normalized.artifactSha256,
+          files: normalized.files,
+          isPublic: normalized.isPublic
+        }
+      ),
+      commandOptions
+    );
+    const body = decodeDeploymentResponse(raw);
+    if (
+      body["publicId"] !== undefined &&
+      body["publicId"] !== target.providerStableId
+    ) {
+      throw new PerchanceMutationError(
+        "PERCHANCE_MUTATION_PROTOCOL_UNKNOWN",
+        "Perchance save response stable ID does not match the requested target",
+        "MAY_HAVE_OCCURRED"
+      );
+    }
+    return Object.freeze({
+      status: "SAVED",
+      publicId: target.providerStableId,
+      observedAt: this.#now().toISOString()
+    });
+  }
+
+  public async observeGeneratorDeployment(
+    page: BrowserPage,
+    expectedIdentity: string,
+    providerStableId: string,
+    commandOptions: BrowserDriverCommandOptions = {}
+  ): Promise<PerchanceDeploymentObservation> {
+    validateIdentity(expectedIdentity);
+    if (!boundedText(providerStableId, 256)) {
+      throw new TypeError("Perchance deployment target stable ID is invalid");
+    }
+    const observedAt = this.#now().toISOString();
+    const raw = await page.evaluate(
+      buildDeploymentRequestExpression(
+        this.#browserProfile.sessionStateExpression,
+        expectedIdentity,
+        "/api/getGeneratorPageData",
+        { publicId: providerStableId }
+      ),
+      commandOptions
+    );
+    return decodeDeploymentObservation(raw, observedAt);
+  }
+
 }
