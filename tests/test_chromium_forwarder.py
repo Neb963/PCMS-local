@@ -133,6 +133,13 @@ class ChromiumForwarderLeaseTests(unittest.TestCase):
             def __getattr__(self, name):
                 return getattr(self.sock, name)
 
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                self.sock.close()
+                return False
+
         denied = real_socket(socket.AF_INET, socket.SOCK_STREAM)
         allowed = real_socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
