@@ -140,10 +140,7 @@ function errorPayload(error: unknown): ModuleRpcErrorPayload {
       /^[A-Z][A-Z0-9_]{1,63}$/.test(candidate.code)
         ? candidate.code
         : "MODULE_REQUEST_FAILED",
-    message:
-      error instanceof Error
-        ? error.message.slice(0, 512)
-        : "Module request failed",
+    message: "Module request failed",
     retryable:
       typeof candidate?.retryable === "boolean"
         ? candidate.retryable
@@ -163,7 +160,7 @@ function logFailure(event: string, error: unknown): void {
           typeof (error as { readonly code?: unknown }).code === "string"
             ? (error as { readonly code: string }).code
             : "MODULE_RUNNER_FAILURE",
-        message: error instanceof Error ? error.message : "Unknown module-runner failure"
+        message: "Module runner failure"
       }
     })}\n`
   );
