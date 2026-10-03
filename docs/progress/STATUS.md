@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P018**  
 Current milestone: **M04 — Protected routing**  
-Current phase: **P019 — READY**  
+Current phase: **P019 — IN_PROGRESS**  
 Next phase: **P020 — BLOCKED (P019)**
 
 Canonical execution view: `ROADMAP.md`.

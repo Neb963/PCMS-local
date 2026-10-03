@@ -908,7 +908,7 @@
       "id": "P019",
       "milestone": "M04",
       "name": "Leak resistance and route-loss fail-closed behavior",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P018"
       ],

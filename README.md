@@ -33,7 +33,7 @@ A module is an operator-installed/updateable package executed outside the Core p
 
 ## Current status
 
-**P018 protected synthetic egress and independent verification is complete; M04 protected routing is in progress and P019 leak resistance and route-loss fail-closed behavior is READY.** No production-ready PCMS-local release exists yet.
+**P018 protected synthetic egress and independent verification is complete; M04 protected routing is in progress and P019 leak resistance and route-loss fail-closed behavior is IN_PROGRESS.** No production-ready PCMS-local release exists yet.
 
 The repository is intentionally starting fresh rather than incrementally converting the Firefox extension architecture. PersonaMonkey and earlier PCMS repositories are sources of proven requirements, contracts and selected implementation; they are not architecture authority.
 
