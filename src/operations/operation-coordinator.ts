@@ -790,7 +790,8 @@ function assertLegalTransition(
   current: OperationState,
   next: OperationState
 ): void {
-  if (!LEGAL_TRANSITIONS[current].includes(next)) {
+  const allowed: readonly OperationState[] = LEGAL_TRANSITIONS[current];
+  if (!allowed.includes(next)) {
     fail(
       "OPERATION_INVALID_TRANSITION",
       `operation transition ${current} -> ${next} is not legal`
@@ -1116,6 +1117,9 @@ export class OperationCoordinator {
           "OPERATION_INVALID_TRANSITION",
           `dispatch requires PREPARED state, found ${operation.state}`
         );
+      }
+      if (operation.owner.kind === "MODULE") {
+        this.#assertModuleOwnerCurrent(operation.owner);
       }
       const nowDate = this.#currentDate();
       assertFreshPreconditions(operation.preconditions, nowDate);

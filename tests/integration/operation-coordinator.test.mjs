@@ -10,6 +10,12 @@ import {
   generatorOperationTargetKey
 } from "../../dist/operations/operation-coordinator.js";
 import {
+  ModuleLifecycleStore
+} from "../../dist/modules/lifecycle-store.js";
+import {
+  ModuleStateStore
+} from "../../dist/modules/state-store.js";
+import {
   ensurePcmsDirectories,
   resolvePcmsPaths
 } from "../../dist/config/paths.js";
@@ -263,6 +269,39 @@ test("P027 possible-dispatch loss becomes UNCERTAIN while proven non-dispatch is
         return true;
       }
     );
+    assert.throws(
+      () => f.coordinator.authorizeDispatch({
+        operationId: uncertain.operationId,
+        expectedClaimEpoch: uncertain.claimEpoch,
+        evidence: { step: "blind-retry" }
+      }),
+      (error) => {
+        assert.ok(error instanceof OperationCoordinatorError);
+        assert.equal(error.code, "OPERATION_INVALID_TRANSITION");
+        return true;
+      }
+    );
+
+    const moduleTarget = generatorOperationTargetKey("generator-module-loss");
+    const moduleLost = f.coordinator.prepare(input({
+      operationId: "operation-module-loss",
+      idempotencyKey: "request-module-loss",
+      targetKey: moduleTarget
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: moduleLost.operationId,
+      expectedClaimEpoch: moduleLost.claimEpoch,
+      evidence: { step: "save" }
+    });
+    assert.equal(
+      f.coordinator.recordExecutionLoss({
+        operationId: moduleLost.operationId,
+        expectedClaimEpoch: moduleLost.claimEpoch,
+        source: "MODULE",
+        effectState: "MAY_HAVE_OCCURRED"
+      }).state,
+      "UNCERTAIN"
+    );
 
     const safeTarget = generatorOperationTargetKey("generator-safe");
     const safe = f.coordinator.prepare(input({
@@ -392,6 +431,64 @@ test("P027 explicit startup recovery converts interrupted dispatched states to U
     );
     assert.equal(
       f.coordinator.require(untouched.operationId).state,
+      "PREPARED"
+    );
+  } finally {
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+
+test("P027 module runtime generation is revalidated immediately before dispatch", async () => {
+  const f = await fixture("pcms-operation-module-fence-");
+  const state = new ModuleStateStore(f.database, {
+    now: () => f.now()
+  });
+  const lifecycle = new ModuleLifecycleStore(f.database, {
+    now: () => f.now()
+  });
+
+  try {
+    state.registerModule("fixture.operation", "1.0.0", 1, {});
+    const operation = f.coordinator.prepare({
+      ...input({
+        operationId: "operation-module-fence",
+        idempotencyKey: "request-module-fence",
+        targetKey: generatorOperationTargetKey("generator-module-fence")
+      }),
+      owner: {
+        kind: "MODULE",
+        moduleId: "fixture.operation",
+        moduleVersion: "1.0.0",
+        runtimeGeneration: 1
+      }
+    });
+
+    assert.deepEqual(
+      lifecycle.listUnresolvedEvidence("fixture.operation")
+        .map((entry) => [entry.kind, entry.evidenceId]),
+      [["OPERATION", operation.operationId]]
+    );
+
+    const disabled = lifecycle.disableModule("fixture.operation", 1);
+    assert.equal(disabled.runtimeGeneration, 2);
+    assert.equal(disabled.status, "DISABLED");
+
+    assert.throws(
+      () => f.coordinator.authorizeDispatch({
+        operationId: operation.operationId,
+        expectedClaimEpoch: operation.claimEpoch,
+        evidence: { step: "save" }
+      }),
+      (error) => {
+        assert.ok(error instanceof OperationCoordinatorError);
+        assert.equal(error.code, "OPERATION_MODULE_OWNER_STALE");
+        return true;
+      }
+    );
+    assert.equal(
+      f.coordinator.require(operation.operationId).state,
       "PREPARED"
     );
   } finally {
