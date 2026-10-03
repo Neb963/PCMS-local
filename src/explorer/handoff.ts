@@ -77,11 +77,11 @@ export class ExplorerHandoffService {
     this.#database = options.database;
     this.#generators = new GeneratorRepository({
       database: options.database,
-      now: options.now
+      ...(options.now === undefined ? {} : { now: options.now })
     });
     this.#projects = new ProjectRepository({
       database: options.database,
-      now: options.now
+      ...(options.now === undefined ? {} : { now: options.now })
     });
   }
 

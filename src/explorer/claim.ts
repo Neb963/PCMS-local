@@ -312,13 +312,13 @@ export class ExplorerClaimService {
   }>) {
     this.#accounts = new AccountRepository({
       database: options.database,
-      now: options.now
+      ...(options.now === undefined ? {} : { now: options.now })
     });
     this.#coordinator =
       options.coordinator ??
       new OperationCoordinator({
         database: options.database,
-        now: options.now
+        ...(options.now === undefined ? {} : { now: options.now })
       });
     this.#reconciler = new OperationReconciler(this.#coordinator);
     this.#reservations = options.reservations;
