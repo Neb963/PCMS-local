@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P040**
-- Current phase: **P041 — READY**
+- Current phase: **P041 — IN_PROGRESS**
 - Next phase: **P042 — BLOCKED (P041)**
 - Current milestone: **M10 — Statistics, backup, restore and operational UX**
 - Final live milestone: **M12 — P048–P049**
@@ -977,7 +977,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P041 — Statistics and coherent Core/module backup
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P040  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -987,7 +987,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not let Statistics mutate authoritative state or silently include profiles.
 
 **Work:**
-- [ ] T041.1 — Implement Statistics projections from operational facts only
+- [~] T041.1 — Implement Statistics projections from operational facts only
 - [ ] T041.2 — Implement DB/module-state backup manifest and hashes
 - [ ] T041.3 — Implement automatic retention with explicit profile exclusion
 

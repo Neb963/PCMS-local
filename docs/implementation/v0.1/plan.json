@@ -1748,7 +1748,7 @@
       "id": "P041",
       "milestone": "M10",
       "name": "Statistics and coherent Core/module backup",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P040"
       ],
