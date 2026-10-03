@@ -660,7 +660,7 @@ test("P033 routed Account Persona emulator Deployer module vertical slice reconc
         .join("\n");
     const routedApiPaths = [
       ...routedTraffic.matchAll(
-        /^POST\s+(\/api\/\S+)\s+HTTP\/1\.[01]\r?$/gmu
+        /POST\s+(\/api\/[^\s]+)\s+HTTP\/1\.[01]\r\n/gu
       )
     ].map((match) => match[1]);
     assert.deepEqual(
