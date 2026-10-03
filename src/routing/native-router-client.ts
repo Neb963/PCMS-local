@@ -10,7 +10,12 @@ const DEFAULT_MAX_RESPONSE_BYTES = 1024 * 1024;
 const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const ENTRY_ID_RE = /^[A-Za-z0-9._-]{1,140}$/;
+const ROUTE_ID_RE = /^[A-Za-z0-9._:-]{1,160}$/;
+const CHROMIUM_LEASE_ID_RE = /^[A-Za-z0-9._:-]{1,160}$/;
 const REQUEST_ID_RE = /^[A-Za-z0-9._:-]{1,160}$/;
+const CHROMIUM_LEASE_TTL_MIN_SECONDS = 1;
+const CHROMIUM_LEASE_TTL_MAX_SECONDS = 5 * 60;
+const CHROMIUM_LEASE_GENERATION_MAX = 2 ** 31 - 1;
 
 type RouterCommand =
   | "ping"
@@ -19,7 +24,9 @@ type RouterCommand =
   | "ensure_up"
   | "stop"
   | "restart"
-  | "set_entry";
+  | "set_entry"
+  | "prepare_chromium_exit"
+  | "release_chromium_exit";
 
 export type NativeRouterClientErrorCode =
   | "INVALID_ROUTER_CLIENT_CONFIG"
@@ -82,6 +89,33 @@ export interface RouterEntryList {
   readonly selectedEntry: string | null;
 }
 
+export interface ChromiumExitLease {
+  readonly ready: true;
+  readonly routeId: string;
+  readonly relayIp: string;
+  readonly relayPort: number;
+  readonly localHost: "127.0.0.1";
+  readonly localPort: number;
+  readonly leaseId: string;
+  readonly leaseGeneration: number;
+  readonly leaseTtlSeconds: number;
+  readonly selectedEntry: string | null;
+}
+
+export interface ChromiumExitRequest {
+  readonly routeId: string;
+  readonly relayIp: string;
+  readonly relayPort?: number;
+  readonly start?: boolean;
+  readonly leaseId: string;
+  readonly leaseGeneration: number;
+  readonly leaseTtlSeconds?: number;
+}
+
+export interface ChromiumExitRelease {
+  readonly released: boolean;
+}
+
 export interface NativeRouterClient {
   ping(): Promise<RouterPing>;
   status(): Promise<RouterStatus>;
@@ -90,6 +124,12 @@ export interface NativeRouterClient {
   stop(): Promise<RouterStatus>;
   restart(): Promise<RouterStatus>;
   setEntry(entryId: string, start?: boolean): Promise<RouterStatus>;
+  prepareChromiumExit(request: ChromiumExitRequest): Promise<ChromiumExitLease>;
+  releaseChromiumExit(
+    routeId: string,
+    leaseId: string,
+    leaseGeneration: number
+  ): Promise<ChromiumExitRelease>;
 }
 
 export interface NativeRouterClientOptions {
@@ -392,6 +432,58 @@ function parseStatus(
   });
 }
 
+function parseChromiumExitLease(
+  value: Record<string, unknown>,
+  operation: RouterCommand
+): ChromiumExitLease {
+  if (value["ready"] !== true) {
+    throw protocolError(operation, "Chromium exit response must be ready");
+  }
+  const localHost = readString(value, "local_host", operation);
+  if (localHost !== "127.0.0.1") {
+    throw protocolError(operation, "Chromium exit must bind IPv4 loopback");
+  }
+  const routeId = readString(value, "route_id", operation);
+  const leaseId = readString(value, "lease_id", operation);
+  if (!ROUTE_ID_RE.test(routeId) || !CHROMIUM_LEASE_ID_RE.test(leaseId)) {
+    throw protocolError(operation, "Chromium exit response identifiers are invalid");
+  }
+
+  return Object.freeze({
+    ready: true,
+    routeId,
+    relayIp: readString(value, "relay_ip", operation),
+    relayPort: readInteger(value, "relay_port", operation, 1, 65_535),
+    localHost,
+    localPort: readInteger(value, "local_port", operation, 1, 65_535),
+    leaseId,
+    leaseGeneration: readInteger(
+      value,
+      "lease_generation",
+      operation,
+      1,
+      CHROMIUM_LEASE_GENERATION_MAX
+    ),
+    leaseTtlSeconds: readInteger(
+      value,
+      "lease_ttl_seconds",
+      operation,
+      CHROMIUM_LEASE_TTL_MIN_SECONDS,
+      CHROMIUM_LEASE_TTL_MAX_SECONDS
+    ),
+    selectedEntry: readNullableString(value, "selected_entry", operation)
+  });
+}
+
+function parseChromiumExitRelease(
+  value: Record<string, unknown>,
+  operation: RouterCommand
+): ChromiumExitRelease {
+  return Object.freeze({
+    released: readBoolean(value, "released", operation)
+  });
+}
+
 function parseEntryList(
   value: Record<string, unknown>,
   operation: RouterCommand
@@ -567,6 +659,80 @@ export function createNativeRouterClient(
           start
         }),
         "set_entry"
+      );
+    },
+    async prepareChromiumExit(
+      request: ChromiumExitRequest
+    ): Promise<ChromiumExitLease> {
+      const relayPort = request.relayPort ?? 1080;
+      const leaseTtlSeconds = request.leaseTtlSeconds ?? 60;
+      if (!ROUTE_ID_RE.test(request.routeId)) {
+        throw requestError("prepare_chromium_exit", "Router route ID is invalid");
+      }
+      if (!CHROMIUM_LEASE_ID_RE.test(request.leaseId)) {
+        throw requestError("prepare_chromium_exit", "Chromium lease ID is invalid");
+      }
+      if (
+        !Number.isSafeInteger(request.leaseGeneration) ||
+        request.leaseGeneration < 1 ||
+        request.leaseGeneration > CHROMIUM_LEASE_GENERATION_MAX
+      ) {
+        throw requestError(
+          "prepare_chromium_exit",
+          "Chromium lease generation is invalid"
+        );
+      }
+      if (
+        !Number.isSafeInteger(leaseTtlSeconds) ||
+        leaseTtlSeconds < CHROMIUM_LEASE_TTL_MIN_SECONDS ||
+        leaseTtlSeconds > CHROMIUM_LEASE_TTL_MAX_SECONDS
+      ) {
+        throw requestError("prepare_chromium_exit", "Chromium lease TTL is invalid");
+      }
+      if (!Number.isSafeInteger(relayPort) || relayPort < 1 || relayPort > 65_535) {
+        throw requestError("prepare_chromium_exit", "Router relay port is invalid");
+      }
+      return parseChromiumExitLease(
+        await call("prepare_chromium_exit", {
+          route_id: request.routeId,
+          relay_ip: request.relayIp,
+          relay_port: relayPort,
+          start: request.start ?? true,
+          lease_id: request.leaseId,
+          lease_generation: request.leaseGeneration,
+          lease_ttl_seconds: leaseTtlSeconds
+        }),
+        "prepare_chromium_exit"
+      );
+    },
+    async releaseChromiumExit(
+      routeId: string,
+      leaseId: string,
+      leaseGeneration: number
+    ): Promise<ChromiumExitRelease> {
+      if (!ROUTE_ID_RE.test(routeId) || !CHROMIUM_LEASE_ID_RE.test(leaseId)) {
+        throw requestError(
+          "release_chromium_exit",
+          "Chromium exit release identifiers are invalid"
+        );
+      }
+      if (
+        !Number.isSafeInteger(leaseGeneration) ||
+        leaseGeneration < 1 ||
+        leaseGeneration > CHROMIUM_LEASE_GENERATION_MAX
+      ) {
+        throw requestError(
+          "release_chromium_exit",
+          "Chromium lease generation is invalid"
+        );
+      }
+      return parseChromiumExitRelease(
+        await call("release_chromium_exit", {
+          route_id: routeId,
+          lease_id: leaseId,
+          lease_generation: leaseGeneration
+        }),
+        "release_chromium_exit"
       );
     }
   });

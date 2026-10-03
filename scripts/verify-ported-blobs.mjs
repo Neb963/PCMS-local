@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 const expected = new Map([
-  ["native/routerd.py", "345911a056c4a01db86e6a805d49b7d44233e7a1"],
   ["native/sanitize_configs.py", "297e06bd909ca9dd02d31bd3a4b1550c8b9bd825"],
   ["native/persona-mullvad-router.service.in", "55bb2af323c578d02ef661029664531e7fde8dc3"],
   ["native/routerctl.py", "f873d588e1b625899ab76b8afd9c25ded37f8e47"],
@@ -22,4 +21,8 @@ for (const [path, sha] of expected) {
   const actual = gitBlobSha(bytes);
   if (actual !== sha) throw new Error(`${path}: expected upstream blob ${sha}, got ${actual}`);
 }
-console.log(`ported-source verification passed: ${expected.size} exact upstream blobs`);
+const provenance = await readFile("PORTING_PROVENANCE.md", "utf8");
+if (!provenance.includes("P017 adaptation") || !provenance.includes("345911a056c4a01db86e6a805d49b7d44233e7a1")) {
+  throw new Error("adapted routerd.py must retain its upstream provenance record");
+}
+console.log(`ported-source verification passed: ${expected.size} exact upstream blobs; routerd.py tracked as adapted`);

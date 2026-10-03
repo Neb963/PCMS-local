@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P016**
-- Current phase: **P017 — READY**
-- Next phase: **P018 — BLOCKED (P017)**
+- Completed through: **P017**
+- Current phase: **P018 — READY**
+- Next phase: **P019 — BLOCKED (P018)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
 
@@ -426,7 +426,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P016 → COMPLETE; P017 → READY; publish to GitHub; **STOP — do not implement P017.**
 
 ### P017 — Chromium-compatible loopback forwarder lease
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P016  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -436,17 +436,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not weaken existing authenticated Firefox-compatible forwarder behavior.
 
 **Work:**
-- [ ] T017.1 — Implement prepare_chromium_exit-equivalent daemon contract
-- [ ] T017.2 — Bind forwarder loopback-only with route/lease lifetime
-- [ ] T017.3 — Test expiration, release, stale lease and unauthorized access paths
+- [x] T017.1 — Implement prepare_chromium_exit-equivalent daemon contract
+- [x] T017.2 — Bind forwarder loopback-only with route/lease lifetime
+- [x] T017.3 — Test expiration, release, stale lease and unauthorized access paths
 
 **Acceptance:**
-- [ ] A04-03
+- [x] A04-03
 
 **Closure:** relevant tests + CI green; phase report finalized; P017 → COMPLETE; P018 → READY; publish to GitHub; **STOP — do not implement P018.**
 
 ### P018 — Protected synthetic egress and independent verification
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P017  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
