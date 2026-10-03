@@ -205,5 +205,47 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         )
       ) STRICT;
     `
+  }),
+  Object.freeze({
+    version: 6,
+    id: "0006-persona-browser-runtime",
+    sql: `
+      CREATE TABLE persona_browser_runtime (
+        persona_uid TEXT PRIMARY KEY,
+        state TEXT NOT NULL
+          CHECK (state IN ('STARTING', 'RUNNING', 'DEGRADED')),
+        pid INTEGER
+          CHECK (pid IS NULL OR pid > 0),
+        process_start_ticks TEXT,
+        executable_path TEXT,
+        executable_real_path TEXT,
+        browser_version TEXT,
+        devtools_port INTEGER
+          CHECK (
+            devtools_port IS NULL OR
+            (devtools_port BETWEEN 1 AND 65535)
+          ),
+        devtools_path TEXT,
+        started_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_error TEXT
+          CHECK (last_error IS NULL OR length(last_error) <= 512),
+        CHECK (
+          state <> 'RUNNING' OR
+          (
+            pid IS NOT NULL AND
+            process_start_ticks IS NOT NULL AND
+            executable_path IS NOT NULL AND
+            executable_real_path IS NOT NULL AND
+            browser_version IS NOT NULL AND
+            devtools_port IS NOT NULL AND
+            devtools_path IS NOT NULL
+          )
+        ),
+        FOREIGN KEY (persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE CASCADE
+      ) STRICT;
+    `
   })
 ]);

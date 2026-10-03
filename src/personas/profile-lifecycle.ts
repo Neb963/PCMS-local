@@ -442,6 +442,40 @@ export class PersonaProfileLifecycle {
     return canonicalProfile;
   }
 
+  public listOpen(): readonly PersonaProfileRecord[] {
+    const rows = this.#database.prepare(`
+      SELECT
+        persona_uid,
+        lifecycle_status,
+        profile_state,
+        browser_backend,
+        profile_relative_path,
+        profile_delete_state,
+        profile_deleted_at,
+        profile_backup_decision,
+        created_at,
+        updated_at,
+        retired_at,
+        revision
+      FROM personas
+      WHERE profile_state = 'OPEN'
+      ORDER BY persona_uid
+    `).all() as unknown as PersonaRow[];
+
+    return Object.freeze(
+      rows.map((row) => {
+        const record = parseRecord(row);
+        if (record === null) {
+          throw new PersonaProfileError(
+            "PERSONA_PROFILE_INCOMPATIBLE",
+            "Open Persona profile row unexpectedly disappeared"
+          );
+        }
+        return record;
+      })
+    );
+  }
+
   public async allocate(personaUid: string): Promise<AllocatedPersonaProfile> {
     assertPersonaUid(personaUid);
     const expectedPath = expectedRelativePath(personaUid);

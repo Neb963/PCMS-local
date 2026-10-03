@@ -134,6 +134,7 @@ async function createBrowserFixture(prefix) {
   });
   const manager = new ChromiumBrowserManager({
     lifecycle,
+    database,
     executablePath: requiredChromiumBinary(),
     startupTimeoutMs: 20_000,
     closeTimeoutMs: 8_000
