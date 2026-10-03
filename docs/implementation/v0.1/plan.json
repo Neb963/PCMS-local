@@ -1416,7 +1416,7 @@
       "id": "P032",
       "milestone": "M07",
       "name": "Deployer update, no-op, drift and response-loss reconciliation",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P031"
       ],

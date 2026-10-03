@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P031**
-- Current phase: **P032 — READY**
+- Current phase: **P032 — IN_PROGRESS**
 - Next phase: **P033 — BLOCKED (P032)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
@@ -762,7 +762,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P031 → COMPLETE; P032 → READY; publish to GitHub; **STOP — do not implement P032.**
 
 ### P032 — Deployer update, no-op, drift and response-loss reconciliation
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P031  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -772,7 +772,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add polling/module-update concerns yet.
 
 **Work:**
-- [ ] T032.1 — Implement verified-SHA no-op and changed-artifact update
+- [~] T032.1 — Implement verified-SHA no-op and changed-artifact update
 - [ ] T032.2 — Reject old-slug/provider-identity mismatch redirect
 - [ ] T032.3 — Reconcile emulated lost save response before any retry
 
