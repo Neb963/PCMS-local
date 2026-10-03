@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P038**
-- Current phase: **P039 — READY**
+- Current phase: **P039 — IN_PROGRESS**
 - Next phase: **P040 — BLOCKED (P039)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
@@ -928,7 +928,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P038 → COMPLETE; P039 → READY; publish to GitHub; **STOP — do not implement P039.**
 
 ### P039 — Provisioning HumanTask, identity activation and interrupted-flow recovery
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P038  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -938,7 +938,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not bypass CAPTCHA or blindly retry ambiguous signup effects.
 
 **Work:**
-- [ ] T039.1 — Implement CAPTCHA/code/verification-needed HumanTask continuation
+- [~] T039.1 — Implement CAPTCHA/code/verification-needed HumanTask continuation
 - [ ] T039.2 — Verify authenticated provider identity before ACTIVE
 - [ ] T039.3 — Reconcile interrupted signup/login without duplicate account creation
 

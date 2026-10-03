@@ -1676,7 +1676,7 @@
       "id": "P039",
       "milestone": "M09",
       "name": "Provisioning HumanTask, identity activation and interrupted-flow recovery",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P038"
       ],
