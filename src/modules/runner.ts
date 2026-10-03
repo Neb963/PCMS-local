@@ -183,10 +183,7 @@ function errorPayloadFromUnknown(
     /^[A-Z][A-Z0-9_]{1,63}$/.test(candidate.code)
       ? candidate.code
       : fallbackCode;
-  const message =
-    error instanceof Error && error.message !== ""
-      ? error.message.slice(0, 512)
-      : fallbackMessage;
+  const message = fallbackMessage;
   const retryable =
     typeof candidate?.retryable === "boolean"
       ? candidate.retryable
