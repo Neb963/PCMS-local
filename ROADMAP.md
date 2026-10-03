@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P019**
-- Current phase: **P020 — READY**
-- Next phase: **P021 — BLOCKED (P020)**
-- Current milestone: **M04 — Protected routing**
+- Completed through: **P020**
+- Current phase: **P021 — READY**
+- Next phase: **P022 — BLOCKED (P021)**
+- Current milestone: **M05 — Accounts, Generator identity and inventory**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -402,7 +402,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M04 — Protected routing
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P016 — Native router baseline and bounded Core client
 Status: **COMPLETE**  
@@ -488,7 +488,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P019 → COMPLETE; P020 → READY; publish to GitHub; **STOP — do not implement P020.**
 
 ### P020 — Direct, Block, route switch and multi-route acceptance
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P019  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -498,25 +498,25 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add real Mullvad/MCP live acceptance.
 
 **Work:**
-- [ ] T020.1 — Implement/test explicit Direct and Block launch modes
-- [ ] T020.2 — Implement safe route switch/relaunch with fresh egress verification
-- [ ] T020.3 — Test multiple active protected Personas on independent synthetic exits
+- [x] T020.1 — Implement/test explicit Direct and Block launch modes
+- [x] T020.2 — Implement safe route switch/relaunch with fresh egress verification
+- [x] T020.3 — Test multiple active protected Personas on independent synthetic exits
 
 **Acceptance:**
-- [ ] A04-08
-- [ ] A04-09
-- [ ] A04-10
-- [ ] A04-11
+- [x] A04-08
+- [x] A04-09
+- [x] A04-10
+- [x] A04-11
 
 **Closure:** relevant tests + CI green; phase report finalized; P020 → COMPLETE; P021 → READY; publish to GitHub; **STOP — do not implement P021.**
 
 ---
 
 ## M05 — Accounts, Generator identity and inventory
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P021 — Account-Persona binding invariants
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P020  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
