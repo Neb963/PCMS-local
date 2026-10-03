@@ -688,7 +688,7 @@
       "id": "P013",
       "milestone": "M03",
       "name": "Chromium persistence, isolation and simultaneous Personas",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P012"
       ],
@@ -725,7 +725,7 @@
       "id": "P014",
       "milestone": "M03",
       "name": "Browser ownership, crash/restart reconciliation and resource cap",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P013"
       ],
