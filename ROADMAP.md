@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P039**
-- Current phase: **P040 — READY**
+- Current phase: **P040 — IN_PROGRESS**
 - Next phase: **P041 — BLOCKED (P040)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
@@ -950,7 +950,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P039 → COMPLETE; P040 → READY; publish to GitHub; **STOP — do not implement P040.**
 
 ### P040 — Provisioning batches, module lifecycle and secret hygiene
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P039  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -960,7 +960,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not store credentials in ordinary module/history/statistics state.
 
 **Work:**
-- [ ] T040.1 — Implement isolated per-account batch state/result/cancellation
+- [~] T040.1 — Implement isolated per-account batch state/result/cancellation
 - [ ] T040.2 — Exercise independent Explorer/Provisioning package update/rollback
 - [ ] T040.3 — Audit secret inputs across logs/history/module/statistics records
 
