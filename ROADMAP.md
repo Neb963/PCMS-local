@@ -857,7 +857,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P035 → COMPLETE; P036 → READY; publish to GitHub; **STOP — do not implement P036.**
 
 ### P036 — Refresher execution, history, uncertainty and package lifecycle
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P035  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
