@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "description": "Deterministic provider-session observation contract for P024 wrong-account admission tests.",
+  "cases": [
+    {
+      "name": "expected-current-verified",
+      "evidence": {
+        "verifiedState": "AUTHENTICATED",
+        "verifiedAccountId": "account_expected",
+        "verifiedAt": "2026-10-03T12:00:00.000Z"
+      }
+    },
+    {
+      "name": "wrong-current-verified",
+      "evidence": {
+        "verifiedState": "AUTHENTICATED",
+        "verifiedAccountId": "account_other",
+        "verifiedAt": "2026-10-03T12:00:00.000Z"
+      }
+    },
+    {
+      "name": "expected-observed-only",
+      "evidence": {
+        "observedState": "AUTHENTICATED",
+        "observedAccountId": "account_expected",
+        "observedAt": "2026-10-03T12:00:00.000Z"
+      }
+    },
+    {
+      "name": "unknown-session",
+      "evidence": null
+    },
+    {
+      "name": "expected-stale-verified",
+      "evidence": {
+        "verifiedState": "AUTHENTICATED",
+        "verifiedAccountId": "account_expected",
+        "verifiedAt": "2026-10-03T11:00:00.000Z"
+      }
+    },
+    {
+      "name": "verified-unauthenticated",
+      "evidence": {
+        "verifiedState": "UNAUTHENTICATED",
+        "verifiedAt": "2026-10-03T12:00:00.000Z"
+      }
+    }
+  ]
+}

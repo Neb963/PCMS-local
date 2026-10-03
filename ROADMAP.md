@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P023**
-- Current phase: **P024 — READY**
-- Next phase: **P025 — BLOCKED (P024)**
-- Current milestone: **M05 — Accounts, Generator identity and inventory**
+- Completed through: **P024**
+- Current phase: **P025 — READY**
+- Next phase: **P026 — BLOCKED (P025)**
+- Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -513,7 +513,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M05 — Accounts, Generator identity and inventory
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P021 — Account-Persona binding invariants
 Status: **COMPLETE**  
@@ -580,7 +580,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P023 → COMPLETE; P024 → READY; publish to GitHub; **STOP — do not implement P024.**
 
 ### P024 — Wrong-account guard and 50+ inventory resilience
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P023  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -590,24 +590,24 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add mutation execution; this phase establishes admission facts only.
 
 **Work:**
-- [ ] T024.1 — Implement wrong-account/unknown-session admission guard contract
-- [ ] T024.2 — Exercise 50+ dormant Account/Persona startup/query bounds
-- [ ] T024.3 — Prove one missing/corrupt Persona does not poison unrelated inventory
+- [x] T024.1 — Implement wrong-account/unknown-session admission guard contract
+- [x] T024.2 — Exercise 50+ dormant Account/Persona startup/query bounds
+- [x] T024.3 — Prove one missing/corrupt Persona does not poison unrelated inventory
 
 **Acceptance:**
-- [ ] A05-07
-- [ ] A05-08
-- [ ] A05-09
+- [x] A05-07
+- [x] A05-08
+- [x] A05-09
 
 **Closure:** relevant tests + CI green; phase report finalized; P024 → COMPLETE; P025 → READY; publish to GitHub; **STOP — do not implement P025.**
 
 ---
 
 ## M06 — Provider automation and operation safety
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P025 — BrowserDriver connection, cancellation and diagnostics
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P024  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
