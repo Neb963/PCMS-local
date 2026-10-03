@@ -409,7 +409,7 @@ export class ProvisioningOperationService {
       }
 
       return this.#processFlowResult(
-        operation,
+        this.#coordinator.require(operation.operationId),
         result,
         input.page,
         providerIdentity,
