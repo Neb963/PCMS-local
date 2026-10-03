@@ -165,7 +165,9 @@ export class InitialDeploymentService {
       accountId: input.accountId,
       repositorySlug: input.artifact.repository,
       expectedProviderIdentity: input.expectedProviderIdentity,
-      commandOptions: input.commandOptions
+      ...(input.commandOptions === undefined
+        ? {}
+        : { commandOptions: input.commandOptions })
     });
     const desired = materializeDeployment(
       input.artifact,
