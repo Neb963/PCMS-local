@@ -415,8 +415,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not modify Firefox-compatible prepare_exit semantics or launch Chromium through a route yet.
 
 **Work:**
-- [~] T016.1 — Re-run exact port/provenance/native hardening baseline
-- [ ] T016.2 — Implement bounded Unix-socket router client and typed errors
+- [x] T016.1 — Re-run exact port/provenance/native hardening baseline
+- [~] T016.2 — Implement bounded Unix-socket router client and typed errors
 - [ ] T016.3 — Prove pcmsd requires no root/NET_ADMIN privileges
 
 **Acceptance:**
