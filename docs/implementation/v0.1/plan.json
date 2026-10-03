@@ -984,7 +984,7 @@
       "id": "P021",
       "milestone": "M05",
       "name": "Account-Persona binding invariants",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P020"
       ],

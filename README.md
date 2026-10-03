@@ -33,7 +33,7 @@ A module is an operator-installed/updateable package executed outside the Core p
 
 ## Current status
 
-**P020 Direct, Block, route switch and multi-route acceptance is complete; M04 protected routing is complete, M05 accounts/inventory is READY, and P021 Account-Persona binding invariants is READY.** No production-ready PCMS-local release exists yet.
+**P020 Direct, Block, route switch and multi-route acceptance is complete; M04 protected routing is complete, and P021 Account-Persona binding invariants is IN_PROGRESS in M05 accounts/inventory.** No production-ready PCMS-local release exists yet.
 
 The repository is intentionally starting fresh rather than incrementally converting the Firefox extension architecture. PersonaMonkey and earlier PCMS repositories are sources of proven requirements, contracts and selected implementation; they are not architecture authority.
 
