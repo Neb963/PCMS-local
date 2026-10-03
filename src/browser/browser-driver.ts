@@ -514,6 +514,21 @@ export class BrowserPage {
     this.#connection = connection;
   }
 
+  public async focus(
+    options: BrowserDriverCommandOptions = {}
+  ): Promise<void> {
+    await this.#connection.command(
+      "Page.bringToFront",
+      {},
+      {
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+        sessionId: this.sessionId,
+        targetId: this.targetId
+      }
+    );
+  }
+
   public async evaluate(
     expression: string,
     options: BrowserDriverCommandOptions & { readonly awaitPromise?: boolean } = {}

@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P027**
-- Current phase: **P028 — READY**
-- Next phase: **P029 — BLOCKED (P028)**
+- Completed through: **P028**
+- Current phase: **P029 — READY**
+- Next phase: **P030 — BLOCKED (P029)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
 
@@ -671,7 +671,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P027 → COMPLETE; P028 → READY; publish to GitHub; **STOP — do not implement P028.**
 
 ### P028 — Response reconciliation, ProviderGate and Human Tasks
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P027  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -681,20 +681,20 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not automate CAPTCHA solving or bypass human challenges.
 
 **Work:**
-- [ ] T028.1 — Implement emulator response-loss-after-effect reconciliation
-- [ ] T028.2 — Implement provider/account/Persona admission cooldown/concurrency gate
-- [ ] T028.3 — Implement durable HumanTask + transient input continuation through the same Persona
+- [x] T028.1 — Implement emulator response-loss-after-effect reconciliation
+- [x] T028.2 — Implement provider/account/Persona admission cooldown/concurrency gate
+- [x] T028.3 — Implement durable HumanTask + transient input continuation through the same Persona
 
 **Acceptance:**
-- [ ] A06-07
-- [ ] A06-08
-- [ ] A06-09
-- [ ] A06-10
+- [x] A06-07
+- [x] A06-08
+- [x] A06-09
+- [x] A06-10
 
 **Closure:** relevant tests + CI green; phase report finalized; P028 → COMPLETE; P029 → READY; publish to GitHub; **STOP — do not implement P029.**
 
 ### P029 — Batch isolation and scheduler/time semantics
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P028  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
