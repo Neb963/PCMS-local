@@ -1,3 +1,39 @@
+export interface CoreAccountInventorySummary {
+  readonly accountId: string;
+  readonly displayName: string;
+  readonly lifecycleStatus: "ACTIVE" | "INACTIVE";
+  readonly personaUid: string | null;
+  readonly revision: number;
+}
+
+export interface CorePersonaNavigation {
+  readonly personaUid: string;
+  readonly lifecycleStatus: "ACTIVE" | "RETIRED";
+  readonly profileState: "CLOSED" | "OPEN";
+  readonly browserBackend: "chromium-v1";
+  readonly revision: number;
+}
+
+export interface CoreAccountPersonaNavigation {
+  readonly accountId: string;
+  readonly persona: CorePersonaNavigation | null;
+}
+
+export interface CoreInventorySearchResult {
+  readonly entityType: "ACCOUNT" | "PERSONA" | "GENERATOR";
+  readonly entityId: string;
+  readonly label: string;
+  readonly matchedField:
+    | "accountId"
+    | "displayName"
+    | "personaUid"
+    | "generatorLocalId"
+    | "providerStableId"
+    | "currentSlug";
+  readonly accountId: string | null;
+  readonly personaUid: string | null;
+}
+
 export interface CoreStatus {
   readonly service: "pcmsd";
   readonly status: "ready" | "not_ready";
@@ -173,6 +209,142 @@ function parseCoreDiagnostics(value: unknown): CoreDiagnostics {
   });
 }
 
+function parseAccountSummary(value: unknown): CoreAccountInventorySummary {
+  if (!isRecord(value)) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Account inventory response is invalid"
+    );
+  }
+  const accountId = value["accountId"];
+  const displayName = value["displayName"];
+  const lifecycleStatus = value["lifecycleStatus"];
+  const personaUid = value["personaUid"];
+  const revision = value["revision"];
+  if (
+    typeof accountId !== "string" ||
+    typeof displayName !== "string" ||
+    (lifecycleStatus !== "ACTIVE" && lifecycleStatus !== "INACTIVE") ||
+    (personaUid !== null && typeof personaUid !== "string") ||
+    typeof revision !== "number" ||
+    !Number.isSafeInteger(revision) ||
+    revision < 0
+  ) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Account inventory fields are invalid"
+    );
+  }
+  return Object.freeze({
+    accountId,
+    displayName,
+    lifecycleStatus,
+    personaUid,
+    revision
+  });
+}
+
+function parsePersonaNavigation(value: unknown): CorePersonaNavigation {
+  if (!isRecord(value)) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Persona navigation response is invalid"
+    );
+  }
+  const personaUid = value["personaUid"];
+  const lifecycleStatus = value["lifecycleStatus"];
+  const profileState = value["profileState"];
+  const browserBackend = value["browserBackend"];
+  const revision = value["revision"];
+  if (
+    typeof personaUid !== "string" ||
+    (lifecycleStatus !== "ACTIVE" && lifecycleStatus !== "RETIRED") ||
+    (profileState !== "CLOSED" && profileState !== "OPEN") ||
+    browserBackend !== "chromium-v1" ||
+    typeof revision !== "number" ||
+    !Number.isSafeInteger(revision) ||
+    revision < 0
+  ) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Persona navigation fields are invalid"
+    );
+  }
+  return Object.freeze({
+    personaUid,
+    lifecycleStatus,
+    profileState,
+    browserBackend,
+    revision
+  });
+}
+
+function parseAccountPersonaNavigation(
+  value: unknown
+): CoreAccountPersonaNavigation {
+  if (
+    !isRecord(value) ||
+    typeof value["accountId"] !== "string" ||
+    !Object.hasOwn(value, "persona")
+  ) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Account-to-Persona response is invalid"
+    );
+  }
+  const persona = value["persona"];
+  return Object.freeze({
+    accountId: value["accountId"],
+    persona:
+      persona === null
+        ? null
+        : parsePersonaNavigation(persona)
+  });
+}
+
+function parseSearchResult(value: unknown): CoreInventorySearchResult {
+  if (!isRecord(value)) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS search result is invalid"
+    );
+  }
+  const entityType = value["entityType"];
+  const entityId = value["entityId"];
+  const label = value["label"];
+  const matchedField = value["matchedField"];
+  const accountId = value["accountId"];
+  const personaUid = value["personaUid"];
+  if (
+    (entityType !== "ACCOUNT" &&
+      entityType !== "PERSONA" &&
+      entityType !== "GENERATOR") ||
+    typeof entityId !== "string" ||
+    typeof label !== "string" ||
+    (matchedField !== "accountId" &&
+      matchedField !== "displayName" &&
+      matchedField !== "personaUid" &&
+      matchedField !== "generatorLocalId" &&
+      matchedField !== "providerStableId" &&
+      matchedField !== "currentSlug") ||
+    (accountId !== null && typeof accountId !== "string") ||
+    (personaUid !== null && typeof personaUid !== "string")
+  ) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS search result fields are invalid"
+    );
+  }
+  return Object.freeze({
+    entityType,
+    entityId,
+    label,
+    matchedField,
+    accountId,
+    personaUid
+  });
+}
+
 function parseErrorPayload(
   value: unknown,
   status: number
@@ -253,6 +425,39 @@ export function createPcmsApiClient(options: PcmsApiClientOptions) {
     },
     async diagnostics(): Promise<CoreDiagnostics> {
       return parseCoreDiagnostics(await requestJson("/api/v1/diagnostics"));
+    },
+    async accounts(): Promise<readonly CoreAccountInventorySummary[]> {
+      const payload = await requestJson("/api/v1/accounts");
+      if (!isRecord(payload) || !Array.isArray(payload["accounts"])) {
+        throw new PcmsApiError(
+          "INVALID_API_RESPONSE",
+          "PCMS Account list response has an invalid shape"
+        );
+      }
+      return Object.freeze(payload["accounts"].map(parseAccountSummary));
+    },
+    async accountPersona(
+      accountId: string
+    ): Promise<CoreAccountPersonaNavigation> {
+      return parseAccountPersonaNavigation(
+        await requestJson(
+          `/api/v1/accounts/${encodeURIComponent(accountId)}/persona`
+        )
+      );
+    },
+    async search(
+      query: string
+    ): Promise<readonly CoreInventorySearchResult[]> {
+      const payload = await requestJson(
+        `/api/v1/search?q=${encodeURIComponent(query)}`
+      );
+      if (!isRecord(payload) || !Array.isArray(payload["results"])) {
+        throw new PcmsApiError(
+          "INVALID_API_RESPONSE",
+          "PCMS search response has an invalid shape"
+        );
+      }
+      return Object.freeze(payload["results"].map(parseSearchResult));
     }
   });
 }
