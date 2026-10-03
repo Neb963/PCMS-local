@@ -1641,7 +1641,7 @@
       "id": "P038",
       "milestone": "M09",
       "name": "Provisioning staging and dedicated Persona allocation",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P037"
       ],
@@ -1676,7 +1676,7 @@
       "id": "P039",
       "milestone": "M09",
       "name": "Provisioning HumanTask, identity activation and interrupted-flow recovery",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P038"
       ],
