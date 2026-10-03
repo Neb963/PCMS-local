@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -56,7 +56,7 @@ async function fixture(prefix) {
     connectTimeoutMs: 5_000,
     commandTimeoutMs: 5_000
   });
-  return { root, database, lifecycle, manager, driver };
+  return { root, paths, database, lifecycle, manager, driver };
 }
 
 
@@ -282,6 +282,65 @@ test("BrowserDriver reports selected page target loss without closing the Person
 
     assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
     assert.ok(await f.manager.resolveDevToolsEndpoint(personaUid));
+  } finally {
+    if (connection !== undefined) {
+      await connection.disconnect();
+    }
+    if (session !== undefined) {
+      await session.close();
+    }
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+
+test("BrowserDriver attach and detach preserve the single durable Persona browser identity", async () => {
+  const f = await fixture("pcms-browser-driver-identity-");
+  const personaUid = "persona_browser_driver_identity";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+
+    const profilesBefore = (await readdir(f.paths.personasRoot)).sort();
+    const runtimeBefore = f.database.prepare(`
+      SELECT persona_uid, state, pid, devtools_port, devtools_path
+      FROM persona_browser_runtime
+      ORDER BY persona_uid
+    `).all();
+    assert.equal(runtimeBefore.length, 1);
+    assert.equal(runtimeBefore[0].persona_uid, personaUid);
+    assert.equal(runtimeBefore[0].pid, session.pid);
+
+    connection = await f.driver.connect(personaUid);
+    const page = await connection.selectPage({ url: "about:blank" });
+    assert.equal(await page.evaluate("location.href"), "about:blank");
+    await connection.disconnect();
+    connection = undefined;
+
+    const profilesAfter = (await readdir(f.paths.personasRoot)).sort();
+    const runtimeAfter = f.database.prepare(`
+      SELECT persona_uid, state, pid, devtools_port, devtools_path
+      FROM persona_browser_runtime
+      ORDER BY persona_uid
+    `).all();
+
+    assert.deepEqual(profilesAfter, profilesBefore);
+    assert.deepEqual(runtimeAfter, runtimeBefore);
+    assert.equal(f.lifecycle.listOpen().length, 1);
+    assert.equal(f.lifecycle.listOpen()[0].personaUid, personaUid);
+
+    const endpointAfter = await f.manager.resolveDevToolsEndpoint(personaUid);
+    assert.deepEqual(endpointAfter, session.devTools);
+    const reconciled = await f.manager.reconcile(personaUid);
+    assert.ok(reconciled);
+    assert.equal(reconciled.pid, session.pid);
+    assert.equal(reconciled.profilePath, session.profilePath);
   } finally {
     if (connection !== undefined) {
       await connection.disconnect();
