@@ -26,6 +26,7 @@ import {
 import {
   InventorySearchError
 } from "../inventory/search.js";
+import { OperationCoordinator } from "../operations/operation-coordinator.js";
 import {
   acquireInstanceLock,
   type InstanceLock
@@ -882,6 +883,9 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
 
   try {
     database = openPcmsDatabase(paths.databasePath);
+    new OperationCoordinator({
+      database: database.connection
+    }).recoverInterrupted();
   } catch (error: unknown) {
     await instanceLock.release();
     instanceLock = null;

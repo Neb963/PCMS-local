@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P026**
-- Current phase: **P027 — READY**
-- Next phase: **P028 — BLOCKED (P027)**
+- Completed through: **P027**
+- Current phase: **P028 — READY**
+- Next phase: **P029 — BLOCKED (P028)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
 
@@ -649,7 +649,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P026 → COMPLETE; P027 → READY; publish to GitHub; **STOP — do not implement P027.**
 
 ### P027 — OperationCoordinator claims and uncertainty state machine
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P026  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -659,19 +659,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement module-specific mutation policy.
 
 **Work:**
-- [ ] T027.1 — Implement stable-target claim/epoch and legal state transitions
-- [ ] T027.2 — Persist pre-dispatch evidence and classify post-dispatch loss as UNCERTAIN
-- [ ] T027.3 — Test restart/cancel/process-loss matrices and forbid blind redispatch
+- [x] T027.1 — Implement stable-target claim/epoch and legal state transitions
+- [x] T027.2 — Persist pre-dispatch evidence and classify post-dispatch loss as UNCERTAIN
+- [x] T027.3 — Test restart/cancel/process-loss matrices and forbid blind redispatch
 
 **Acceptance:**
-- [ ] A06-05
-- [ ] A06-06
-- [ ] A06-12
+- [x] A06-05
+- [x] A06-06
+- [x] A06-12
 
 **Closure:** relevant tests + CI green; phase report finalized; P027 → COMPLETE; P028 → READY; publish to GitHub; **STOP — do not implement P028.**
 
 ### P028 — Response reconciliation, ProviderGate and Human Tasks
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P027  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

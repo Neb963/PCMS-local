@@ -8,8 +8,15 @@ import test from "node:test";
 import { ensurePcmsDirectories, resolvePcmsPaths } from "../../dist/config/paths.js";
 import { startPcmsd } from "../../dist/daemon/server.js";
 import { InstanceAlreadyRunningError } from "../../dist/runtime/instance-lock.js";
+import {
+  OperationCoordinator,
+  generatorOperationTargetKey
+} from "../../dist/operations/operation-coordinator.js";
 import { CORE_MIGRATIONS } from "../../dist/storage/core-migrations.js";
-import { DatabaseSchemaError } from "../../dist/storage/migrations.js";
+import {
+  DatabaseSchemaError,
+  applyPcmsMigrations
+} from "../../dist/storage/migrations.js";
 import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
 
 async function createFixturePaths(prefix) {
@@ -160,4 +167,58 @@ test("database bootstrap failure prevents readiness and releases instance owners
 
   const daemon = await startPcmsd({ paths, port: 0 });
   await daemon.close();
+});
+
+
+test("pcmsd startup marks interrupted dispatched operations UNCERTAIN before readiness", async () => {
+  const paths = await createFixturePaths("pcmsd-operation-recovery-");
+  await ensurePcmsDirectories(paths);
+  const raw = openConfiguredSqliteDatabase(paths.databasePath);
+  applyPcmsMigrations(raw);
+
+  const coordinator = new OperationCoordinator({
+    database: raw,
+    now: () => new Date("2026-10-03T14:00:00.000Z")
+  });
+  const operation = coordinator.prepare({
+    operationId: "operation-pcmsd-recovery",
+    idempotencyKey: "request-pcmsd-recovery",
+    owner: { kind: "CORE" },
+    actorSource: "test",
+    targetKey: generatorOperationTargetKey("generator-pcmsd-recovery"),
+    operationKind: "generator-update",
+    schemaVersion: 1,
+    desiredFingerprint: "b".repeat(64),
+    provenance: { source: "pcmsd-test" },
+    preconditions: [{
+      key: "provider-session",
+      observedAt: "2026-10-03T14:00:00.000Z",
+      maxAgeMs: 60000,
+      evidenceRef: "session-evidence-pcmsd"
+    }]
+  });
+  coordinator.authorizeDispatch({
+    operationId: operation.operationId,
+    expectedClaimEpoch: operation.claimEpoch,
+    evidence: { step: "save" }
+  });
+  raw.close();
+
+  const daemon = await startPcmsd({ paths, port: 0 });
+  await daemon.close();
+
+  const observed = openConfiguredSqliteDatabase(paths.databasePath);
+  try {
+    const row = observed.prepare(`
+      SELECT state, last_transition_reason
+      FROM operations
+      WHERE operation_id = ?
+    `).get(operation.operationId);
+    assert.deepEqual({ ...row }, {
+      state: "UNCERTAIN",
+      last_transition_reason: "startup-recovery-after-possible-dispatch"
+    });
+  } finally {
+    observed.close();
+  }
 });

@@ -367,5 +367,131 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
       CREATE INDEX generators_current_slug_lookup
         ON generators(current_slug);
     `
+  }),
+  Object.freeze({
+    version: 9,
+    id: "0009-operation-coordinator",
+    sql: `
+      CREATE TABLE operation_target_epochs (
+        target_key TEXT PRIMARY KEY
+          CHECK (length(target_key) BETWEEN 1 AND 320),
+        last_epoch INTEGER NOT NULL
+          CHECK (last_epoch > 0)
+      ) STRICT;
+
+      CREATE TABLE operations (
+        operation_id TEXT PRIMARY KEY
+          CHECK (length(operation_id) BETWEEN 1 AND 128),
+        idempotency_key TEXT NOT NULL UNIQUE
+          CHECK (length(idempotency_key) BETWEEN 1 AND 128),
+        state TEXT NOT NULL
+          CHECK (
+            state IN (
+              'PREPARED',
+              'RUNNING',
+              'VERIFYING',
+              'SUCCEEDED',
+              'FAILED_SAFE',
+              'UNCERTAIN',
+              'CANCELLED',
+              'NEEDS_HUMAN'
+            )
+          ),
+        target_key TEXT NOT NULL
+          CHECK (length(target_key) BETWEEN 1 AND 320),
+        operation_kind TEXT NOT NULL
+          CHECK (length(operation_kind) BETWEEN 1 AND 128),
+        schema_version INTEGER NOT NULL
+          CHECK (schema_version > 0),
+        owner_kind TEXT NOT NULL
+          CHECK (owner_kind IN ('CORE', 'MODULE')),
+        owner_module_id TEXT,
+        owner_module_version TEXT,
+        owner_runtime_generation INTEGER,
+        actor_source TEXT NOT NULL
+          CHECK (length(actor_source) BETWEEN 1 AND 128),
+        persona_uid TEXT,
+        account_id TEXT,
+        desired_fingerprint TEXT NOT NULL
+          CHECK (length(desired_fingerprint) = 64),
+        provenance_json TEXT NOT NULL
+          CHECK (length(provenance_json) BETWEEN 2 AND 8192),
+        preconditions_json TEXT NOT NULL
+          CHECK (length(preconditions_json) BETWEEN 2 AND 16384),
+        attempt INTEGER NOT NULL
+          CHECK (attempt > 0),
+        claim_epoch INTEGER NOT NULL
+          CHECK (claim_epoch > 0),
+        dispatch_authorized_at TEXT,
+        dispatch_evidence_json TEXT
+          CHECK (
+            dispatch_evidence_json IS NULL OR
+            length(dispatch_evidence_json) BETWEEN 2 AND 8192
+          ),
+        cancellation_requested_at TEXT,
+        last_transition_reason TEXT
+          CHECK (
+            last_transition_reason IS NULL OR
+            length(last_transition_reason) BETWEEN 1 AND 256
+          ),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        terminal_at TEXT,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        CHECK (
+          (
+            owner_kind = 'CORE' AND
+            owner_module_id IS NULL AND
+            owner_module_version IS NULL AND
+            owner_runtime_generation IS NULL
+          ) OR
+          (
+            owner_kind = 'MODULE' AND
+            owner_module_id IS NOT NULL AND
+            owner_module_version IS NOT NULL AND
+            owner_runtime_generation IS NOT NULL AND
+            owner_runtime_generation > 0
+          )
+        ),
+        CHECK (
+          state NOT IN ('RUNNING', 'VERIFYING', 'SUCCEEDED', 'UNCERTAIN', 'NEEDS_HUMAN') OR
+          dispatch_authorized_at IS NOT NULL
+        ),
+        CHECK (
+          (state IN ('SUCCEEDED', 'FAILED_SAFE', 'CANCELLED') AND terminal_at IS NOT NULL) OR
+          (state NOT IN ('SUCCEEDED', 'FAILED_SAFE', 'CANCELLED') AND terminal_at IS NULL)
+        ),
+        FOREIGN KEY (persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE RESTRICT,
+        FOREIGN KEY (account_id)
+          REFERENCES accounts(account_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE UNIQUE INDEX operations_one_unresolved_claim_per_target
+        ON operations(target_key)
+        WHERE state IN (
+          'PREPARED',
+          'RUNNING',
+          'VERIFYING',
+          'UNCERTAIN',
+          'NEEDS_HUMAN'
+        );
+
+      CREATE INDEX operations_target_history
+        ON operations(target_key, claim_epoch);
+
+      CREATE INDEX operations_unresolved_state
+        ON operations(state, updated_at)
+        WHERE state IN (
+          'PREPARED',
+          'RUNNING',
+          'VERIFYING',
+          'UNCERTAIN',
+          'NEEDS_HUMAN'
+        );
+    `
   })
 ]);
