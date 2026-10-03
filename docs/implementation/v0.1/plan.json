@@ -120,7 +120,7 @@
     {
       "id": "M08",
       "name": "Refresh measurement and Refresher",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P034",
         "P035",
@@ -130,7 +130,7 @@
     {
       "id": "M09",
       "name": "Explorer and Account Provisioning",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P037",
         "P038",
@@ -1568,7 +1568,7 @@
       "id": "P036",
       "milestone": "M08",
       "name": "Refresher execution, history, uncertainty and package lifecycle",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P035"
       ],
@@ -1605,7 +1605,7 @@
       "id": "P037",
       "milestone": "M09",
       "name": "Explorer observation, claim and stable handoff",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P036"
       ],
