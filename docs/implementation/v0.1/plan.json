@@ -109,7 +109,7 @@
     {
       "id": "M07",
       "name": "Deployer",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P030",
         "P031",
@@ -120,7 +120,7 @@
     {
       "id": "M08",
       "name": "Refresh measurement and Refresher",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P034",
         "P035",
@@ -1455,7 +1455,7 @@
       "id": "P033",
       "milestone": "M07",
       "name": "Deployer polling, module lifecycle and CI vertical slice",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P032"
       ],
@@ -1496,7 +1496,7 @@
       "id": "P034",
       "milestone": "M08",
       "name": "Refresh and recent-listing emulator contract",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P033"
       ],
