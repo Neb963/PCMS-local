@@ -74,7 +74,7 @@
     {
       "id": "M04",
       "name": "Protected routing",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P016",
         "P017",
@@ -86,7 +86,7 @@
     {
       "id": "M05",
       "name": "Accounts, Generator identity and inventory",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P021",
         "P022",
@@ -945,7 +945,7 @@
       "id": "P020",
       "milestone": "M04",
       "name": "Direct, Block, route switch and multi-route acceptance",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P019"
       ],
@@ -984,7 +984,7 @@
       "id": "P021",
       "milestone": "M05",
       "name": "Account-Persona binding invariants",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P020"
       ],
