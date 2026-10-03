@@ -519,5 +519,67 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
       CREATE INDEX provider_state_active_cooldown
         ON provider_state(provider_id, cooldown_until);
     `
+  }),
+  Object.freeze({
+    version: 11,
+    id: "0011-human-tasks",
+    sql: `
+      CREATE TABLE human_tasks (
+        task_id TEXT PRIMARY KEY
+          CHECK (length(task_id) BETWEEN 1 AND 128),
+        task_type TEXT NOT NULL
+          CHECK (length(task_type) BETWEEN 1 AND 64),
+        status TEXT NOT NULL
+          CHECK (status IN ('OPEN', 'RESOLVED', 'CANCELLED', 'EXPIRED')),
+        account_id TEXT,
+        persona_uid TEXT,
+        operation_id TEXT,
+        title TEXT NOT NULL
+          CHECK (length(title) BETWEEN 1 AND 256),
+        explanation TEXT NOT NULL
+          CHECK (length(explanation) BETWEEN 1 AND 1024),
+        required_action_kind TEXT NOT NULL
+          CHECK (length(required_action_kind) BETWEEN 1 AND 64),
+        continuation_kind TEXT NOT NULL
+          CHECK (length(continuation_kind) BETWEEN 1 AND 64),
+        continuation_version INTEGER NOT NULL
+          CHECK (continuation_version > 0),
+        continuation_ref TEXT NOT NULL
+          CHECK (length(continuation_ref) BETWEEN 1 AND 256),
+        evidence_json TEXT NOT NULL
+          CHECK (length(evidence_json) BETWEEN 2 AND 8192),
+        expires_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        resolved_at TEXT,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        CHECK (
+          (status = 'OPEN' AND resolved_at IS NULL) OR
+          (status <> 'OPEN' AND resolved_at IS NOT NULL)
+        ),
+        FOREIGN KEY (account_id)
+          REFERENCES accounts(account_id)
+          ON DELETE RESTRICT,
+        FOREIGN KEY (persona_uid)
+          REFERENCES personas(persona_uid)
+          ON DELETE RESTRICT,
+        FOREIGN KEY (operation_id)
+          REFERENCES operations(operation_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE INDEX human_tasks_open_attention
+        ON human_tasks(status, created_at)
+        WHERE status = 'OPEN';
+
+      CREATE INDEX human_tasks_operation
+        ON human_tasks(operation_id, status)
+        WHERE operation_id IS NOT NULL;
+
+      CREATE UNIQUE INDEX human_tasks_one_open_action_per_operation
+        ON human_tasks(operation_id, required_action_kind)
+        WHERE status = 'OPEN' AND operation_id IS NOT NULL;
+    `
   })
 ]);
