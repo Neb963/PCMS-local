@@ -130,7 +130,7 @@ test("module-runner surfaces structured backend errors without terminating", asy
       (error) =>
         error instanceof ModuleRuntimeError &&
         error.code === "FIXTURE_FAILED" &&
-        error.message === "fixture failure"
+        error.message === "Module request failed"
     );
     assert.equal(await runtime.request("ok", null), "ok");
     assert.equal(runtime.state, "RUNNING");
