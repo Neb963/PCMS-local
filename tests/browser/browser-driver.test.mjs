@@ -121,6 +121,7 @@ test("BrowserDriver attaches to and selects a page from an already-running owned
         assert.equal(error.code, "BROWSER_DRIVER_PERSONA_NOT_RUNNING");
         assert.equal(error.personaUid, personaUid);
         assert.equal(error.operation, "connect");
+        assert.equal(error.effectState, "NOT_DISPATCHED");
         return true;
       }
     );
@@ -209,6 +210,7 @@ test("BrowserDriver cancellation and command timeout are structured and bounded"
         assert.equal(error.code, "BROWSER_DRIVER_COMMAND_TIMEOUT");
         assert.equal(error.operation, "Runtime.evaluate");
         assert.equal(error.targetId, page.targetId);
+        assert.equal(error.effectState, "MAY_HAVE_OCCURRED");
         return true;
       }
     );
@@ -230,6 +232,7 @@ test("BrowserDriver cancellation and command timeout are structured and bounded"
         assert.equal(error.code, "BROWSER_DRIVER_CANCELLED");
         assert.equal(error.operation, "Runtime.evaluate");
         assert.equal(error.targetId, page.targetId);
+        assert.equal(error.effectState, "MAY_HAVE_OCCURRED");
         return true;
       }
     );

@@ -5,6 +5,8 @@ const DEFAULT_CONNECT_TIMEOUT_MS = 5_000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 5_000;
 const MAX_TIMEOUT_MS = 120_000;
 
+export type BrowserDriverEffectState = "NOT_DISPATCHED" | "MAY_HAVE_OCCURRED";
+
 export type BrowserDriverErrorCode =
   | "BROWSER_DRIVER_PERSONA_NOT_RUNNING"
   | "BROWSER_DRIVER_CONNECT_FAILED"
@@ -23,7 +25,8 @@ export class BrowserDriverError extends Error {
     public readonly personaUid: string,
     public readonly operation: string,
     public readonly targetId: string | null = null,
-    cause?: unknown
+    cause?: unknown,
+    public readonly effectState: BrowserDriverEffectState = "NOT_DISPATCHED"
   ) {
     super(message, cause === undefined ? undefined : { cause });
     this.name = "BrowserDriverError";
@@ -224,7 +227,10 @@ class CdpConnection {
           "BROWSER_DRIVER_CONNECTION_LOST",
           detail,
           this.#personaUid,
-          "connection"
+          "connection",
+          null,
+          undefined,
+          "MAY_HAVE_OCCURRED"
         )
       );
     };
@@ -237,7 +243,10 @@ class CdpConnection {
           "BROWSER_DRIVER_CONNECTION_LOST",
           "CDP WebSocket reported a transport error",
           this.#personaUid,
-          "connection"
+          "connection",
+          null,
+          undefined,
+          "MAY_HAVE_OCCURRED"
         )
       );
     };
@@ -322,7 +331,9 @@ class CdpConnection {
             : `CDP ${pending.method} failed: ${protocolErrorMessage(message.error)}`,
           this.#personaUid,
           pending.method,
-          pending.targetId
+          pending.targetId,
+          undefined,
+          "MAY_HAVE_OCCURRED"
         )
       );
       return;
@@ -394,7 +405,9 @@ class CdpConnection {
             `BrowserDriver operation ${method} exceeded ${timeoutMs} ms`,
             this.#personaUid,
             method,
-            options.targetId ?? null
+            options.targetId ?? null,
+            undefined,
+            "MAY_HAVE_OCCURRED"
           )
         );
       }, timeoutMs);
@@ -414,7 +427,8 @@ class CdpConnection {
                 this.#personaUid,
                 method,
                 options.targetId ?? null,
-                signal.reason
+                signal.reason,
+                "MAY_HAVE_OCCURRED"
               )
             );
           };
@@ -451,7 +465,8 @@ class CdpConnection {
             this.#personaUid,
             method,
             options.targetId ?? null,
-            error
+            error,
+            "MAY_HAVE_OCCURRED"
           )
         );
       }
@@ -472,7 +487,10 @@ class CdpConnection {
         "BROWSER_DRIVER_CONNECTION_LOST",
         "BrowserDriver disconnected",
         this.#personaUid,
-        "disconnect"
+        "disconnect",
+        null,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       )
     );
     this.#socket.onmessage = null;
@@ -520,7 +538,9 @@ export class BrowserPage {
         "Runtime.evaluate returned an invalid result",
         this.personaUid,
         "Runtime.evaluate",
-        this.targetId
+        this.targetId,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       );
     }
     const remote = (result as {
@@ -533,7 +553,9 @@ export class BrowserPage {
         "Runtime.evaluate reported an exception",
         this.personaUid,
         "Runtime.evaluate",
-        this.targetId
+        this.targetId,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       );
     }
     if (remote.result === undefined) {
@@ -542,7 +564,9 @@ export class BrowserPage {
         "Runtime.evaluate omitted its remote result",
         this.personaUid,
         "Runtime.evaluate",
-        this.targetId
+        this.targetId,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       );
     }
     return remote.result.value ?? remote.result.unserializableValue;
@@ -607,7 +631,9 @@ export class BrowserDriverConnection {
         "Target.attachToTarget returned an invalid result",
         this.personaUid,
         "Target.attachToTarget",
-        selected.targetId
+        selected.targetId,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       );
     }
     const sessionId = (result as { sessionId?: unknown }).sessionId;
@@ -617,7 +643,9 @@ export class BrowserDriverConnection {
         "Target.attachToTarget omitted sessionId",
         this.personaUid,
         "Target.attachToTarget",
-        selected.targetId
+        selected.targetId,
+        undefined,
+        "MAY_HAVE_OCCURRED"
       );
     }
     this.#connection.rememberSession(sessionId, selected.targetId);
