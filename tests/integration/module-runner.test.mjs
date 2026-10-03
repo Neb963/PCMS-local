@@ -239,7 +239,7 @@ test("module SDK exposes semantic serialized calls and rejects raw Core authorit
         (error) =>
           error instanceof ModuleRuntimeError &&
           error.code === "MODULE_SDK_METHOD_DENIED" &&
-          error.message.includes(method)
+          error.message === "Module request failed"
       );
       assert.equal(runtime.state, "RUNNING");
     }
