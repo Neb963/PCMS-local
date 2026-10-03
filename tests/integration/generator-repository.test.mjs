@@ -53,10 +53,10 @@ test("P022 migration creates stable Generator identity schema", async () => {
     `).all().map((row) => ({ ...row }));
 
     assert.deepEqual(objects, [
+      { type: "table", name: "generators" },
       { type: "index", name: "generators_account_lookup" },
       { type: "index", name: "generators_current_slug_lookup" },
-      { type: "index", name: "generators_provider_stable_id_unique" },
-      { type: "table", name: "generators" }
+      { type: "index", name: "generators_provider_stable_id_unique" }
     ]);
   } finally {
     await cleanup(f);
