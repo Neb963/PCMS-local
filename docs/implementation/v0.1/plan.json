@@ -1023,7 +1023,7 @@
       "id": "P022",
       "milestone": "M05",
       "name": "Stable GeneratorRef identity and atomic import",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P021"
       ],

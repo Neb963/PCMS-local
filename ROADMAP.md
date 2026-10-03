@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P021**
-- Current phase: **P022 — READY**
+- Current phase: **P022 — IN_PROGRESS**
 - Next phase: **P023 — BLOCKED (P022)**
 - Current milestone: **M05 — Accounts, Generator identity and inventory**
 - Final live milestone: **M12 — P048–P049**
@@ -537,7 +537,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P021 → COMPLETE; P022 → READY; publish to GitHub; **STOP — do not implement P022.**
 
 ### P022 — Stable GeneratorRef identity and atomic import
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P021  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -547,7 +547,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement Deployer or provider mutation.
 
 **Work:**
-- [ ] T022.1 — Add GeneratorRef schema/current-slug/provider-ID constraints
+- [~] T022.1 — Add GeneratorRef schema/current-slug/provider-ID constraints
 - [ ] T022.2 — Implement identity-preserving slug/provider-ID updates
 - [ ] T022.3 — Implement validate-first all-or-nothing Account/Generator import
 
