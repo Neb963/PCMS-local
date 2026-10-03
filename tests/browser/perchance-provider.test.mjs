@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { AccountRepository } from "../../dist/accounts/account-repository.js";
 import {
   BrowserDriver,
   BrowserDriverError
@@ -35,6 +36,9 @@ import {
 import {
   PersonaProfileLifecycle
 } from "../../dist/personas/profile-lifecycle.js";
+import { ProvisioningAllocationService } from "../../dist/provisioning/allocation.js";
+import { ProvisioningBrowserFlow } from "../../dist/provisioning/browser-flow.js";
+import { ProvisioningStagingService } from "../../dist/provisioning/staging.js";
 import { applyPcmsMigrations } from "../../dist/storage/migrations.js";
 import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
 import {
@@ -96,7 +100,7 @@ async function fixture(prefix) {
     connectTimeoutMs: 5_000,
     commandTimeoutMs: 5_000
   });
-  return { root, database, lifecycle, manager, driver };
+  return { root, paths, database, lifecycle, manager, driver };
 }
 
 async function selectLoadedPage(connection, url) {
@@ -612,6 +616,137 @@ test("P028 emulated challenge focuses the same Persona and resumes the same logi
   } finally {
     if (connection !== undefined) await connection.disconnect();
     if (session !== undefined) await session.close();
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P038 signup and login operate the allocated Account's same managed Persona session", async () => {
+  const emulator = await startPerchanceEmulator();
+  const f = await fixture("pcms-p038-browser-flow-");
+  const staging = new ProvisioningStagingService({ database: f.database });
+  const allocation = new ProvisioningAllocationService({
+    database: f.database,
+    personasRoot: f.paths.personasRoot
+  });
+  const accounts = new AccountRepository({ database: f.database });
+  const flow = new ProvisioningBrowserFlow();
+  const personaUid = "persona_p038_provisioning";
+  const provisioningUrl =
+    new URL("/__pcms_emulator__/provisioning", emulator.origin).href;
+  const password = "p038-transient-password";
+  let session;
+  let connection;
+
+  try {
+    const [staged] = staging.stageBatch([{
+      accountId: "account_p038_provisioning",
+      displayName: "Provisioning Account",
+      providerIdentity: "p038@example.test",
+      credentialSecretRef: "secret:accounts/p038"
+    }]);
+    const allocated = await allocation.allocate(staged, personaUid);
+    assert.equal(allocated.account.lifecycleStatus, "INACTIVE");
+    assert.equal(allocated.account.personaUid, personaUid);
+
+    session = await f.manager.launch(personaUid, {
+      initialUrl: provisioningUrl,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    const originalPid = session.pid;
+    const originalProfilePath = session.profilePath;
+
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, provisioningUrl);
+    const originalTargetId = page.targetId;
+
+    assert.deepEqual(
+      await flow.signup(page, {
+        providerIdentity: staged.providerIdentity,
+        password
+      }),
+      {
+        action: "SIGNUP",
+        providerStatus: "submitted",
+        session: {
+          authenticated: true,
+          observedIdentity: "p038@example.test",
+          verification: "UNVERIFIED"
+        }
+      }
+    );
+
+    assert.deepEqual(
+      await flow.login(page, {
+        providerIdentity: staged.providerIdentity,
+        password
+      }),
+      {
+        action: "LOGIN",
+        providerStatus: "authenticated",
+        session: {
+          authenticated: true,
+          observedIdentity: "p038@example.test",
+          verification: "UNVERIFIED"
+        }
+      }
+    );
+
+    assert.equal(accounts.require(staged.accountId).lifecycleStatus, "INACTIVE");
+    assert.equal(accounts.require(staged.accountId).personaUid, personaUid);
+
+    await connection.disconnect();
+    connection = undefined;
+
+    const runtimeBeforeReconnect = f.database.prepare(`
+      SELECT state, pid, devtools_port
+      FROM persona_browser_runtime
+      WHERE persona_uid = ?
+    `).get(personaUid);
+    assert.equal(runtimeBeforeReconnect.state, "RUNNING");
+    assert.equal(runtimeBeforeReconnect.pid, originalPid);
+    assert.equal(runtimeBeforeReconnect.devtools_port, session.devTools.port);
+    assert.equal(session.profilePath, originalProfilePath);
+
+    connection = await f.driver.connect(personaUid);
+    const reattachedPage = await selectLoadedPage(connection, provisioningUrl);
+    assert.equal(reattachedPage.targetId, originalTargetId);
+    assert.deepEqual(await flow.observeSession(reattachedPage), {
+      authenticated: true,
+      observedIdentity: "p038@example.test",
+      verification: "UNVERIFIED"
+    });
+    assert.equal(session.pid, originalPid);
+    assert.equal(session.profilePath, originalProfilePath);
+
+    const provisioningRequests = emulator.requests().filter((entry) =>
+      entry.path.startsWith("/__pcms_emulator__/provisioning/")
+    );
+    assert.deepEqual(
+      provisioningRequests.map((entry) => entry.path),
+      [
+        "/__pcms_emulator__/provisioning/signup",
+        "/__pcms_emulator__/provisioning/session",
+        "/__pcms_emulator__/provisioning/login",
+        "/__pcms_emulator__/provisioning/session",
+        "/__pcms_emulator__/provisioning/session"
+      ]
+    );
+    assert.equal(
+      JSON.stringify(provisioningRequests).includes(password),
+      false,
+      "emulator request evidence must never contain transient password bytes"
+    );
+    assert.equal(
+      provisioningRequests.filter((entry) => entry.passwordPresent === true).length,
+      2
+    );
+  } finally {
+    if (connection !== undefined) await connection.disconnect().catch(() => {});
+    if (session !== undefined) await session.close().catch(() => {});
     f.database.close();
     await rm(f.root, { recursive: true, force: true });
     await emulator.close();
