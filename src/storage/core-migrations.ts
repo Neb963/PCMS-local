@@ -740,5 +740,26 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         ON schedules(pending_dispatch_id)
         WHERE pending_dispatch_id IS NOT NULL;
     `
+  }),
+  Object.freeze({
+    version: 14,
+    id: "0014-project-targets",
+    sql: `
+      CREATE TABLE projects (
+        project_id TEXT PRIMARY KEY
+          CHECK (length(project_id) BETWEEN 1 AND 128),
+        generator_local_id TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        FOREIGN KEY (generator_local_id)
+          REFERENCES generators(generator_local_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE INDEX projects_generator_lookup
+        ON projects(generator_local_id);
+    `
   })
 ]);
