@@ -432,6 +432,13 @@ export class ProvisioningOperationService {
       );
     }
     const operation = this.#coordinator.require(task.operationId);
+    if (operation.accountId === null || operation.personaUid === null) {
+      throw new ProvisioningOperationError(
+        "PROVISIONING_OPERATION_UNRESOLVED",
+        "Provisioning HumanTask operation lost its Account or Persona identity",
+        operation.operationId
+      );
+    }
     const providerIdentity = this.#operationIdentity(operation);
     this.#assertPagePersona(input.page, task.personaUid, operation.operationId);
 
@@ -475,8 +482,8 @@ export class ProvisioningOperationService {
 
     const gate = this.#coordinator.providerGate.acquire({
       provider: "perchance",
-      accountId: operation.accountId ?? undefined,
-      personaUid: operation.personaUid ?? undefined
+      accountId: operation.accountId,
+      personaUid: operation.personaUid
     });
     try {
       if (isCode) {
