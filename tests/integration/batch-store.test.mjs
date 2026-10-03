@@ -41,9 +41,7 @@ function prepare(
     targetKey: generatorOperationTargetKey(targetSuffix),
     operationKind: "synthetic-batch-child",
     schemaVersion: 1,
-    desiredFingerprint: operationId
-      .padEnd(64, "a")
-      .slice(0, 64),
+    desiredFingerprint: "a".repeat(64),
     provenance: { source: "p029-batch-test" },
     preconditions: [{
       key: "provider-session",

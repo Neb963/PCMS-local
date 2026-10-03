@@ -66,9 +66,7 @@ function prepareScheduledOperation(
     ),
     operationKind: intent.operationKind,
     schemaVersion: intent.schemaVersion,
-    desiredFingerprint: suffix
-      .padEnd(64, "b")
-      .slice(0, 64),
+    desiredFingerprint: "b".repeat(64),
     provenance: {
       scheduleId: intent.scheduleId,
       source: "p029-scheduler-test"
@@ -242,4 +240,123 @@ test("P029 bounded queue prioritizes recovery and rotates same-priority fairness
   assert.equal(fourth?.value, "a2");
   assert.ok(fourth);
   queue.complete(fourth.key);
+});
+
+
+test("P029 restart recovers one durable intent while queue backpressure prevents backlog growth", async () => {
+  const f = await fixture(1);
+  try {
+    const dueAt = f.now().toISOString();
+    for (const scheduleId of ["schedule-restart-a", "schedule-restart-b"]) {
+      f.scheduler.create({
+        scheduleId,
+        operationKind: "synthetic-restart-work",
+        schemaVersion: 1,
+        targetRef:
+          "perchance:generator:" + scheduleId,
+        intervalMs: 60_000,
+        timeZone: "UTC",
+        nextDueAt: dueAt
+      });
+    }
+
+    const initialWake = f.scheduler.wake();
+    assert.equal(initialWake.enqueued, 1);
+    assert.equal(initialWake.backpressured, 1);
+    assert.equal(f.queue.size, 1);
+
+    const firstRecord = f.scheduler.require(
+      "schedule-restart-a"
+    );
+    const secondRecord = f.scheduler.require(
+      "schedule-restart-b"
+    );
+    assert.ok(firstRecord.pendingDispatchId);
+    assert.equal(secondRecord.pendingDispatchId, null);
+    assert.equal(secondRecord.nextDueAt, dueAt);
+
+    // Simulate pcmsd loss before the queued dispatch is claimed. The in-memory
+    // queue disappears, but the durable pending intent survives.
+    f.setNow("2026-10-03T20:30:00.000Z");
+    const restartedQueue = new BoundedWorkQueue(1);
+    let restartSequence = 0;
+    const restartedScheduler = new DurableScheduler({
+      database: f.database,
+      queue: restartedQueue,
+      now: f.now,
+      dispatchId: () => {
+        restartSequence += 1;
+        return "restart-dispatch-" + restartSequence;
+      }
+    });
+
+    const recoveryWake = restartedScheduler.wake();
+    assert.equal(recoveryWake.enqueued, 1);
+    assert.equal(recoveryWake.backpressured, 1);
+    assert.equal(restartedQueue.size, 1);
+
+    const recoveredIntent = restartedScheduler.claimNext();
+    assert.ok(recoveredIntent);
+    assert.equal(
+      recoveredIntent.dispatchId,
+      firstRecord.pendingDispatchId
+    );
+    assert.equal(
+      recoveredIntent.scheduleId,
+      "schedule-restart-a"
+    );
+
+    const recoveredOperation = prepareScheduledOperation(
+      f.coordinator,
+      recoveredIntent,
+      "restart-a"
+    );
+    restartedScheduler.acknowledgeDispatch(
+      recoveredIntent.scheduleId,
+      recoveredIntent.dispatchId,
+      recoveredOperation.operationId
+    );
+    assert.equal(restartedQueue.size, 0);
+
+    // The second due schedule was not converted into a durable backlog while
+    // the queue was full. Once capacity exists, one current intent is minted
+    // despite the four-hour forward jump.
+    const secondWake = restartedScheduler.wake();
+    assert.equal(secondWake.enqueued, 1);
+    assert.equal(secondWake.backpressured, 1);
+    const secondIntent = restartedScheduler.claimNext();
+    assert.ok(secondIntent);
+    assert.equal(
+      secondIntent.scheduleId,
+      "schedule-restart-b"
+    );
+    assert.equal(
+      restartedScheduler.require("schedule-restart-b").nextDueAt,
+      "2026-10-03T20:31:00.000Z"
+    );
+
+    // If a consumer gives up before creating/acknowledging an operation, the
+    // same persisted dispatch ID is requeued; a new mutation intent is not
+    // minted.
+    restartedScheduler.abandonClaim(
+      secondIntent.scheduleId,
+      secondIntent.dispatchId
+    );
+    assert.equal(restartedQueue.size, 0);
+    const retryWake = restartedScheduler.wake();
+    assert.equal(retryWake.enqueued, 1);
+    const retriedIntent = restartedScheduler.claimNext();
+    assert.ok(retriedIntent);
+    assert.equal(
+      retriedIntent.dispatchId,
+      secondIntent.dispatchId
+    );
+    assert.equal(
+      retriedIntent.scheduleId,
+      secondIntent.scheduleId
+    );
+  } finally {
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
 });
