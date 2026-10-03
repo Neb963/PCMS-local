@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -136,6 +136,135 @@ test("64 dormant Account/Persona pairs stay queryable without starting browser r
       ).get();
       assert.equal(runtimeCount.count, 0);
       assert.equal(openCount.count, 0);
+    } finally {
+      observation.close();
+    }
+  } finally {
+    await daemon.close();
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+
+async function createCorruptionFixture(prefix) {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  const paths = resolvePcmsPaths({
+    env: {
+      PCMS_CONFIG_ROOT: join(root, "config"),
+      PCMS_DATA_ROOT: join(root, "data"),
+      PCMS_CACHE_ROOT: join(root, "cache")
+    },
+    homeDir: root
+  });
+  await ensurePcmsDirectories(paths);
+
+  const database = openConfiguredSqliteDatabase(paths.databasePath);
+  applyPcmsMigrations(database, {
+    now: () => new Date("2026-10-03T12:20:00.000Z")
+  });
+  const lifecycle = new PersonaProfileLifecycle({
+    database,
+    personasRoot: paths.personasRoot,
+    now: () => new Date("2026-10-03T12:21:00.000Z")
+  });
+  const accounts = new AccountRepository({ database });
+  const bindings = new PersonaBindingService({ database });
+
+  const profiles = {};
+  for (const name of ["good", "missing", "corrupt"]) {
+    const personaUid = `persona_${name}`;
+    const accountId = `account_${name}`;
+    profiles[name] = (await lifecycle.allocate(personaUid)).profilePath;
+    accounts.create({
+      accountId,
+      displayName: `Isolation ${name}`
+    });
+    bindings.bind({
+      accountId,
+      personaUid,
+      expectedRevision: 0,
+      reason: "P024 corruption isolation fixture"
+    });
+  }
+
+  await rm(profiles.missing, { recursive: true, force: false });
+  await writeFile(
+    join(profiles.corrupt, ".pcms-persona-profile.json"),
+    JSON.stringify({
+      format: 1,
+      personaUid: "persona_wrong_owner",
+      backend: "chromium-v1"
+    }) + "\n",
+    "utf8"
+  );
+
+  database.close();
+  return { root, paths };
+}
+
+test("missing or corrupt dormant Persona profiles do not poison unrelated inventory", async () => {
+  const fixture = await createCorruptionFixture(
+    "pcms-inventory-corruption-isolation-"
+  );
+  const daemon = await startPcmsd({ paths: fixture.paths, port: 0 });
+
+  try {
+    const token = await readLocalApiToken(fixture.paths.apiTokenFile);
+
+    const accountsResponse = await fetch(
+      `${daemon.origin}/api/v1/accounts`,
+      { headers: auth(token) }
+    );
+    assert.equal(accountsResponse.status, 200);
+    const accountsPayload = await accountsResponse.json();
+    assert.deepEqual(
+      accountsPayload.accounts.map((account) => account.accountId),
+      ["account_corrupt", "account_good", "account_missing"]
+    );
+
+    const goodNavigation = await fetch(
+      `${daemon.origin}/api/v1/accounts/account_good/persona`,
+      { headers: auth(token) }
+    );
+    assert.equal(goodNavigation.status, 200);
+    assert.equal(
+      (await goodNavigation.json()).persona.personaUid,
+      "persona_good"
+    );
+
+    const goodSearch = await fetch(
+      `${daemon.origin}/api/v1/search?q=account_good`,
+      { headers: auth(token) }
+    );
+    assert.equal(goodSearch.status, 200);
+    assert.equal(
+      (await goodSearch.json()).results[0].entityId,
+      "account_good"
+    );
+
+    const observation = openConfiguredSqliteDatabase(
+      fixture.paths.databasePath
+    );
+    try {
+      const lifecycle = new PersonaProfileLifecycle({
+        database: observation,
+        personasRoot: fixture.paths.personasRoot
+      });
+
+      await assert.rejects(
+        () => lifecycle.allocate("persona_missing"),
+        (error) =>
+          error?.code === "PERSONA_PROFILE_INCOMPATIBLE"
+      );
+      await assert.rejects(
+        () => lifecycle.allocate("persona_corrupt"),
+        (error) =>
+          error?.code === "PERSONA_PROFILE_INCOMPATIBLE"
+      );
+
+      const good = await lifecycle.allocate("persona_good");
+      assert.equal(good.record.personaUid, "persona_good");
+      assert.equal(good.record.profileState, "CLOSED");
     } finally {
       observation.close();
     }
