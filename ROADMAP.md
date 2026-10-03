@@ -795,8 +795,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T033.1 — Implement/coalesce polling under shared provider backpressure
-- [~] T033.2 — Exercise update/disable/crash/rollback while preserving Core operation evidence
-- [ ] T033.3 — Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance
+- [x] T033.2 — Exercise update/disable/crash/rollback while preserving Core operation evidence
+- [~] T033.3 — Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance
 
 **Acceptance:**
 - [ ] A07-08
