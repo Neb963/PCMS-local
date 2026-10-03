@@ -1,5 +1,5 @@
 import { constants as fsConstants } from "node:fs";
-import { access, readFile, rm } from "node:fs/promises";
+import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { execFile, spawn } from "node:child_process";
 import { isAbsolute, join } from "node:path";
 import type { ChildProcess } from "node:child_process";
@@ -30,6 +30,7 @@ export type ChromiumBrowserErrorCode =
   | "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS"
   | "PERSONA_BROWSER_CAPACITY_EXCEEDED"
   | "CHROMIUM_PROXY_INVALID"
+  | "CHROMIUM_PROFILE_PREFERENCES_INVALID"
   | "CHROMIUM_INITIAL_URL_INVALID"
   | "CHROMIUM_LAUNCH_FAILED"
   | "CHROMIUM_DEVTOOLS_TIMEOUT"
@@ -157,6 +158,72 @@ function validateProtectedProxy(
     "--disable-quic",
     `--force-webrtc-ip-handling-policy=${PROTECTED_WEBRTC_IP_POLICY}`
   ]);
+}
+
+async function applyProtectedProfilePreferences(
+  profilePath: string
+): Promise<void> {
+  const defaultProfilePath = join(profilePath, "Default");
+  const preferencesPath = join(defaultProfilePath, "Preferences");
+  let preferences: Record<string, unknown> = {};
+
+  try {
+    const parsed: unknown = JSON.parse(await readFile(preferencesPath, "utf8"));
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      throw new Error("Chromium Preferences root is not an object");
+    }
+    preferences = parsed as Record<string, unknown>;
+  } catch (error: unknown) {
+    if (systemErrorCode(error) !== "ENOENT") {
+      throw new ChromiumBrowserError(
+        "CHROMIUM_PROFILE_PREFERENCES_INVALID",
+        "Protected Chromium launch cannot safely update profile network preferences",
+        error
+      );
+    }
+  }
+
+  const currentWebRtc = preferences["webrtc"];
+  if (
+    currentWebRtc !== undefined &&
+    (typeof currentWebRtc !== "object" ||
+      currentWebRtc === null ||
+      Array.isArray(currentWebRtc))
+  ) {
+    throw new ChromiumBrowserError(
+      "CHROMIUM_PROFILE_PREFERENCES_INVALID",
+      "Protected Chromium launch found an invalid WebRTC preference object"
+    );
+  }
+
+  preferences["webrtc"] = {
+    ...((currentWebRtc ?? {}) as Record<string, unknown>),
+    "ip_handling_policy": PROTECTED_WEBRTC_IP_POLICY,
+    "multiple_routes_enabled": false,
+    "nonproxied_udp_enabled": false
+  };
+
+  await mkdir(defaultProfilePath, { recursive: true, mode: 0o700 });
+  const temporaryPath = `${preferencesPath}.pcms-${process.pid}.tmp`;
+  try {
+    await writeFile(
+      temporaryPath,
+      `${JSON.stringify(preferences)}\n`,
+      { encoding: "utf8", mode: 0o600 }
+    );
+    await rename(temporaryPath, preferencesPath);
+  } catch (error: unknown) {
+    await rm(temporaryPath, { force: true }).catch(() => undefined);
+    throw new ChromiumBrowserError(
+      "CHROMIUM_PROFILE_PREFERENCES_INVALID",
+      "Protected Chromium launch could not persist fail-closed WebRTC preferences",
+      error
+    );
+  }
 }
 
 function validateInitialUrl(value: string | undefined): string {
@@ -1028,6 +1095,10 @@ export class ChromiumBrowserManager {
       const initialUrl = validateInitialUrl(options.initialUrl);
       const opened = await this.#lifecycle.open(personaUid);
       profileOpened = true;
+
+      if (protectedProxyArgument !== null) {
+        await applyProtectedProfilePreferences(opened.profilePath);
+      }
 
       await rm(join(opened.profilePath, DEVTOOLS_ACTIVE_PORT), {
         force: true
