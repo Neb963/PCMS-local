@@ -568,8 +568,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not infer provider truth from labels or stale observations.
 
 **Work:**
-- [~] T023.1 — Implement route/session/account health projections with evidence age
-- [ ] T023.2 — Implement metadata search using stable IDs
+- [x] T023.1 — Implement route/session/account health projections with evidence age
+- [~] T023.2 — Implement metadata search using stable IDs
 - [ ] T023.3 — Add UI/CLI navigation from Account to the actual bound Persona
 
 **Acceptance:**
