@@ -478,8 +478,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T019.1 — Add controlled DNS/QUIC/WebRTC-sensitive network assertions
-- [~] T019.2 — Inject proxy/tunnel/forwarder loss during browser use
-- [ ] T019.3 — Assert failure/blocking and detect any Direct/control-path escape
+- [x] T019.2 — Inject proxy/tunnel/forwarder loss during browser use
+- [~] T019.3 — Assert failure/blocking and detect any Direct/control-path escape
 
 **Acceptance:**
 - [ ] A04-06
