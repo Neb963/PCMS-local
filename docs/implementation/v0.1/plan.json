@@ -1787,7 +1787,7 @@
       "id": "P042",
       "milestone": "M10",
       "name": "Optional profile backup and recovery-hold restore",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P041"
       ],
