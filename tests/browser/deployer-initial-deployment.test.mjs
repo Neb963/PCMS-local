@@ -617,3 +617,165 @@ test("P032 provider identity replacement and old-slug reuse cannot redirect depl
     await emulator.close();
   }
 });
+
+
+test("P032 lost save response reconciles applied state before any retry", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-p032-loss",
+      generators: [{
+        publicId: "public-p032-loss",
+        slug: "repository-generator",
+        artifactSha256: "4".repeat(64),
+        files: [{
+          path: "index.html",
+          contentBase64: Buffer.from("<main>before loss</main>").toString("base64")
+        }],
+        isPublic: false
+      }]
+    }]
+  });
+  const f = await fixture("pcms-deployer-response-loss-");
+  const personaUid = "persona_deployer_response_loss";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    const browserSession = emulator.sessionFor("owner@example.test");
+    await page.evaluate(
+      `sessionStorage.setItem(${JSON.stringify(SESSION_STORAGE_KEY)}, ${JSON.stringify(JSON.stringify(browserSession))})`
+    );
+
+    const accounts = new AccountRepository({ database: f.database });
+    const bindings = new PersonaBindingService({ database: f.database });
+    const generators = new GeneratorRepository({ database: f.database });
+    accounts.create({
+      accountId: "account_p032_loss",
+      displayName: "P032 Response Loss Account"
+    });
+    bindings.bind({
+      accountId: "account_p032_loss",
+      personaUid,
+      expectedRevision: 0,
+      reason: "P032 response loss Persona"
+    });
+    generators.create({
+      generatorLocalId: "generator_p032_loss",
+      accountId: "account_p032_loss",
+      providerStableId: "public-p032-loss",
+      currentSlug: "repository-generator"
+    });
+
+    const state = new ModuleStateStore(f.database, {
+      now: () => new Date("2026-10-03T17:20:00.000Z")
+    });
+    const registration = state.registerModule("deployer", "1.0.0", 1, {});
+    const now = () => new Date("2026-10-03T17:20:00.000Z");
+    const provider = new PerchanceProvider({
+      browserProfile: { sessionStateExpression: SESSION_STATE_EXPRESSION },
+      now
+    });
+    const coordinator = new OperationCoordinator({
+      database: f.database,
+      now
+    });
+    const service = new InitialDeploymentService({
+      database: f.database,
+      provider,
+      coordinator
+    });
+    const artifact = await resolvedArtifact({
+      marker: "P032-loss",
+      commitCharacter: "8",
+      blobCharacter: "7"
+    });
+    const owner = {
+      kind: "MODULE",
+      moduleId: "deployer",
+      moduleVersion: registration.activeVersion,
+      runtimeGeneration: registration.runtimeGeneration
+    };
+
+    emulator.setScenario("RESPONSE_LOSS_AFTER_EFFECT");
+    const recovered = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_loss",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-response-loss",
+      idempotencyKey: "request-p032-response-loss",
+      owner,
+      actorSource: "p032-browser-test",
+      mutationCommandOptions: { timeoutMs: 200 }
+    });
+
+    assert.equal(recovered.disposition, "RECONCILED_APPLIED");
+    assert.ok(recovered.operation);
+    assert.equal(recovered.operation.state, "SUCCEEDED");
+    assert.equal(
+      recovered.operation.lastTransitionReason,
+      "deployment-reconciliation-confirmed-applied"
+    );
+    assert.equal(recovered.observation.artifactSha256, artifact.sha256);
+    assert.equal(recovered.observation.isPublic, true);
+
+    const persisted = emulator.readGenerator("public-p032-loss");
+    assert.equal(persisted.artifactSha256, artifact.sha256);
+    assert.equal(persisted.isPublic, true);
+    assert.equal(
+      emulator.requests().filter((request) => request.path === "/api/save").length,
+      1
+    );
+
+    const firstRequests = emulator.requests();
+    const saveIndex = firstRequests.findIndex(
+      (request) => request.path === "/api/save"
+    );
+    const reconciliationReadIndex = firstRequests.findIndex(
+      (request, index) =>
+        index > saveIndex &&
+        request.path === "/api/getGeneratorPageData"
+    );
+    assert.ok(saveIndex >= 0);
+    assert.ok(reconciliationReadIndex > saveIndex);
+
+    const retry = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_loss",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-response-loss-retry",
+      idempotencyKey: "request-p032-response-loss",
+      owner,
+      actorSource: "p032-browser-test"
+    });
+
+    assert.equal(retry.disposition, "NO_OP");
+    assert.ok(retry.operation);
+    assert.equal(
+      retry.operation.operationId,
+      "operation-p032-response-loss"
+    );
+    assert.equal(retry.operation.state, "SUCCEEDED");
+    assert.equal(
+      emulator.requests().filter((request) => request.path === "/api/save").length,
+      1
+    );
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
