@@ -1,4 +1,4 @@
-import { createServer } from "node:net";
+import { createConnection, createServer } from "node:net";
 
 function parseSocksRequest(buffer) {
   if (buffer.length < 4) {
@@ -53,9 +53,11 @@ function jsonResponse(identity, requestedHost, requestedPort, requestedPath) {
 export async function startSyntheticSocksExit({
   routeIdentity,
   expectedHost = "pcms-egress.invalid",
-  expectedPort = 80
+  expectedPort = 80,
+  forwardTarget = null
 }) {
   const observations = [];
+  const forwardedConnections = [];
   const clientErrors = [];
   const sockets = new Set();
 
@@ -71,6 +73,11 @@ export async function startSyntheticSocksExit({
     let state = "greeting";
     let buffer = Buffer.alloc(0);
     let target = null;
+    let upstream = null;
+
+    socket.on("close", () => {
+      upstream?.destroy();
+    });
 
     socket.on("data", (chunk) => {
       buffer = Buffer.concat([buffer, chunk]);
@@ -104,6 +111,50 @@ export async function startSyntheticSocksExit({
           }
           buffer = buffer.subarray(parsed.consumed);
           target = Object.freeze({ host: parsed.host, port: parsed.port });
+          const shouldForward =
+            forwardTarget !== null &&
+            parsed.host === forwardTarget.requestedHost &&
+            parsed.port === forwardTarget.requestedPort;
+          if (shouldForward) {
+            state = "connecting-forward";
+            forwardedConnections.push(Object.freeze({
+              routeIdentity,
+              requestedHost: parsed.host,
+              requestedPort: parsed.port,
+              connectHost: forwardTarget.connectHost,
+              connectPort: forwardTarget.connectPort
+            }));
+            upstream = createConnection({
+              host: forwardTarget.connectHost,
+              port: forwardTarget.connectPort
+            });
+            upstream.once("connect", () => {
+              if (socket.destroyed) {
+                upstream?.destroy();
+                return;
+              }
+              socket.write(Buffer.from([5, 0, 0, 1, 127, 0, 0, 1, 0, 0]));
+              state = "forwarding";
+              if (buffer.length > 0) {
+                upstream?.write(buffer);
+                buffer = Buffer.alloc(0);
+              }
+            });
+            upstream.on("data", (upstreamChunk) => {
+              if (!socket.destroyed) socket.write(upstreamChunk);
+            });
+            upstream.on("end", () => socket.end());
+            upstream.on("error", (error) => {
+              if (
+                error.code !== "ECONNRESET" &&
+                error.code !== "EPIPE"
+              ) {
+                clientErrors.push(error);
+              }
+              socket.destroy();
+            });
+            return;
+          }
           if (parsed.host !== expectedHost || parsed.port !== expectedPort) {
             socket.end(Buffer.from([5, 4, 0, 1, 0, 0, 0, 0, 0, 0]));
             return;
@@ -111,6 +162,15 @@ export async function startSyntheticSocksExit({
           socket.write(Buffer.from([5, 0, 0, 1, 127, 0, 0, 1, 0, 0]));
           state = "http";
           continue;
+        }
+
+        if (state === "connecting-forward") {
+          return;
+        }
+        if (state === "forwarding") {
+          upstream?.write(buffer);
+          buffer = Buffer.alloc(0);
+          return;
         }
 
         const headerEnd = buffer.indexOf("\r\n\r\n");
@@ -164,6 +224,7 @@ export async function startSyntheticSocksExit({
     expectedHost,
     expectedPort,
     observations,
+    forwardedConnections,
     clientErrors,
     async close() {
       for (const socket of sockets) socket.destroy();
