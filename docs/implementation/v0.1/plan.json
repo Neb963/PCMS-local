@@ -120,7 +120,7 @@
     {
       "id": "M08",
       "name": "Refresh measurement and Refresher",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P034",
         "P035",
@@ -1496,7 +1496,7 @@
       "id": "P034",
       "milestone": "M08",
       "name": "Refresh and recent-listing emulator contract",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P033"
       ],
@@ -1531,7 +1531,7 @@
       "id": "P035",
       "milestone": "M08",
       "name": "Refresher cohorts, time policy and shared admission",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P034"
       ],
