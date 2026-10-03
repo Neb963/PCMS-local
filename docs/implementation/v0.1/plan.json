@@ -141,7 +141,7 @@
     {
       "id": "M10",
       "name": "Statistics, backup, restore and operational UX",
-      "status": "IN_PROGRESS",
+      "status": "READY",
       "phaseIds": [
         "P041",
         "P042",
