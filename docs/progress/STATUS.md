@@ -1,10 +1,10 @@
 # PCMS-local Status
 
 Baseline: **v0.1**  
-Completed through: **P013**  
+Completed through: **P014**  
 Current milestone: **M03 — Chromium Persona runtime**  
-Current phase: **P014 — IN_PROGRESS**  
-Next phase: **P015 — BLOCKED (P014)**
+Current phase: **P015 — READY**  
+Next phase: **P016 — BLOCKED (P015)**
 
 Canonical execution view: `ROADMAP.md`.
 
@@ -19,4 +19,4 @@ Canonical execution view: `ROADMAP.md`.
 - Normal phase sizing is structural (≤3 work items, ≤5 acceptance gates), targeting the empirically reliable ~20–30 minute cloud-agent window without relying on agent time awareness.
 - Repository operations may use local Git or the GitHub connector; GitHub publication is the durability boundary.
 
-Latest completed report: `reports/phases/P013.md`.
+Latest completed report: `reports/phases/P014.md`.

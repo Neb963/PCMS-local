@@ -357,7 +357,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P013 → COMPLETE; P014 → READY; publish to GitHub; **STOP — do not implement P014.**
 
 ### P014 — Browser ownership, crash/restart reconciliation and resource cap
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P013  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -369,18 +369,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T014.1 — Implement runtime fingerprint/ownership and ambiguous-attach refusal
 - [x] T014.2 — Implement Chromium/pcmsd restart reconciliation
-- [~] T014.3 — Implement active-Persona admission cap and recovery tests
+- [x] T014.3 — Implement active-Persona admission cap and recovery tests
 
 **Acceptance:**
-- [ ] A03-05
-- [ ] A03-06
-- [ ] A03-07
-- [ ] A03-10
+- [x] A03-05
+- [x] A03-06
+- [x] A03-07
+- [x] A03-10
 
 **Closure:** relevant tests + CI green; phase report finalized; P014 → COMPLETE; P015 → READY; publish to GitHub; **STOP — do not implement P015.**
 
 ### P015 — Generic DevTools attach/detach acceptance
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P014  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

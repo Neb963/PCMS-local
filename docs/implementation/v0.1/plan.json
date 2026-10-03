@@ -725,7 +725,7 @@
       "id": "P014",
       "milestone": "M03",
       "name": "Browser ownership, crash/restart reconciliation and resource cap",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P013"
       ],
@@ -763,7 +763,7 @@
       "id": "P015",
       "milestone": "M03",
       "name": "Generic DevTools attach/detach acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P014"
       ],
