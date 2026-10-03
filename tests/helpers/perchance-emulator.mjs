@@ -7,7 +7,8 @@ export const PERCHANCE_EMULATOR_SCENARIOS = Object.freeze([
   "PERIMETER_HTML",
   "HTTP_ERROR",
   "RESPONSE_LOSS_AFTER_EFFECT",
-  "CHALLENGE"
+  "CHALLENGE",
+  "COMPATIBILITY_DRIFT"
 ]);
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -68,6 +69,37 @@ function normalizedDeploymentFile(file) {
   };
 }
 
+function refreshMarkerToken(files) {
+  const byPath = new Map(files.map((file) => [file.path, file]));
+  const pjs = byPath.get("main.pjs");
+  const html = byPath.get("index.html");
+  if (pjs === undefined || html === undefined) {
+    return null;
+  }
+  let pjsText;
+  let htmlText;
+  try {
+    pjsText = Buffer.from(pjs.contentBase64, "base64").toString("utf8");
+    htmlText = Buffer.from(html.contentBase64, "base64").toString("utf8");
+  } catch {
+    return null;
+  }
+  const pjsMatches = [...pjsText.matchAll(
+    /^[ \t]*\/\/[ \t]*pcms-refresh-marker:v1:([A-Za-z0-9._:-]+)[ \t]*$/gmu
+  )];
+  const htmlMatches = [...htmlText.matchAll(
+    /^[ \t]*<!--[ \t]*pcms-refresh-marker:v1:([A-Za-z0-9._:-]+)[ \t]*-->[ \t]*$/gmu
+  )];
+  if (
+    pjsMatches.length !== 1 ||
+    htmlMatches.length !== 1 ||
+    pjsMatches[0][1] !== htmlMatches[0][1]
+  ) {
+    return null;
+  }
+  return pjsMatches[0][1];
+}
+
 function normalizedGenerator(generator) {
   assertText(generator.publicId, "generator publicId", 256);
   assertText(generator.slug, "generator slug", 512);
@@ -88,7 +120,10 @@ function normalizedGenerator(generator) {
     slug: generator.slug,
     artifactSha256,
     files,
-    isPublic
+    isPublic,
+    refreshToken: null,
+    refreshSequence: 0,
+    refreshEffectPublished: false
   };
 }
 
@@ -124,7 +159,21 @@ export async function startPerchanceEmulator(options = {}) {
   }
 
   let scenario = "NORMAL";
+  let refreshSequence = 0;
+  let recentObservationComplete = true;
   const requestLog = [];
+  const recentOrder = [];
+  const configuredRecent = options.recentPublicIds ?? [];
+  if (!Array.isArray(configuredRecent)) {
+    throw new TypeError("recentPublicIds must be an array");
+  }
+  for (const publicId of configuredRecent) {
+    assertText(publicId, "recent publicId", 256);
+    if (recentOrder.includes(publicId)) {
+      throw new Error("duplicate recent generator");
+    }
+    recentOrder.push(publicId);
+  }
 
   function findGenerator(publicId) {
     for (const account of accounts.values()) {
@@ -143,6 +192,77 @@ export async function startPerchanceEmulator(options = {}) {
     findGenerator(publicId).slug = newSlug;
   }
 
+  for (const publicId of recentOrder) {
+    findGenerator(publicId);
+  }
+
+  function publicListingItems() {
+    const items = [];
+    for (const account of accounts.values()) {
+      for (const generator of account.generators) {
+        if (generator.isPublic) {
+          items.push({
+            slug: generator.slug,
+            publicId: generator.publicId
+          });
+        }
+      }
+    }
+    items.sort((left, right) =>
+      left.slug.localeCompare(right.slug, "en")
+    );
+    return items;
+  }
+
+  function recentItems() {
+    return recentOrder
+      .map((publicId) => {
+        const generator = findGenerator(publicId);
+        return generator.isPublic
+          ? { slug: generator.slug, publicId: generator.publicId }
+          : null;
+      })
+      .filter((value) => value !== null);
+  }
+
+  function publishRefreshEffect(publicId) {
+    const generator = findGenerator(publicId);
+    if (generator.refreshToken === null) {
+      throw new Error("generator has no pending refresh effect");
+    }
+    const prior = recentOrder.indexOf(publicId);
+    if (prior >= 0) {
+      recentOrder.splice(prior, 1);
+    }
+    recentOrder.unshift(publicId);
+    generator.refreshEffectPublished = true;
+  }
+
+  function refreshEffectFixture(publicId) {
+    const generator = findGenerator(publicId);
+    if (generator.refreshToken === null) {
+      return {
+        contractVersion: 1,
+        semantic: "REFRESH_EFFECT",
+        state: "NONE",
+        publicId: generator.publicId
+      };
+    }
+    const rank = recentItems().findIndex((item) =>
+      item.publicId === generator.publicId
+    );
+    return {
+      contractVersion: 1,
+      semantic: "REFRESH_EFFECT",
+      state: generator.refreshEffectPublished ? "VISIBLE" : "PENDING",
+      publicId: generator.publicId,
+      markerStrategyId: "PCMS_MARKER_BOTH_V1",
+      refreshToken: generator.refreshToken,
+      refreshSequence: generator.refreshSequence,
+      recentRank: rank < 0 ? null : rank
+    };
+  }
+
   const server = createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
 
@@ -154,6 +274,97 @@ export async function startPerchanceEmulator(options = {}) {
         "cache-control": "no-store"
       });
       response.end(body);
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/observations/public-listing"
+    ) {
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        scenario
+      }));
+      jsonResponse(
+        response,
+        200,
+        scenario === "COMPATIBILITY_DRIFT"
+          ? {
+              contractVersion: 2,
+              semantic: "FUTURE_LIBRARY_SHAPE",
+              payload: { count: publicListingItems().length }
+            }
+          : {
+              contractVersion: 1,
+              semantic: "PUBLIC_LIBRARY",
+              complete: true,
+              items: publicListingItems()
+            }
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/observations/recent"
+    ) {
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        scenario
+      }));
+      const items = recentItems();
+      jsonResponse(
+        response,
+        200,
+        scenario === "COMPATIBILITY_DRIFT"
+          ? {
+              contractVersion: 1,
+              semantic: "RECENTLY_UPDATED",
+              complete: "future-completeness",
+              entries: items
+            }
+          : {
+              contractVersion: 1,
+              semantic: "RECENTLY_UPDATED",
+              complete: recentObservationComplete,
+              observedSlotCount: items.length,
+              items
+            }
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/observations/refresh-effect"
+    ) {
+      const publicId = requestUrl.searchParams.get("publicId");
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        publicId,
+        scenario
+      }));
+      if (publicId === null) {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("missing publicId");
+        return;
+      }
+      jsonResponse(
+        response,
+        200,
+        scenario === "COMPATIBILITY_DRIFT"
+          ? {
+              contractVersion: 99,
+              semantic: "REFRESH_EFFECT_VNEXT",
+              publicId
+            }
+          : refreshEffectFixture(publicId)
+      );
       return;
     }
 
@@ -345,6 +556,16 @@ export async function startPerchanceEmulator(options = {}) {
       generator.artifactSha256 = artifactSha256;
       generator.files = normalizedFiles;
       generator.isPublic = isPublic;
+      const refreshToken = refreshMarkerToken(normalizedFiles);
+      if (
+        refreshToken !== null &&
+        refreshToken !== generator.refreshToken
+      ) {
+        refreshSequence += 1;
+        generator.refreshToken = refreshToken;
+        generator.refreshSequence = refreshSequence;
+        generator.refreshEffectPublished = false;
+      }
 
       if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
         setTimeout(() => {
@@ -489,6 +710,18 @@ export async function startPerchanceEmulator(options = {}) {
     },
     renameGenerator(publicId, newSlug) {
       renameGenerator(publicId, newSlug);
+    },
+    publishRefreshEffect(publicId) {
+      publishRefreshEffect(publicId);
+    },
+    setRecentObservationComplete(value) {
+      if (typeof value !== "boolean") {
+        throw new TypeError("recent observation completeness must be boolean");
+      }
+      recentObservationComplete = value;
+    },
+    readRefreshEffect(publicId) {
+      return Object.freeze({ ...refreshEffectFixture(publicId) });
     },
     replaceGeneratorStableId(publicId, replacementPublicId) {
       assertText(replacementPublicId, "replacement publicId", 256);

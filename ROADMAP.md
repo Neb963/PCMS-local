@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P033**
-- Current phase: **P034 — READY**
-- Next phase: **P035 — BLOCKED (P034)**
+- Completed through: **P034**
+- Current phase: **P035 — READY**
+- Next phase: **P036 — BLOCKED (P035)**
 - Current milestone: **M08 — Refresh measurement and Refresher**
 - Final live milestone: **M12 — P048–P049**
 
@@ -810,10 +810,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M08 — Refresh measurement and Refresher
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P034 — Refresh and recent-listing emulator contract
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P033  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -823,18 +823,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not measure against live Perchance during implementation phases.
 
 **Work:**
-- [ ] T034.1 — Model refresh effect and listing/recent surfaces in the emulator
-- [ ] T034.2 — Implement parser/compatibility behavior including UNKNOWN on drift
-- [ ] T034.3 — Add sanitized evidence/fixture provenance notes for assumptions
+- [x] T034.1 — Model refresh effect and listing/recent surfaces in the emulator
+- [x] T034.2 — Implement parser/compatibility behavior including UNKNOWN on drift
+- [x] T034.3 — Add sanitized evidence/fixture provenance notes for assumptions
 
 **Acceptance:**
-- [ ] A08-01
-- [ ] A08-02
+- [x] A08-01
+- [x] A08-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P034 → COMPLETE; P035 → READY; publish to GitHub; **STOP — do not implement P035.**
 
 ### P035 — Refresher cohorts, time policy and shared admission
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P034  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
