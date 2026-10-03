@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P028**
-- Current phase: **P029 — READY**
+- Current phase: **P029 — IN_PROGRESS**
 - Next phase: **P030 — BLOCKED (P029)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
@@ -694,7 +694,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P028 → COMPLETE; P029 → READY; publish to GitHub; **STOP — do not implement P029.**
 
 ### P029 — Batch isolation and scheduler/time semantics
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P028  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -704,7 +704,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not build a generic workflow engine.
 
 **Work:**
-- [ ] T029.1 — Implement independent batch child result/cancellation accounting
+- [~] T029.1 — Implement independent batch child result/cancellation accounting
 - [ ] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
 - [ ] T029.3 — Exercise clock jump/restart/backpressure integration
 

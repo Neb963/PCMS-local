@@ -1301,7 +1301,7 @@
       "id": "P029",
       "milestone": "M06",
       "name": "Batch isolation and scheduler/time semantics",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P028"
       ],
