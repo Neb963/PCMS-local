@@ -23,6 +23,13 @@ export interface CreateGeneratorInput {
   readonly currentSlug: string;
 }
 
+export interface PreparedCreateGeneratorInput {
+  readonly generatorLocalId: string;
+  readonly accountId: string;
+  readonly providerStableId: string | null;
+  readonly currentSlug: string;
+}
+
 export interface UpdateGeneratorIdentityInput {
   readonly generatorLocalId: string;
   readonly expectedRevision: number;
@@ -108,6 +115,18 @@ function normalizeCurrentSlug(currentSlug: string): string {
   return normalized;
 }
 
+export function prepareCreateGeneratorInput(
+  input: CreateGeneratorInput
+): PreparedCreateGeneratorInput {
+  assertGeneratorLocalId(input.generatorLocalId);
+  return Object.freeze({
+    generatorLocalId: input.generatorLocalId,
+    accountId: input.accountId,
+    providerStableId: normalizeProviderStableId(input.providerStableId),
+    currentSlug: normalizeCurrentSlug(input.currentSlug)
+  });
+}
+
 function parseGenerator(row: GeneratorRow | undefined): GeneratorRecord | null {
   if (row === undefined) {
     return null;
@@ -181,10 +200,8 @@ export class GeneratorRepository {
   }
 
   public create(input: CreateGeneratorInput): GeneratorRecord {
-    assertGeneratorLocalId(input.generatorLocalId);
-    this.#accounts.require(input.accountId);
-    const providerStableId = normalizeProviderStableId(input.providerStableId);
-    const currentSlug = normalizeCurrentSlug(input.currentSlug);
+    const prepared = prepareCreateGeneratorInput(input);
+    this.#accounts.require(prepared.accountId);
     const now = this.#now().toISOString();
 
     try {
@@ -199,10 +216,10 @@ export class GeneratorRepository {
           revision
         ) VALUES (?, ?, ?, ?, ?, ?, 0)
       `).run(
-        input.generatorLocalId,
-        input.accountId,
-        providerStableId,
-        currentSlug,
+        prepared.generatorLocalId,
+        prepared.accountId,
+        prepared.providerStableId,
+        prepared.currentSlug,
         now,
         now
       );
@@ -210,21 +227,21 @@ export class GeneratorRepository {
       if (isLocalIdConflict(error)) {
         throw new GeneratorRepositoryError(
           "GENERATOR_EXISTS",
-          `Generator ${input.generatorLocalId} already exists`,
+          `Generator ${prepared.generatorLocalId} already exists`,
           error
         );
       }
       if (isProviderStableIdConflict(error)) {
         throw new GeneratorRepositoryError(
           "GENERATOR_PROVIDER_ID_CONFLICT",
-          `Provider stable ID ${providerStableId ?? "<unknown>"} is already assigned to another Generator`,
+          `Provider stable ID ${prepared.providerStableId ?? "<unknown>"} is already assigned to another Generator`,
           error
         );
       }
       throw error;
     }
 
-    return this.require(input.generatorLocalId);
+    return this.require(prepared.generatorLocalId);
   }
 
   public get(generatorLocalId: string): GeneratorRecord | null {
