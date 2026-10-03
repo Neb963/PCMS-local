@@ -5,7 +5,8 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
-  BrowserDriver
+  BrowserDriver,
+  BrowserDriverError
 } from "../../dist/browser/browser-driver.js";
 import {
   ChromiumBrowserManager
@@ -22,6 +23,12 @@ import {
   OperationCoordinator,
   generatorOperationTargetKey
 } from "../../dist/operations/operation-coordinator.js";
+import {
+  HumanTaskStore
+} from "../../dist/human-tasks/human-task-store.js";
+import {
+  HumanContinuationService
+} from "../../dist/human-tasks/human-continuation.js";
 import {
   OperationReconciler
 } from "../../dist/operations/reconciliation.js";
@@ -49,6 +56,10 @@ const SESSION_STATE_EXPRESSION = `(() => {
     return null;
   }
 })()`;
+
+const CHALLENGE_STATE_EXPRESSION =
+  `fetch("/__pcms_emulator__/challenge", { cache: "no-store" })
+    .then((response) => response.json())`;
 
 function requiredChromiumBinary() {
   const value = process.env.PCMS_CHROMIUM_BINARY;
@@ -375,20 +386,24 @@ test("P028 response loss after committed emulator effect reconciles read-first w
     });
 
     emulator.setScenario("RESPONSE_LOSS_AFTER_EFFECT");
-    const dispatchResult = await page.evaluate(`
-      fetch("/__pcms_emulator__/renameGenerator", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          publicId: "public-reconcile-1",
-          newSlug: "after-reconcile"
-        })
-      }).then(
-        () => ({ kind: "response" }),
-        () => ({ kind: "response-lost" })
-      )
-    `);
-    assert.deepEqual(dispatchResult, { kind: "response-lost" });
+    await assert.rejects(
+      () => page.evaluate(`
+        fetch("/__pcms_emulator__/renameGenerator", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            publicId: "public-reconcile-1",
+            newSlug: "after-reconcile"
+          })
+        }).then(() => ({ kind: "response" }))
+      `, { timeoutMs: 200 }),
+      (error) => {
+        assert.ok(error instanceof BrowserDriverError);
+        assert.equal(error.code, "BROWSER_DRIVER_COMMAND_TIMEOUT");
+        assert.equal(error.effectState, "MAY_HAVE_OCCURRED");
+        return true;
+      }
+    );
 
     const uncertain = coordinator.recordExecutionLoss({
       operationId: operation.operationId,
@@ -440,6 +455,160 @@ test("P028 response loss after committed emulator effect reconciles read-first w
     );
     assert.ok(mutationIndex >= 0);
     assert.ok(readIndex > mutationIndex);
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P028 emulated challenge focuses the same Persona and resumes the same logical operation", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-human",
+      generators: [
+        { publicId: "public-human-1", slug: "human-generator" }
+      ]
+    }]
+  });
+  const f = await fixture("pcms-perchance-human-continuation-");
+  const personaUid = "persona_perchance_human";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    await setBrowserSession(
+      page,
+      emulator.sessionFor("owner@example.test")
+    );
+
+    const provider = new PerchanceProvider({
+      browserProfile: {
+        sessionStateExpression: SESSION_STATE_EXPRESSION,
+        challengeStateExpression: CHALLENGE_STATE_EXPRESSION
+      },
+      now: () => new Date("2026-10-03T15:45:00.000Z")
+    });
+    emulator.setScenario("CHALLENGE");
+    const challenge = await provider.probeHumanChallenge(page);
+    assert.deepEqual(challenge, {
+      status: "REQUIRED",
+      kind: "CAPTCHA",
+      challengeId: "synthetic-challenge-1",
+      observedAt: "2026-10-03T15:45:00.000Z"
+    });
+
+    const coordinator = new OperationCoordinator({
+      database: f.database,
+      now: () => new Date("2026-10-03T15:45:00.000Z")
+    });
+    const operation = coordinator.prepare({
+      operationId: "operation-human-browser-1",
+      idempotencyKey: "request-human-browser-1",
+      owner: { kind: "CORE" },
+      actorSource: "p028-browser-test",
+      targetKey: generatorOperationTargetKey("generator-human-1"),
+      operationKind: "synthetic-human-challenge",
+      schemaVersion: 1,
+      personaUid,
+      desiredFingerprint: "f".repeat(64),
+      provenance: { source: "perchance-emulator" },
+      preconditions: [{
+        key: "provider-session",
+        observedAt: "2026-10-03T15:45:00.000Z",
+        maxAgeMs: 60000,
+        evidenceRef: "session-human-browser-1"
+      }]
+    });
+    coordinator.authorizeDispatch({
+      operationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      evidence: { step: "challenge-probe" }
+    });
+    coordinator.beginVerification(
+      operation.operationId,
+      operation.claimEpoch
+    );
+    coordinator.markNeedsHuman(
+      operation.operationId,
+      operation.claimEpoch,
+      "provider-challenge"
+    );
+
+    const tasks = new HumanTaskStore({
+      database: f.database,
+      now: () => new Date("2026-10-03T15:45:00.000Z")
+    });
+    const task = tasks.create({
+      taskId: "human-task-browser-1",
+      taskType: "PROVIDER_CHALLENGE",
+      personaUid,
+      operationId: operation.operationId,
+      title: "Complete provider challenge",
+      explanation:
+        "Complete the provider challenge in the existing Persona, then continue.",
+      requiredActionKind: "COMPLETE_BROWSER_CHALLENGE",
+      continuation: {
+        kind: "PROVIDER_CHALLENGE",
+        version: 1,
+        ref: "operation-human-browser-1:challenge-1"
+      },
+      evidence: {
+        challengeKind: "CAPTCHA",
+        challengeRef: "synthetic-challenge-1",
+        provider: "perchance"
+      }
+    });
+    assert.equal(task.status, "OPEN");
+
+    // The emulator models the human completing the challenge externally. PCMS
+    // does not solve or bypass it.
+    emulator.setScenario("NORMAL");
+    const focusedPersonas = [];
+    const continuation = new HumanContinuationService({
+      tasks,
+      coordinator,
+      focusPersona: async (candidatePersonaUid) => {
+        focusedPersonas.push(candidatePersonaUid);
+        assert.equal(candidatePersonaUid, personaUid);
+        assert.equal(page.personaUid, personaUid);
+        await page.focus();
+      }
+    });
+
+    const resumed = await continuation.resume({
+      taskId: task.taskId,
+      expectedOperationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      expectedContinuationRef:
+        "operation-human-browser-1:challenge-1"
+    });
+    assert.equal(resumed.personaUid, personaUid);
+    assert.equal(resumed.operation.operationId, operation.operationId);
+    assert.equal(resumed.operation.state, "VERIFYING");
+    assert.equal(resumed.task.status, "RESOLVED");
+    assert.deepEqual(focusedPersonas, [personaUid]);
+
+    const afterHuman = await provider.probeHumanChallenge(page);
+    assert.equal(afterHuman.status, "NONE");
+    const terminal = coordinator.markSucceeded(
+      operation.operationId,
+      operation.claimEpoch,
+      "challenge-cleared-and-revalidated"
+    );
+    assert.equal(terminal.operationId, operation.operationId);
+    assert.equal(terminal.state, "SUCCEEDED");
   } finally {
     if (connection !== undefined) await connection.disconnect();
     if (session !== undefined) await session.close();

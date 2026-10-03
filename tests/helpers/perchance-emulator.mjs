@@ -6,7 +6,8 @@ export const PERCHANCE_EMULATOR_SCENARIOS = Object.freeze([
   "MALFORMED_SUCCESS",
   "PERIMETER_HTML",
   "HTTP_ERROR",
-  "RESPONSE_LOSS_AFTER_EFFECT"
+  "RESPONSE_LOSS_AFTER_EFFECT",
+  "CHALLENGE"
 ]);
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -124,6 +125,28 @@ export async function startPerchanceEmulator(options = {}) {
     }
 
     if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/challenge"
+    ) {
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: "/__pcms_emulator__/challenge",
+        scenario
+      }));
+      jsonResponse(
+        response,
+        200,
+        scenario === "CHALLENGE"
+          ? {
+              kind: "CAPTCHA",
+              challengeId: "synthetic-challenge-1"
+            }
+          : null
+      );
+      return;
+    }
+
+    if (
       request.method === "POST" &&
       requestUrl.pathname === "/__pcms_emulator__/renameGenerator"
     ) {
@@ -160,7 +183,14 @@ export async function startPerchanceEmulator(options = {}) {
       renameGenerator(publicId, newSlug);
 
       if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
-        response.destroy();
+        // Commit the effect, then withhold the response long enough for the
+        // BrowserDriver command to time out. Unlike a TCP reset this does not
+        // invite Chromium to replay the POST at the transport layer.
+        setTimeout(() => {
+          if (!response.destroyed) {
+            jsonResponse(response, 200, { status: "success" });
+          }
+        }, 1_000);
         return;
       }
       jsonResponse(response, 200, { status: "success" });

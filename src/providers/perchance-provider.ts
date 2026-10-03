@@ -11,6 +11,11 @@ export type PerchanceSessionIdentityStatus = "EXPECTED" | "MISMATCH" | "UNKNOWN"
 export type PerchanceGeneratorIdentityStatus = "VERIFIED" | "MISMATCH" | "UNKNOWN";
 export type PerchanceGeneratorSlugStatus = "CURRENT" | "CHANGED" | "UNKNOWN";
 export type ProviderEvidenceFreshness = "CURRENT" | "STALE";
+export type PerchanceHumanChallengeStatus = "NONE" | "REQUIRED" | "UNKNOWN";
+export type PerchanceHumanChallengeKind =
+  | "CAPTCHA"
+  | "VERIFICATION_CODE"
+  | "OTHER";
 
 export type PerchanceProbeReasonCode =
   | "SESSION_VERIFIED"
@@ -36,6 +41,12 @@ export interface PerchanceBrowserReadProfile {
    * sessionToken page-local and never returns it through BrowserDriver.
    */
   readonly sessionStateExpression: string;
+  /**
+   * Optional trusted compatibility expression returning null for no challenge or
+   * a bounded { kind, challengeId? } observation. Challenge values themselves
+   * must never be returned by this expression.
+   */
+  readonly challengeStateExpression?: string;
 }
 
 export interface PerchanceProviderOptions {
@@ -72,6 +83,13 @@ export interface PerchanceGeneratorIdentityEvidence {
   readonly observedProviderStableId: string | null;
   readonly observedSlug: string | null;
   readonly reasonCode: PerchanceProbeReasonCode;
+  readonly observedAt: string;
+}
+
+export interface PerchanceHumanChallengeEvidence {
+  readonly status: PerchanceHumanChallengeStatus;
+  readonly kind: PerchanceHumanChallengeKind | null;
+  readonly challengeId: string | null;
   readonly observedAt: string;
 }
 
@@ -135,6 +153,18 @@ function validateBrowserProfile(profile: PerchanceBrowserReadProfile): void {
   ) {
     throw new TypeError(
       "Perchance session-state compatibility expression must be non-empty and bounded"
+    );
+  }
+  if (
+    profile.challengeStateExpression !== undefined &&
+    (
+      profile.challengeStateExpression.trim().length === 0 ||
+      profile.challengeStateExpression.length >
+        MAX_BROWSER_ARTIFACT_EXPRESSION_LENGTH
+    )
+  ) {
+    throw new TypeError(
+      "Perchance challenge-state compatibility expression must be non-empty and bounded"
     );
   }
 }
@@ -547,9 +577,108 @@ export class PerchanceProvider {
   public constructor(options: PerchanceProviderOptions) {
     validateBrowserProfile(options.browserProfile);
     this.#browserProfile = Object.freeze({
-      sessionStateExpression: options.browserProfile.sessionStateExpression
+      sessionStateExpression: options.browserProfile.sessionStateExpression,
+      ...(options.browserProfile.challengeStateExpression === undefined
+        ? {}
+        : {
+            challengeStateExpression:
+              options.browserProfile.challengeStateExpression
+          })
     });
     this.#now = options.now ?? (() => new Date());
+  }
+
+  public async probeHumanChallenge(
+    page: BrowserPage,
+    commandOptions: BrowserDriverCommandOptions = {}
+  ): Promise<PerchanceHumanChallengeEvidence> {
+    const observedAt = this.#now().toISOString();
+    const expression = this.#browserProfile.challengeStateExpression;
+    if (expression === undefined) {
+      return Object.freeze({
+        status: "UNKNOWN",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+
+    const raw = await page.evaluate(
+      `(async () => {
+        try {
+          return {
+            ok: true,
+            value: await Promise.resolve((${expression}))
+          };
+        } catch {
+          return { ok: false, value: null };
+        }
+      })()`,
+      commandOptions
+    );
+    if (!plainObject(raw) || raw["ok"] !== true) {
+      return Object.freeze({
+        status: "UNKNOWN",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+
+    const value = raw["value"];
+    if (value === null) {
+      return Object.freeze({
+        status: "NONE",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+    if (!plainObject(value)) {
+      return Object.freeze({
+        status: "UNKNOWN",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+
+    const kind = value["kind"];
+    const challengeId = value["challengeId"];
+    if (
+      kind !== "CAPTCHA" &&
+      kind !== "VERIFICATION_CODE" &&
+      kind !== "OTHER"
+    ) {
+      return Object.freeze({
+        status: "UNKNOWN",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+    if (
+      challengeId !== undefined &&
+      challengeId !== null &&
+      !boundedText(challengeId, 256)
+    ) {
+      return Object.freeze({
+        status: "UNKNOWN",
+        kind: null,
+        challengeId: null,
+        observedAt
+      });
+    }
+
+    return Object.freeze({
+      status: "REQUIRED",
+      kind,
+      challengeId:
+        challengeId === undefined || challengeId === null
+          ? null
+          : challengeId,
+      observedAt
+    });
   }
 
   async #probeOwnedGenerators(
