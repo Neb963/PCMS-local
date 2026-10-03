@@ -1531,7 +1531,7 @@
       "id": "P035",
       "milestone": "M08",
       "name": "Refresher cohorts, time policy and shared admission",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P034"
       ],
@@ -1568,7 +1568,7 @@
       "id": "P036",
       "milestone": "M08",
       "name": "Refresher execution, history, uncertainty and package lifecycle",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P035"
       ],

@@ -8,6 +8,7 @@ export const PERCHANCE_EMULATOR_SCENARIOS = Object.freeze([
   "HTTP_ERROR",
   "RESPONSE_LOSS_AFTER_EFFECT",
   "CHALLENGE",
+  "RATE_LIMIT",
   "COMPATIBILITY_DRIFT"
 ]);
 
@@ -512,6 +513,14 @@ export async function startPerchanceEmulator(options = {}) {
         return;
       }
 
+      if (scenario === "CHALLENGE") {
+        jsonResponse(response, 200, { status: "captcha-needed" });
+        return;
+      }
+      if (scenario === "RATE_LIMIT") {
+        jsonResponse(response, 200, { status: "too-many-requests" });
+        return;
+      }
       if (scenario === "PERIMETER_HTML") {
         const body = "<!doctype html><html><title>synthetic perimeter</title></html>";
         response.writeHead(403, {
