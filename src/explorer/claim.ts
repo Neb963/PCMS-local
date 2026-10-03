@@ -490,19 +490,20 @@ export class ExplorerClaimService {
         }
       }
       if (existing.state === "SUCCEEDED") {
-        const reservation =
-          this.#reservations.findByOperationId(existing.operationId);
-        if (reservation === null) {
+        const ownership = await this.#readOwnership(input, slug);
+        if (!exactOwnership(ownership, slug)) {
           throw new ExplorerClaimError(
-            "EXPLORER_CLAIM_UNRESOLVED",
-            "completed Explorer claim has no verified reservation evidence",
+            "EXPLORER_CLAIM_VERIFICATION_FAILED",
+            "completed Explorer claim ownership can no longer be verified",
             existing.operationId
           );
         }
-        const ownership = await this.#readOwnership(input, slug);
+
+        const retained =
+          this.#reservations.findByOperationId(existing.operationId);
         if (
-          !exactOwnership(ownership, slug) ||
-          ownership.providerStableId !== reservation.providerStableId
+          retained !== null &&
+          ownership.providerStableId !== retained.providerStableId
         ) {
           throw new ExplorerClaimError(
             "EXPLORER_CLAIM_VERIFICATION_FAILED",
@@ -510,6 +511,17 @@ export class ExplorerClaimService {
             existing.operationId
           );
         }
+
+        const reservation =
+          retained ??
+          this.#reservation(
+            input,
+            existing,
+            candidateId,
+            slug,
+            ownership
+          );
+
         return Object.freeze({
           disposition: "ALREADY_VERIFIED",
           operation: existing,

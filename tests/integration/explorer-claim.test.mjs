@@ -293,6 +293,56 @@ test("P037 response loss reconciles ownership before any Explorer redispatch", a
   }
 });
 
+test("P037 completed claim reconstructs verified reservation after process-local ledger loss", async () => {
+  const f = await fixture();
+  const emulator = await startPerchanceEmulator({
+    explorerAvailableSlugs: ["restart-safe-name"],
+    accounts: [{
+      identity: "owner@example.test",
+      sessionToken: "fixture-session-p037",
+      generators: []
+    }]
+  });
+
+  try {
+    const input = claimInput(emulator, {
+      operationId: "operation-p037-restart",
+      idempotencyKey: "idempotency-p037-restart",
+      candidateId: "candidate-restart",
+      slug: "restart-safe-name"
+    });
+    const first = await f.service.claim(input);
+    assert.equal(first.operation.state, "SUCCEEDED");
+    assert.equal(first.reservation.providerStableId, "explorer-claim-1");
+
+    const restartedReservations = new ExplorerReservationLedger();
+    const restarted = new ExplorerClaimService({
+      database: f.database,
+      coordinator: f.coordinator,
+      reservations: restartedReservations,
+      now: f.now
+    });
+    const recovered = await restarted.claim(input);
+
+    assert.equal(recovered.disposition, "ALREADY_VERIFIED");
+    assert.equal(recovered.operation.state, "SUCCEEDED");
+    assert.equal(
+      recovered.reservation.providerStableId,
+      "explorer-claim-1"
+    );
+    assert.equal(restartedReservations.list().length, 1);
+    assert.equal(
+      emulator.requests().filter((entry) =>
+        entry.path === "/__pcms_emulator__/explorer/claim"
+      ).length,
+      1
+    );
+  } finally {
+    await emulator.close();
+    await f.cleanup();
+  }
+});
+
 test("P037 unavailable observation cannot become a claim or reservation", async () => {
   const f = await fixture();
   const emulator = await startPerchanceEmulator({
