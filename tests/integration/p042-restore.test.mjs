@@ -25,6 +25,10 @@ import {
 } from "../../dist/backup/profile-backup.js";
 import { ModuleManager } from "../../dist/modules/manager.js";
 import {
+  OperationCoordinator,
+  generatorOperationTargetKey
+} from "../../dist/operations/operation-coordinator.js";
+import {
   PersonaProfileLifecycle
 } from "../../dist/personas/profile-lifecycle.js";
 import {
@@ -227,6 +231,40 @@ test("P042 restore keeps overdue schedules held and reports missing local/extern
       assert.equal(scheduler.claimNext(), null);
       assert.equal(after.nextDueAt, before.nextDueAt);
       assert.equal(after.pendingDispatchId, null);
+
+      const coordinator = new OperationCoordinator({
+        database: activated.connection,
+        now: () => new Date("2026-10-04T12:00:00.000Z")
+      });
+      const heldOperation = coordinator.prepare({
+        operationId: "operation-recovery-hold",
+        idempotencyKey: "recovery-hold-dispatch",
+        owner: { kind: "CORE" },
+        actorSource: "p042-recovery-test",
+        targetKey: generatorOperationTargetKey(
+          "recovery-hold-target"
+        ),
+        operationKind: "provider-mutation",
+        schemaVersion: 1,
+        desiredFingerprint: "c".repeat(64),
+        provenance: { source: "p042" },
+        preconditions: [{
+          key: "recoveryHold",
+          observedAt: "2026-10-04T12:00:00.000Z",
+          maxAgeMs: 60_000,
+          evidenceRef: "recovery-hold-evidence"
+        }]
+      });
+      assert.throws(
+        () => coordinator.authorizeDispatch({
+          operationId: heldOperation.operationId,
+          expectedClaimEpoch: heldOperation.claimEpoch,
+          evidence: { source: "p042" }
+        }),
+        (error) =>
+          error?.code === "OPERATION_RECOVERY_HOLD" &&
+          error.retryable === true
+      );
 
       await rm(
         join(
