@@ -1676,7 +1676,7 @@
       "id": "P039",
       "milestone": "M09",
       "name": "Provisioning HumanTask, identity activation and interrupted-flow recovery",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P038"
       ],
@@ -1712,7 +1712,7 @@
       "id": "P040",
       "milestone": "M09",
       "name": "Provisioning batches, module lifecycle and secret hygiene",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P039"
       ],
