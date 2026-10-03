@@ -81,6 +81,16 @@ export interface CoreStateBackupResult {
   readonly manifest: CoreBackupManifest;
 }
 
+export interface CreateAutomaticCoreStateBackupOptions
+  extends CreateCoreStateBackupOptions {
+  readonly retentionCount?: number;
+}
+
+export interface AutomaticCoreStateBackupResult
+  extends CoreStateBackupResult {
+  readonly prunedBackupIds: readonly string[];
+}
+
 export class CoreBackupError extends Error {
   public readonly code: string;
 
@@ -1103,4 +1113,125 @@ export async function createCoreStateBackup(
       error
     );
   }
+}
+
+function retentionCount(value: number | undefined): number {
+  const resolved = value ?? 7;
+  if (
+    !Number.isSafeInteger(resolved) ||
+    resolved < 1 ||
+    resolved > 365
+  ) {
+    fail(
+      "INVALID_BACKUP_RETENTION",
+      "retentionCount must be an integer between 1 and 365"
+    );
+  }
+  return resolved;
+}
+
+async function readManagedBackupManifest(
+  root: string,
+  directoryName: string
+): Promise<CoreBackupManifest | null> {
+  if (!BACKUP_ID.test(directoryName)) return null;
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(
+      join(root, directoryName, "manifest.json")
+    );
+  } catch {
+    return null;
+  }
+  if (
+    bytes.length === 0 ||
+    bytes.length > MANIFEST_MAX_BYTES
+  ) {
+    return null;
+  }
+
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return null;
+  }
+
+  try {
+    const manifest = parseCoreBackupManifest(value);
+    return manifest.backupId === directoryName
+      ? manifest
+      : null;
+  } catch (error: unknown) {
+    if (error instanceof CoreBackupError) return null;
+    throw error;
+  }
+}
+
+async function applyAutomaticRetention(
+  backupRoot: string,
+  keepCount: number,
+  protectedBackupId: string
+): Promise<readonly string[]> {
+  const entries = await readdir(backupRoot, {
+    withFileTypes: true
+  });
+  const managed: Array<{
+    readonly backupId: string;
+    readonly createdAt: string;
+  }> = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const manifest = await readManagedBackupManifest(
+      backupRoot,
+      entry.name
+    );
+    if (manifest === null) continue;
+    managed.push({
+      backupId: manifest.backupId,
+      createdAt: manifest.createdAt
+    });
+  }
+
+  managed.sort((left, right) => {
+    const byTime = right.createdAt.localeCompare(left.createdAt);
+    return byTime !== 0
+      ? byTime
+      : right.backupId.localeCompare(left.backupId);
+  });
+
+  const keep = new Set<string>([protectedBackupId]);
+  for (const entry of managed) {
+    if (keep.size >= keepCount) break;
+    keep.add(entry.backupId);
+  }
+
+  const pruned: string[] = [];
+  for (const entry of managed) {
+    if (keep.has(entry.backupId)) continue;
+    await rm(join(backupRoot, entry.backupId), {
+      recursive: true,
+      force: false
+    });
+    pruned.push(entry.backupId);
+  }
+  return Object.freeze(pruned.sort());
+}
+
+export async function createAutomaticCoreStateBackup(
+  options: CreateAutomaticCoreStateBackupOptions
+): Promise<AutomaticCoreStateBackupResult> {
+  const keepCount = retentionCount(options.retentionCount);
+  const created = await createCoreStateBackup(options);
+  const prunedBackupIds = await applyAutomaticRetention(
+    resolve(options.backupRoot),
+    keepCount,
+    created.manifest.backupId
+  );
+  return Object.freeze({
+    directory: created.directory,
+    manifest: created.manifest,
+    prunedBackupIds
+  });
 }

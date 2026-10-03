@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {
+  chmod,
   mkdtemp,
   mkdir,
   readFile,
+  readdir,
   rm,
   writeFile
 } from "node:fs/promises";
@@ -12,6 +14,7 @@ import test from "node:test";
 
 import {
   CoreBackupError,
+  createAutomaticCoreStateBackup,
   createCoreStateBackup,
   validateCoreStateBackup
 } from "../../dist/backup/core-backup.js";
@@ -127,6 +130,7 @@ test("coherent Core backup validates DB, module package manifests and hashes whi
       created.directory,
       ...manifest.modules[0].path.split("/")
     );
+    await chmod(modulePath, 0o600);
     await writeFile(
       modulePath,
       Buffer.concat([
@@ -140,6 +144,116 @@ test("coherent Core backup validates DB, module package manifests and hashes whi
       (error) =>
         error instanceof CoreBackupError &&
         error.code === "BACKUP_HASH_MISMATCH"
+    );
+  } finally {
+    database.close();
+    await rm(outer, { recursive: true, force: true });
+  }
+});
+
+test("automatic retention prunes only managed Core backups and never copies or deletes browser profiles", async () => {
+  const outer = await mkdtemp(
+    join(tmpdir(), "pcms-p041-retention-")
+  );
+  const liveDataRoot = join(outer, "live");
+  const backupRoot = join(outer, "backups");
+  const modulePackageRoot = join(liveDataRoot, "modules");
+  await mkdir(modulePackageRoot, { recursive: true });
+  const database = openPcmsDatabase(
+    join(liveDataRoot, "pcms.db")
+  );
+
+  try {
+    const profileSentinel = join(
+      liveDataRoot,
+      "personas",
+      "persona-retention",
+      "Default",
+      "Cookies"
+    );
+    await mkdir(join(profileSentinel, ".."), {
+      recursive: true
+    });
+    await writeFile(profileSentinel, "persistent-browser-state");
+
+    const unrelated = join(
+      backupRoot,
+      "operator-notes",
+      "keep.txt"
+    );
+    await mkdir(join(unrelated, ".."), {
+      recursive: true
+    });
+    await writeFile(unrelated, "do-not-delete");
+
+    const first = await createAutomaticCoreStateBackup({
+      database: database.connection,
+      liveDataRoot,
+      modulePackageRoot,
+      backupRoot,
+      retentionCount: 2,
+      now: () => new Date("2026-10-04T03:00:00.000Z")
+    });
+    const second = await createAutomaticCoreStateBackup({
+      database: database.connection,
+      liveDataRoot,
+      modulePackageRoot,
+      backupRoot,
+      retentionCount: 2,
+      now: () => new Date("2026-10-04T04:00:00.000Z")
+    });
+    const third = await createAutomaticCoreStateBackup({
+      database: database.connection,
+      liveDataRoot,
+      modulePackageRoot,
+      backupRoot,
+      retentionCount: 2,
+      now: () => new Date("2026-10-04T05:00:00.000Z")
+    });
+
+    assert.equal(first.prunedBackupIds.length, 0);
+    assert.equal(second.prunedBackupIds.length, 0);
+    assert.deepEqual(third.prunedBackupIds, [
+      first.manifest.backupId
+    ]);
+
+    const managed = (
+      await readdir(backupRoot, { withFileTypes: true })
+    )
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          entry.name.startsWith("core-")
+      )
+      .map((entry) => entry.name)
+      .sort();
+    assert.deepEqual(
+      managed,
+      [
+        second.manifest.backupId,
+        third.manifest.backupId
+      ].sort()
+    );
+
+    for (const backupId of managed) {
+      const manifest = await validateCoreStateBackup(
+        join(backupRoot, backupId)
+      );
+      assert.equal(manifest.profiles.included, false);
+      assert.ok(
+        manifest.files.every(
+          (entry) => !entry.path.includes("personas")
+        )
+      );
+    }
+
+    assert.equal(
+      await readFile(profileSentinel, "utf8"),
+      "persistent-browser-state"
+    );
+    assert.equal(
+      await readFile(unrelated, "utf8"),
+      "do-not-delete"
     );
   } finally {
     database.close();
