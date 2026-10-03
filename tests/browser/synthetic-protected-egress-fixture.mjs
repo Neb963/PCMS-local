@@ -164,35 +164,58 @@ export async function startSyntheticSocksExit({
   });
 }
 
-async function readExact(socket, size, state) {
-  while (state.buffer.length < size) {
-    const chunk = await new Promise((resolve, reject) => {
-      const onData = (value) => {
-        cleanup();
-        resolve(value);
-      };
-      const onEnd = () => {
-        cleanup();
-        reject(new Error("Synthetic SOCKS connection ended early"));
-      };
-      const onError = (error) => {
-        cleanup();
-        reject(error);
-      };
-      const cleanup = () => {
-        socket.off("data", onData);
-        socket.off("end", onEnd);
-        socket.off("error", onError);
-      };
-      socket.once("data", onData);
-      socket.once("end", onEnd);
-      socket.once("error", onError);
-    });
-    state.buffer = Buffer.concat([state.buffer, chunk]);
+function createBufferedReader(socket) {
+  let buffer = Buffer.alloc(0);
+  let terminalError = null;
+  const waiters = [];
+
+  function flush() {
+    while (waiters.length > 0 && buffer.length >= waiters[0].size) {
+      const waiter = waiters.shift();
+      const value = buffer.subarray(0, waiter.size);
+      buffer = buffer.subarray(waiter.size);
+      waiter.resolve(value);
+    }
+    if (terminalError !== null) {
+      while (waiters.length > 0) {
+        waiters.shift().reject(terminalError);
+      }
+    }
   }
-  const value = state.buffer.subarray(0, size);
-  state.buffer = state.buffer.subarray(size);
-  return value;
+
+  socket.on("data", (chunk) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    flush();
+  });
+  socket.on("end", () => {
+    terminalError = new Error("Synthetic SOCKS connection ended early");
+    flush();
+  });
+  socket.on("error", (error) => {
+    terminalError = error;
+    flush();
+  });
+
+  return Object.freeze({
+    readExact(size) {
+      if (buffer.length >= size) {
+        const value = buffer.subarray(0, size);
+        buffer = buffer.subarray(size);
+        return Promise.resolve(value);
+      }
+      if (terminalError !== null) {
+        return Promise.reject(terminalError);
+      }
+      return new Promise((resolve, reject) => {
+        waiters.push({ size, resolve, reject });
+      });
+    },
+    drain() {
+      const value = buffer;
+      buffer = Buffer.alloc(0);
+      return value;
+    }
+  });
 }
 
 export async function observeSyntheticSocksEgress({
@@ -204,7 +227,7 @@ export async function observeSyntheticSocksEgress({
 }) {
   const { createConnection } = await import("node:net");
   const socket = createConnection({ host: proxyHost, port: proxyPort });
-  const state = { buffer: Buffer.alloc(0) };
+  const reader = createBufferedReader(socket);
   socket.setTimeout(5_000);
 
   try {
@@ -215,7 +238,7 @@ export async function observeSyntheticSocksEgress({
     });
 
     socket.write(Buffer.from([5, 1, 0]));
-    const greeting = await readExact(socket, 2, state);
+    const greeting = await reader.readExact(2);
     if (!greeting.equals(Buffer.from([5, 0]))) {
       throw new Error("Synthetic SOCKS exit rejected no-auth negotiation");
     }
@@ -230,7 +253,7 @@ export async function observeSyntheticSocksEgress({
     request.writeUInt16BE(targetPort, 5 + hostBytes.length);
     socket.write(request);
 
-    const reply = await readExact(socket, 10, state);
+    const reply = await reader.readExact(10);
     if (reply[0] !== 5 || reply[1] !== 0) {
       throw new Error("Synthetic SOCKS exit rejected CONNECT");
     }
@@ -239,7 +262,7 @@ export async function observeSyntheticSocksEgress({
       `GET ${targetPath} HTTP/1.1\r\nHost: ${targetHost}\r\nConnection: close\r\n\r\n`
     );
 
-    let response = state.buffer;
+    let response = reader.drain();
     for await (const chunk of socket) {
       response = Buffer.concat([response, chunk]);
     }
