@@ -763,7 +763,7 @@
       "id": "P015",
       "milestone": "M03",
       "name": "Generic DevTools attach/detach acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P014"
       ],
