@@ -882,7 +882,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M09 — Explorer and Account Provisioning
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P037 — Explorer observation, claim and stable handoff
 Status: **IN_PROGRESS**  

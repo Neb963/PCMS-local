@@ -130,7 +130,7 @@
     {
       "id": "M09",
       "name": "Explorer and Account Provisioning",
-      "status": "IN_PROGRESS",
+      "status": "READY",
       "phaseIds": [
         "P037",
         "P038",
