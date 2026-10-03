@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P022**
-- Current phase: **P023 — IN_PROGRESS**
-- Next phase: **P024 — BLOCKED (P023)**
+- Completed through: **P023**
+- Current phase: **P024 — READY**
+- Next phase: **P025 — BLOCKED (P024)**
 - Current milestone: **M05 — Accounts, Generator identity and inventory**
 - Final live milestone: **M12 — P048–P049**
 
@@ -558,7 +558,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P022 → COMPLETE; P023 → READY; publish to GitHub; **STOP — do not implement P023.**
 
 ### P023 — Health projections, search and Account-to-Persona navigation
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P022  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -570,17 +570,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T023.1 — Implement route/session/account health projections with evidence age
 - [x] T023.2 — Implement metadata search using stable IDs
-- [~] T023.3 — Add UI/CLI navigation from Account to the actual bound Persona
+- [x] T023.3 — Add UI/CLI navigation from Account to the actual bound Persona
 
 **Acceptance:**
-- [ ] A05-04
-- [ ] A05-05
-- [ ] A05-10
+- [x] A05-04
+- [x] A05-05
+- [x] A05-10
 
 **Closure:** relevant tests + CI green; phase report finalized; P023 → COMPLETE; P024 → READY; publish to GitHub; **STOP — do not implement P024.**
 
 ### P024 — Wrong-account guard and 50+ inventory resilience
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P023  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
