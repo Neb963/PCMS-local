@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { AccountRepository } from "../../dist/accounts/account-repository.js";
+import { PersonaBindingService } from "../../dist/accounts/persona-binding.js";
 import {
   OperationCoordinator
 } from "../../dist/operations/operation-coordinator.js";
@@ -136,6 +138,33 @@ async function fixture() {
   let nowMs = Date.parse("2026-10-03T19:00:00.000Z");
   let dispatch = 0;
   const now = () => new Date(nowMs);
+
+  database.prepare(`
+    INSERT INTO personas (
+      persona_uid, lifecycle_status, profile_state, browser_backend,
+      profile_relative_path, profile_delete_state, profile_deleted_at,
+      profile_backup_decision, created_at, updated_at, retired_at, revision
+    ) VALUES (?, 'ACTIVE', 'CLOSED', 'chromium-v1', ?, 'PRESENT',
+      NULL, NULL, ?, ?, NULL, 0)
+  `).run(
+    "persona-p036",
+    "personas/persona-p036/chromium",
+    now().toISOString(),
+    now().toISOString()
+  );
+  const accounts = new AccountRepository({ database, now });
+  accounts.create({
+    accountId: "account-p036",
+    displayName: "P036 Refresher fixture"
+  });
+  const bindings = new PersonaBindingService({ database, now });
+  bindings.bind({
+    accountId: "account-p036",
+    personaUid: "persona-p036",
+    expectedRevision: 0,
+    reason: "P036 Refresher execution fixture"
+  });
+
   const coordinator = new OperationCoordinator({
     database,
     now,
