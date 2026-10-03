@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { createServer, get } from "node:http";
+import { networkInterfaces, tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -24,6 +25,82 @@ function requiredChromiumBinary() {
   const value = process.env.PCMS_CHROMIUM_BINARY;
   assert.ok(value, "PCMS_CHROMIUM_BINARY is required");
   return value;
+}
+
+function nonLoopbackIpv4() {
+  for (const values of Object.values(networkInterfaces())) {
+    for (const value of values ?? []) {
+      if (
+        (value.family === "IPv4" || value.family === 4) &&
+        value.internal === false
+      ) {
+        return value.address;
+      }
+    }
+  }
+  assert.fail("A non-loopback IPv4 address is required for escape detection");
+}
+
+async function startHttpCanary(bindHost, body) {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push({
+      method: request.method ?? "",
+      url: request.url ?? ""
+    });
+    response.writeHead(200, {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Length": Buffer.byteLength(body),
+      "Cache-Control": "no-store",
+      "Access-Control-Allow-Origin": "*"
+    });
+    response.end(body);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, bindHost, () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  assert.ok(address !== null && typeof address === "object");
+  return {
+    host: bindHost,
+    port: address.port,
+    requests,
+    async close() {
+      await new Promise((resolve, reject) => {
+        server.close((error) => error === undefined ? resolve() : reject(error));
+      });
+    }
+  };
+}
+
+async function probeDirectCanary(host, port) {
+  const body = await new Promise((resolve, reject) => {
+    const request = get(
+      {
+        host,
+        port,
+        path: "/node-reachability",
+        timeout: 2_000
+      },
+      (response) => {
+        let data = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+        response.on("end", () => resolve(data));
+      }
+    );
+    request.on("timeout", () => {
+      request.destroy(new Error("Direct canary probe timed out"));
+    });
+    request.on("error", reject);
+  });
+  return body;
 }
 
 async function browserFixture(root) {
@@ -156,6 +233,29 @@ async function waitForIdentity(client, sessionId) {
   throw new Error("Timed out waiting for initial protected route identity");
 }
 
+async function waitForBody(client, sessionId, expectedBody) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    try {
+      const evaluated = await client.send(
+        "Runtime.evaluate",
+        {
+          expression: "document.body ? document.body.innerText : ''",
+          returnByValue: true
+        },
+        sessionId
+      );
+      if (evaluated?.result?.value === expectedBody) {
+        return;
+      }
+    } catch {
+      // Navigation can replace the execution context.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Timed out waiting for body ${expectedBody}`);
+}
+
 async function closeTarget(client, target) {
   await client.send("Target.detachFromTarget", {
     sessionId: target.sessionId
@@ -173,10 +273,22 @@ test("protected Chromium fails requests after its synthetic forwarder disappears
     expectedHost: targetHost
   });
   const profile = await browserFixture(root);
+  const hostIp = nonLoopbackIpv4();
+  const directCanary = await startHttpCanary("0.0.0.0", "DIRECT_ESCAPE");
+  const controlCanary = await startHttpCanary("127.0.0.1", "CONTROL_OK");
+  assert.equal(
+    await probeDirectCanary(hostIp, directCanary.port),
+    "DIRECT_ESCAPE",
+    "non-loopback Direct canary must be independently reachable"
+  );
+  directCanary.requests.length = 0;
+
   let socksClosed = false;
   let session;
   let client;
   let target;
+  let directTarget;
+  let controlTarget;
 
   try {
     session = await profile.browser.launch("persona_protected_route_loss", {
@@ -246,7 +358,36 @@ test("protected Chromium fails requests after its synthetic forwarder disappears
       ),
       false
     );
+
+    directTarget = await openTarget(
+      client,
+      `http://${hostIp}:${directCanary.port}/direct-after-loss`
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    assert.deepEqual(
+      directCanary.requests,
+      [],
+      "protected Chromium must not fall back to the host Direct path after route loss"
+    );
+
+    controlTarget = await openTarget(
+      client,
+      `http://127.0.0.1:${controlCanary.port}/control-after-loss`
+    );
+    await waitForBody(client, controlTarget.sessionId, "CONTROL_OK");
+    assert.ok(
+      controlCanary.requests.some(
+        (request) => request.url === "/control-after-loss"
+      ),
+      "intentional loopback control traffic must remain reachable"
+    );
   } finally {
+    if (client !== undefined && directTarget !== undefined) {
+      await closeTarget(client, directTarget);
+    }
+    if (client !== undefined && controlTarget !== undefined) {
+      await closeTarget(client, controlTarget);
+    }
     if (client !== undefined && target !== undefined) {
       await closeTarget(client, target);
     }
@@ -254,6 +395,7 @@ test("protected Chromium fails requests after its synthetic forwarder disappears
     if (session !== undefined) await session.close();
     profile.database.close();
     if (!socksClosed) await socks.close();
+    await Promise.all([directCanary.close(), controlCanary.close()]);
     await rm(root, { recursive: true, force: true });
   }
 });
