@@ -867,8 +867,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not claim live provider refresh semantics beyond emulator contract.
 
 **Work:**
-- [~] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
-- [ ] T036.2 — Block duplicate work while refresh outcome is uncertain and reconcile first
+- [x] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
+- [~] T036.2 — Block duplicate work while refresh outcome is uncertain and reconcile first
 - [ ] T036.3 — Package/update/rollback Refresher through standard .pcmsmod lifecycle
 
 **Acceptance:**
