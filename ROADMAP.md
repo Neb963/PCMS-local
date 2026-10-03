@@ -456,8 +456,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not require real Mullvad configuration.
 
 **Work:**
-- [~] T018.1 — Build controlled SOCKS/egress fixture with distinguishable route identity
-- [ ] T018.2 — Wire protected Chromium launch to the leased forwarder
+- [x] T018.1 — Build controlled SOCKS/egress fixture with distinguishable route identity
+- [~] T018.2 — Wire protected Chromium launch to the leased forwarder
 - [ ] T018.3 — Verify observed browser egress independently of configured route metadata
 
 **Acceptance:**
