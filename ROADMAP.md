@@ -590,7 +590,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add mutation execution; this phase establishes admission facts only.
 
 **Work:**
-- [~] T024.1 — Implement wrong-account/unknown-session admission guard contract
+- [x] T024.1 — Implement wrong-account/unknown-session admission guard contract
 - [ ] T024.2 — Exercise 50+ dormant Account/Persona startup/query bounds
 - [ ] T024.3 — Prove one missing/corrupt Persona does not poison unrelated inventory
 
