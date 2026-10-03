@@ -1181,7 +1181,7 @@
       "id": "P026",
       "milestone": "M06",
       "name": "Perchance emulator and identity/read probes",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P025"
       ],
@@ -1220,7 +1220,7 @@
       "id": "P027",
       "milestone": "M06",
       "name": "OperationCoordinator claims and uncertainty state machine",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P026"
       ],
