@@ -74,6 +74,7 @@ export async function startSyntheticSocksExit({
     let buffer = Buffer.alloc(0);
     let target = null;
     let upstream = null;
+    let forwardRecord = null;
 
     socket.on("close", () => {
       upstream?.destroy();
@@ -117,13 +118,15 @@ export async function startSyntheticSocksExit({
             parsed.port === forwardTarget.requestedPort;
           if (shouldForward) {
             state = "connecting-forward";
-            forwardedConnections.push(Object.freeze({
+            forwardRecord = {
               routeIdentity,
               requestedHost: parsed.host,
               requestedPort: parsed.port,
               connectHost: forwardTarget.connectHost,
-              connectPort: forwardTarget.connectPort
-            }));
+              connectPort: forwardTarget.connectPort,
+              clientChunks: []
+            };
+            forwardedConnections.push(forwardRecord);
             upstream = createConnection({
               host: forwardTarget.connectHost,
               port: forwardTarget.connectPort
@@ -136,6 +139,7 @@ export async function startSyntheticSocksExit({
               socket.write(Buffer.from([5, 0, 0, 1, 127, 0, 0, 1, 0, 0]));
               state = "forwarding";
               if (buffer.length > 0) {
+                forwardRecord?.clientChunks.push(Buffer.from(buffer));
                 upstream?.write(buffer);
                 buffer = Buffer.alloc(0);
               }
@@ -168,6 +172,7 @@ export async function startSyntheticSocksExit({
           return;
         }
         if (state === "forwarding") {
+          forwardRecord?.clientChunks.push(Buffer.from(buffer));
           upstream?.write(buffer);
           buffer = Buffer.alloc(0);
           return;
