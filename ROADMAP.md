@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P025**
-- Current phase: **P026 — IN_PROGRESS**
-- Next phase: **P027 — BLOCKED (P026)**
+- Completed through: **P026**
+- Current phase: **P027 — READY**
+- Next phase: **P028 — BLOCKED (P027)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
 
@@ -628,7 +628,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P025 → COMPLETE; P026 → READY; publish to GitHub; **STOP — do not implement P026.**
 
 ### P026 — Perchance emulator and identity/read probes
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P025  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -638,18 +638,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not connect CI to real Perchance or encode unobserved provider behavior as fact.
 
 **Work:**
-- [~] T026.1 — Implement emulator session/account/generator state and drift/error scenarios
-- [ ] T026.2 — Implement provider session identity and GeneratorRef/current-slug probes
-- [ ] T026.3 — Run expected/mismatch/unknown and stale-evidence tests through real BrowserDriver
+- [x] T026.1 — Implement emulator session/account/generator state and drift/error scenarios
+- [x] T026.2 — Implement provider session identity and GeneratorRef/current-slug probes
+- [x] T026.3 — Run expected/mismatch/unknown and stale-evidence tests through real BrowserDriver
 
 **Acceptance:**
-- [ ] A06-03
-- [ ] A06-04
+- [x] A06-03
+- [x] A06-04
 
 **Closure:** relevant tests + CI green; phase report finalized; P026 → COMPLETE; P027 → READY; publish to GitHub; **STOP — do not implement P027.**
 
 ### P027 — OperationCoordinator claims and uncertainty state machine
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P026  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
