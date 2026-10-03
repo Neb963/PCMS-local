@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P023**  
 Current milestone: **M05 — Accounts, Generator identity and inventory**  
-Current phase: **P024 — READY**  
+Current phase: **P024 — IN_PROGRESS**  
 Next phase: **P025 — BLOCKED (P024)**
 
 Canonical execution view: `ROADMAP.md`.

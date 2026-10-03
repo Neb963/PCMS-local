@@ -1102,7 +1102,7 @@
       "id": "P024",
       "milestone": "M05",
       "name": "Wrong-account guard and 50+ inventory resilience",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P023"
       ],
