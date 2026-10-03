@@ -26,6 +26,7 @@ export type ChromiumBrowserErrorCode =
   | "PERSONA_BROWSER_ALREADY_ACTIVE"
   | "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS"
   | "PERSONA_BROWSER_CAPACITY_EXCEEDED"
+  | "CHROMIUM_PROXY_INVALID"
   | "CHROMIUM_INITIAL_URL_INVALID"
   | "CHROMIUM_LAUNCH_FAILED"
   | "CHROMIUM_DEVTOOLS_TIMEOUT"
@@ -54,9 +55,15 @@ export interface ChromiumDevToolsEndpoint {
   readonly webSocketUrl: string;
 }
 
+export interface ChromiumProtectedProxy {
+  readonly host: "127.0.0.1";
+  readonly port: number;
+}
+
 export interface ChromiumLaunchOptions {
   readonly initialUrl?: string;
   readonly headless?: boolean;
+  readonly protectedProxy?: ChromiumProtectedProxy;
   /**
    * CI-only escape hatch for Linux runners where the Chrome sandbox cannot start.
    * Production callers should leave this false/undefined.
@@ -122,6 +129,26 @@ function validateTimeout(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value <= 0 || value > 120_000) {
     throw new RangeError(`${label} must be an integer between 1 and 120000 ms`);
   }
+}
+
+function validateProtectedProxy(
+  value: ChromiumProtectedProxy | undefined
+): string | null {
+  if (value === undefined) {
+    return null;
+  }
+  if (
+    value.host !== "127.0.0.1" ||
+    !Number.isSafeInteger(value.port) ||
+    value.port < 1 ||
+    value.port > 65_535
+  ) {
+    throw new ChromiumBrowserError(
+      "CHROMIUM_PROXY_INVALID",
+      "Protected Chromium proxy must be an IPv4 loopback endpoint with a valid port"
+    );
+  }
+  return `--proxy-server=socks5://127.0.0.1:${value.port}`;
 }
 
 function validateInitialUrl(value: string | undefined): string {
@@ -952,8 +979,15 @@ export class ChromiumBrowserManager {
     personaUid: string,
     options: ChromiumLaunchOptions = {}
   ): Promise<ChromiumBrowserSession> {
+    const protectedProxyArgument = validateProtectedProxy(options.protectedProxy);
     const existing = await this.reconcile(personaUid);
     if (existing !== null) {
+      if (protectedProxyArgument !== null) {
+        throw new ChromiumBrowserError(
+          "PERSONA_BROWSER_ALREADY_ACTIVE",
+          "Refusing to reuse an already-running Persona for a new protected proxy launch"
+        );
+      }
       return existing;
     }
 
@@ -1008,6 +1042,9 @@ export class ChromiumBrowserManager {
       }
       if (options.disableSandboxForTesting === true) {
         args.push("--no-sandbox");
+      }
+      if (protectedProxyArgument !== null) {
+        args.push(protectedProxyArgument);
       }
       args.push(initialUrl);
 
