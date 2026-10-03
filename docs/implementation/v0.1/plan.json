@@ -1531,7 +1531,7 @@
       "id": "P035",
       "milestone": "M08",
       "name": "Refresher cohorts, time policy and shared admission",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P034"
       ],

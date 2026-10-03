@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P034**  
 Current milestone: **M08 — Refresh measurement and Refresher**  
-Current phase: **P035 — READY**  
+Current phase: **P035 — IN_PROGRESS**  
 Next phase: **P036 — BLOCKED (P035)**
 
 Canonical execution view: `ROADMAP.md`.
