@@ -871,7 +871,7 @@
       "id": "P018",
       "milestone": "M04",
       "name": "Protected synthetic egress and independent verification",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P017"
       ],

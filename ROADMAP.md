@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P017**
-- Current phase: **P018 — READY**
+- Current phase: **P018 — IN_PROGRESS**
 - Next phase: **P019 — BLOCKED (P018)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
@@ -446,7 +446,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P017 → COMPLETE; P018 → READY; publish to GitHub; **STOP — do not implement P018.**
 
 ### P018 — Protected synthetic egress and independent verification
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P017  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -456,7 +456,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not require real Mullvad configuration.
 
 **Work:**
-- [ ] T018.1 — Build controlled SOCKS/egress fixture with distinguishable route identity
+- [~] T018.1 — Build controlled SOCKS/egress fixture with distinguishable route identity
 - [ ] T018.2 — Wire protected Chromium launch to the leased forwarder
 - [ ] T018.3 — Verify observed browser egress independently of configured route metadata
 
