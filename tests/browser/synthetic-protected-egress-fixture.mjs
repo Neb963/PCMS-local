@@ -164,60 +164,6 @@ export async function startSyntheticSocksExit({
   });
 }
 
-function createBufferedReader(socket) {
-  let buffer = Buffer.alloc(0);
-  let terminalError = null;
-  const waiters = [];
-
-  function flush() {
-    while (waiters.length > 0 && buffer.length >= waiters[0].size) {
-      const waiter = waiters.shift();
-      const value = buffer.subarray(0, waiter.size);
-      buffer = buffer.subarray(waiter.size);
-      waiter.resolve(value);
-    }
-    if (terminalError !== null) {
-      while (waiters.length > 0) {
-        waiters.shift().reject(terminalError);
-      }
-    }
-  }
-
-  socket.on("data", (chunk) => {
-    buffer = Buffer.concat([buffer, chunk]);
-    flush();
-  });
-  socket.on("end", () => {
-    terminalError = new Error("Synthetic SOCKS connection ended early");
-    flush();
-  });
-  socket.on("error", (error) => {
-    terminalError = error;
-    flush();
-  });
-
-  return Object.freeze({
-    readExact(size) {
-      if (buffer.length >= size) {
-        const value = buffer.subarray(0, size);
-        buffer = buffer.subarray(size);
-        return Promise.resolve(value);
-      }
-      if (terminalError !== null) {
-        return Promise.reject(terminalError);
-      }
-      return new Promise((resolve, reject) => {
-        waiters.push({ size, resolve, reject });
-      });
-    },
-    drain() {
-      const value = buffer;
-      buffer = Buffer.alloc(0);
-      return value;
-    }
-  });
-}
-
 export async function observeSyntheticSocksEgress({
   proxyHost,
   proxyPort,
@@ -226,52 +172,94 @@ export async function observeSyntheticSocksEgress({
   targetPath = "/identity"
 }) {
   const { createConnection } = await import("node:net");
-  const socket = createConnection({ host: proxyHost, port: proxyPort });
-  const reader = createBufferedReader(socket);
-  socket.setTimeout(5_000);
-
-  try {
-    await new Promise((resolve, reject) => {
-      socket.once("connect", resolve);
-      socket.once("error", reject);
-      socket.once("timeout", () => reject(new Error("Synthetic SOCKS connect timed out")));
-    });
-
-    socket.write(Buffer.from([5, 1, 0]));
-    const greeting = await reader.readExact(2);
-    if (!greeting.equals(Buffer.from([5, 0]))) {
-      throw new Error("Synthetic SOCKS exit rejected no-auth negotiation");
-    }
-
-    const hostBytes = Buffer.from(targetHost, "utf8");
-    if (hostBytes.length < 1 || hostBytes.length > 255) {
-      throw new Error("Synthetic egress target hostname is out of range");
-    }
-    const request = Buffer.alloc(7 + hostBytes.length);
-    request.set([5, 1, 0, 3, hostBytes.length], 0);
-    hostBytes.copy(request, 5);
-    request.writeUInt16BE(targetPort, 5 + hostBytes.length);
-    socket.write(request);
-
-    const reply = await reader.readExact(10);
-    if (reply[0] !== 5 || reply[1] !== 0) {
-      throw new Error("Synthetic SOCKS exit rejected CONNECT");
-    }
-
-    socket.write(
-      `GET ${targetPath} HTTP/1.1\r\nHost: ${targetHost}\r\nConnection: close\r\n\r\n`
-    );
-
-    let response = reader.drain();
-    for await (const chunk of socket) {
-      response = Buffer.concat([response, chunk]);
-    }
-    const text = response.toString("utf8");
-    const separator = text.indexOf("\r\n\r\n");
-    if (separator < 0) throw new Error("Synthetic egress response omitted headers");
-    const body = text.slice(separator + 4);
-    return JSON.parse(body);
-  } finally {
-    socket.destroy();
+  const hostBytes = Buffer.from(targetHost, "utf8");
+  if (hostBytes.length < 1 || hostBytes.length > 255) {
+    throw new Error("Synthetic egress target hostname is out of range");
   }
+
+  return new Promise((resolve, reject) => {
+    const socket = createConnection({ host: proxyHost, port: proxyPort });
+    let phase = "greeting";
+    let buffer = Buffer.alloc(0);
+    let settled = false;
+
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      if (error === null) resolve(value);
+      else reject(error);
+    };
+
+    socket.setTimeout(5_000);
+    socket.once("connect", () => {
+      socket.write(Buffer.from([5, 1, 0]));
+    });
+    socket.on("timeout", () => {
+      finish(new Error("Synthetic SOCKS exchange timed out"));
+    });
+    socket.on("error", (error) => {
+      finish(error);
+    });
+    socket.on("data", (chunk) => {
+      if (settled) return;
+      buffer = Buffer.concat([buffer, chunk]);
+
+      while (true) {
+        if (phase === "greeting") {
+          if (buffer.length < 2) return;
+          const greeting = buffer.subarray(0, 2);
+          buffer = buffer.subarray(2);
+          if (!greeting.equals(Buffer.from([5, 0]))) {
+            finish(new Error("Synthetic SOCKS exit rejected no-auth negotiation"));
+            return;
+          }
+
+          const request = Buffer.alloc(7 + hostBytes.length);
+          request.set([5, 1, 0, 3, hostBytes.length], 0);
+          hostBytes.copy(request, 5);
+          request.writeUInt16BE(targetPort, 5 + hostBytes.length);
+          socket.write(request);
+          phase = "connect";
+          continue;
+        }
+
+        if (phase === "connect") {
+          if (buffer.length < 10) return;
+          const reply = buffer.subarray(0, 10);
+          buffer = buffer.subarray(10);
+          if (reply[0] !== 5 || reply[1] !== 0) {
+            finish(new Error("Synthetic SOCKS exit rejected CONNECT"));
+            return;
+          }
+          socket.write(
+            `GET ${targetPath} HTTP/1.1\r\nHost: ${targetHost}\r\nConnection: close\r\n\r\n`
+          );
+          phase = "http";
+          continue;
+        }
+
+        return;
+      }
+    });
+    socket.on("end", () => {
+      if (settled) return;
+      if (phase !== "http") {
+        finish(new Error(`Synthetic SOCKS connection ended during ${phase}`));
+        return;
+      }
+      const text = buffer.toString("utf8");
+      const separator = text.indexOf("\r\n\r\n");
+      if (separator < 0) {
+        finish(new Error("Synthetic egress response omitted headers"));
+        return;
+      }
+      try {
+        finish(null, JSON.parse(text.slice(separator + 4)));
+      } catch (error) {
+        finish(error);
+      }
+    });
+  });
 }
+
