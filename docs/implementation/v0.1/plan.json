@@ -1220,7 +1220,7 @@
       "id": "P027",
       "milestone": "M06",
       "name": "OperationCoordinator claims and uncertainty state machine",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P026"
       ],
