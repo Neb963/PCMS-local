@@ -670,6 +670,58 @@ export class ChromiumBrowserManager {
     return this.#probe;
   }
 
+  public async resolveDevToolsEndpoint(
+    personaUid: string
+  ): Promise<ChromiumDevToolsEndpoint | null> {
+    const session = await this.reconcile(personaUid);
+    if (session === null) {
+      return null;
+    }
+
+    const runtime = this.#runtime.get(personaUid);
+    const fingerprint =
+      runtime === null ? null : runtimeFingerprint(runtime, session.profilePath);
+    if (
+      runtime === null ||
+      fingerprint === null ||
+      runtime.devToolsPort === null ||
+      runtime.devToolsPath === null
+    ) {
+      throw this.#ownershipAmbiguous(
+        personaUid,
+        "Running Persona is missing complete persisted DevTools ownership evidence"
+      );
+    }
+
+    const ownership = await inspectChromiumProcessOwnership(fingerprint);
+    if (ownership === "GONE") {
+      this.#runtime.clear(personaUid);
+      this.#lifecycle.close(personaUid);
+      this.#sessions.delete(personaUid);
+      return null;
+    }
+    if (ownership === "MISMATCH") {
+      throw this.#ownershipAmbiguous(
+        personaUid,
+        "Persisted Chromium process evidence no longer identifies the running Persona"
+      );
+    }
+
+    const endpoint = await readProfileDevToolsEndpoint(
+      session.profilePath,
+      runtime.devToolsPort,
+      runtime.devToolsPath
+    );
+    if (endpoint === null) {
+      throw this.#ownershipAmbiguous(
+        personaUid,
+        "Owned Chromium process is alive but its profile-scoped DevTools endpoint is unavailable"
+      );
+    }
+
+    return endpoint;
+  }
+
   #ownershipAmbiguous(personaUid: string, detail: string): ChromiumBrowserError {
     this.#runtime.markDegraded(personaUid, detail);
     return new ChromiumBrowserError(
