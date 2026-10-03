@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P018**
-- Current phase: **P019 — IN_PROGRESS**
-- Next phase: **P020 — BLOCKED (P019)**
+- Completed through: **P019**
+- Current phase: **P020 — READY**
+- Next phase: **P021 — BLOCKED (P020)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
 
@@ -467,7 +467,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P018 → COMPLETE; P019 → READY; publish to GitHub; **STOP — do not implement P019.**
 
 ### P019 — Leak resistance and route-loss fail-closed behavior
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P018  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -479,16 +479,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T019.1 — Add controlled DNS/QUIC/WebRTC-sensitive network assertions
 - [x] T019.2 — Inject proxy/tunnel/forwarder loss during browser use
-- [~] T019.3 — Assert failure/blocking and detect any Direct/control-path escape
+- [x] T019.3 — Assert failure/blocking and detect any Direct/control-path escape
 
 **Acceptance:**
-- [ ] A04-06
-- [ ] A04-07
+- [x] A04-06
+- [x] A04-07
 
 **Closure:** relevant tests + CI green; phase report finalized; P019 → COMPLETE; P020 → READY; publish to GitHub; **STOP — do not implement P020.**
 
 ### P020 — Direct, Block, route switch and multi-route acceptance
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P019  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

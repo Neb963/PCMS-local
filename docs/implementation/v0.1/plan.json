@@ -908,7 +908,7 @@
       "id": "P019",
       "milestone": "M04",
       "name": "Leak resistance and route-loss fail-closed behavior",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P018"
       ],
@@ -945,7 +945,7 @@
       "id": "P020",
       "milestone": "M04",
       "name": "Direct, Block, route switch and multi-route acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P019"
       ],
