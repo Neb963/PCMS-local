@@ -731,8 +731,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T030.1 — Implement exact-commit repository tree scan
-- [~] T030.2 — Validate ZIP/layout/required files and compute SHA-256
-- [ ] T030.3 — Implement deterministic version selection and explicit ambiguity failure
+- [x] T030.2 — Validate ZIP/layout/required files and compute SHA-256
+- [~] T030.3 — Implement deterministic version selection and explicit ambiguity failure
 
 **Acceptance:**
 - [ ] A07-01
