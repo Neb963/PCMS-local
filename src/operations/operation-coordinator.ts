@@ -1409,6 +1409,28 @@ export class OperationCoordinator {
     );
   }
 
+  public markUncertain(
+    operationId: string,
+    expectedClaimEpoch: number,
+    reason: string
+  ): OperationRecord {
+    validateEvidenceId(operationId, "operationId");
+    validatePositiveInteger(expectedClaimEpoch, "expectedClaimEpoch");
+    const current = this.require(operationId);
+    if (current.state !== "RUNNING" && current.state !== "VERIFYING") {
+      fail(
+        "OPERATION_INVALID_TRANSITION",
+        `UNCERTAIN requires RUNNING or VERIFYING state, found ${current.state}`
+      );
+    }
+    return this.#transition(
+      operationId,
+      expectedClaimEpoch,
+      "UNCERTAIN",
+      reason
+    );
+  }
+
   public beginReconciliation(
     operationId: string,
     expectedClaimEpoch: number,

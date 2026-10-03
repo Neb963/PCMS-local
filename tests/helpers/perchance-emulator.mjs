@@ -5,7 +5,8 @@ export const PERCHANCE_EMULATOR_SCENARIOS = Object.freeze([
   "UNKNOWN_STATUS",
   "MALFORMED_SUCCESS",
   "PERIMETER_HTML",
-  "HTTP_ERROR"
+  "HTTP_ERROR",
+  "RESPONSE_LOSS_AFTER_EFFECT"
 ]);
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -91,6 +92,23 @@ export async function startPerchanceEmulator(options = {}) {
   let scenario = "NORMAL";
   const requestLog = [];
 
+  function findGenerator(publicId) {
+    for (const account of accounts.values()) {
+      const generator = account.generators.find((candidate) =>
+        candidate.publicId === publicId
+      );
+      if (generator !== undefined) {
+        return generator;
+      }
+    }
+    throw new Error("emulator generator " + publicId + " does not exist");
+  }
+
+  function renameGenerator(publicId, newSlug) {
+    assertText(newSlug, "new generator slug", 512);
+    findGenerator(publicId).slug = newSlug;
+  }
+
   const server = createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
 
@@ -102,6 +120,50 @@ export async function startPerchanceEmulator(options = {}) {
         "cache-control": "no-store"
       });
       response.end(body);
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      requestUrl.pathname === "/__pcms_emulator__/renameGenerator"
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end("invalid request");
+        return;
+      }
+
+      const publicId =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.publicId
+          : undefined;
+      const newSlug =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.newSlug
+          : undefined;
+      if (typeof publicId !== "string" || typeof newSlug !== "string") {
+        response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+        response.end("invalid mutation");
+        return;
+      }
+
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: "/__pcms_emulator__/renameGenerator",
+        publicId,
+        newSlug,
+        scenario
+      }));
+      renameGenerator(publicId, newSlug);
+
+      if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
+        response.destroy();
+        return;
+      }
+      jsonResponse(response, 200, { status: "success" });
       return;
     }
 
@@ -222,18 +284,6 @@ export async function startPerchanceEmulator(options = {}) {
     }
   }
 
-  function findGenerator(publicId) {
-    for (const account of accounts.values()) {
-      const generator = account.generators.find((candidate) =>
-        candidate.publicId === publicId
-      );
-      if (generator !== undefined) {
-        return generator;
-      }
-    }
-    throw new Error("emulator generator " + publicId + " does not exist");
-  }
-
   return Object.freeze({
     origin: "http://127.0.0.1:" + address.port + "/",
     setScenario(value) {
@@ -241,8 +291,7 @@ export async function startPerchanceEmulator(options = {}) {
       scenario = value;
     },
     renameGenerator(publicId, newSlug) {
-      assertText(newSlug, "new generator slug", 512);
-      findGenerator(publicId).slug = newSlug;
+      renameGenerator(publicId, newSlug);
     },
     replaceGeneratorStableId(publicId, replacementPublicId) {
       assertText(replacementPublicId, "replacement publicId", 256);

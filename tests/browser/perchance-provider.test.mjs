@@ -19,6 +19,13 @@ import {
   providerEvidenceFreshness
 } from "../../dist/providers/perchance-provider.js";
 import {
+  OperationCoordinator,
+  generatorOperationTargetKey
+} from "../../dist/operations/operation-coordinator.js";
+import {
+  OperationReconciler
+} from "../../dist/operations/reconciliation.js";
+import {
   PersonaProfileLifecycle
 } from "../../dist/personas/profile-lifecycle.js";
 import { applyPcmsMigrations } from "../../dist/storage/migrations.js";
@@ -298,6 +305,144 @@ test("P026 Perchance identity and GeneratorRef probes run through the owned real
     if (session !== undefined) {
       await session.close();
     }
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P028 response loss after committed emulator effect reconciles read-first without redispatch", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-reconcile",
+      generators: [
+        { publicId: "public-reconcile-1", slug: "before-reconcile" }
+      ]
+    }]
+  });
+  const f = await fixture("pcms-perchance-reconcile-");
+  const personaUid = "persona_perchance_reconcile";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    await setBrowserSession(
+      page,
+      emulator.sessionFor("owner@example.test")
+    );
+
+    const provider = new PerchanceProvider({
+      browserProfile: {
+        sessionStateExpression: SESSION_STATE_EXPRESSION
+      },
+      now: () => new Date("2026-10-03T14:30:00.000Z")
+    });
+    const coordinator = new OperationCoordinator({
+      database: f.database,
+      now: () => new Date("2026-10-03T14:30:00.000Z")
+    });
+    const reconciler = new OperationReconciler(coordinator);
+    const operation = coordinator.prepare({
+      operationId: "operation-response-loss-1",
+      idempotencyKey: "request-response-loss-1",
+      owner: { kind: "CORE" },
+      actorSource: "p028-browser-test",
+      targetKey: generatorOperationTargetKey("generator-reconcile-1"),
+      operationKind: "synthetic-generator-rename",
+      schemaVersion: 1,
+      desiredFingerprint: "c".repeat(64),
+      provenance: { source: "perchance-emulator" },
+      preconditions: [{
+        key: "provider-session",
+        observedAt: "2026-10-03T14:30:00.000Z",
+        maxAgeMs: 60000,
+        evidenceRef: "session-reconcile-1"
+      }]
+    });
+    coordinator.authorizeDispatch({
+      operationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      evidence: { step: "synthetic-rename" }
+    });
+
+    emulator.setScenario("RESPONSE_LOSS_AFTER_EFFECT");
+    const dispatchResult = await page.evaluate(`
+      fetch("/__pcms_emulator__/renameGenerator", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          publicId: "public-reconcile-1",
+          newSlug: "after-reconcile"
+        })
+      }).then(
+        () => ({ kind: "response" }),
+        () => ({ kind: "response-lost" })
+      )
+    `);
+    assert.deepEqual(dispatchResult, { kind: "response-lost" });
+
+    const uncertain = coordinator.recordExecutionLoss({
+      operationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      source: "NETWORK",
+      effectState: "MAY_HAVE_OCCURRED"
+    });
+    assert.equal(uncertain.state, "UNCERTAIN");
+
+    const result = await reconciler.reconcile({
+      operationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      read: async () => {
+        const observed = await provider.probeGeneratorIdentity(
+          page,
+          "owner@example.test",
+          {
+            generatorLocalId: "generator-reconcile-1",
+            providerStableId: "public-reconcile-1",
+            currentSlug: "before-reconcile"
+          }
+        );
+        return observed.identityStatus === "VERIFIED" &&
+          observed.observedSlug === "after-reconcile"
+          ? {
+              kind: "CONFIRMED_APPLIED",
+              reason: "reconciliation-read-confirmed-effect"
+            }
+          : {
+              kind: "UNKNOWN",
+              reason: "reconciliation-read-inconclusive"
+            };
+      }
+    });
+
+    assert.equal(result.operation.operationId, operation.operationId);
+    assert.equal(result.operation.state, "SUCCEEDED");
+    const requests = emulator.requests();
+    const mutations = requests.filter((entry) =>
+      entry.path === "/__pcms_emulator__/renameGenerator"
+    );
+    assert.equal(mutations.length, 1);
+    const mutationIndex = requests.findIndex((entry) =>
+      entry.path === "/__pcms_emulator__/renameGenerator"
+    );
+    const readIndex = requests.findIndex((entry, index) =>
+      index > mutationIndex &&
+      entry.path === "/api/getGeneratorsByUser"
+    );
+    assert.ok(mutationIndex >= 0);
+    assert.ok(readIndex > mutationIndex);
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
     f.database.close();
     await rm(f.root, { recursive: true, force: true });
     await emulator.close();
