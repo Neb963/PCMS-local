@@ -124,6 +124,7 @@ test("fresh BrowserManager safely reconnects a persisted owned Chromium Persona"
 
     await reconciled.close();
     reconciled = undefined;
+    await firstSession.close();
     firstSession = undefined;
     assert.equal(f.lifecycle.get("persona_restart").profileState, "CLOSED");
     assert.equal(
