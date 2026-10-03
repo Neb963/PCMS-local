@@ -120,7 +120,7 @@
     {
       "id": "M08",
       "name": "Refresh measurement and Refresher",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P034",
         "P035",
@@ -1496,7 +1496,7 @@
       "id": "P034",
       "milestone": "M08",
       "name": "Refresh and recent-listing emulator contract",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P033"
       ],

@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P033**
-- Current phase: **P034 — READY**
+- Current phase: **P034 — IN_PROGRESS**
 - Next phase: **P035 — BLOCKED (P034)**
 - Current milestone: **M08 — Refresh measurement and Refresher**
 - Final live milestone: **M12 — P048–P049**
@@ -810,10 +810,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M08 — Refresh measurement and Refresher
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P034 — Refresh and recent-listing emulator contract
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P033  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -823,7 +823,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not measure against live Perchance during implementation phases.
 
 **Work:**
-- [ ] T034.1 — Model refresh effect and listing/recent surfaces in the emulator
+- [~] T034.1 — Model refresh effect and listing/recent surfaces in the emulator
 - [ ] T034.2 — Implement parser/compatibility behavior including UNKNOWN on drift
 - [ ] T034.3 — Add sanitized evidence/fixture provenance notes for assumptions
 
