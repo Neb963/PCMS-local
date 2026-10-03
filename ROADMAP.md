@@ -772,8 +772,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add polling/module-update concerns yet.
 
 **Work:**
-- [~] T032.1 — Implement verified-SHA no-op and changed-artifact update
-- [ ] T032.2 — Reject old-slug/provider-identity mismatch redirect
+- [x] T032.1 — Implement verified-SHA no-op and changed-artifact update
+- [~] T032.2 — Reject old-slug/provider-identity mismatch redirect
 - [ ] T032.3 — Reconcile emulated lost save response before any retry
 
 **Acceptance:**
