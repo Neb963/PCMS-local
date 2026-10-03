@@ -392,7 +392,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T015.1 — Expose/discover the owned loopback DevTools endpoint safely
 - [x] T015.2 — Run a generic CDP attach/interact/detach test against the same Persona
-- [~] T015.3 — Verify browser/profile/process survive client disconnect
+- [x] T015.3 — Verify browser/profile/process survive client disconnect
 
 **Acceptance:**
 - [ ] A03-08

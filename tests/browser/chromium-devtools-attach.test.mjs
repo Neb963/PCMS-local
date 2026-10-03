@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -151,6 +151,15 @@ test("generic CDP client attaches, interacts and detaches from the running Perso
       disableSandboxForTesting: true
     });
 
+    const runtimeBefore = f.database.prepare(`
+      SELECT state, pid, devtools_port, devtools_path
+      FROM persona_browser_runtime
+      WHERE persona_uid = ?
+    `).get(personaUid);
+    assert.equal(runtimeBefore.state, "RUNNING");
+    assert.equal(runtimeBefore.pid, session.pid);
+    assert.equal((await stat(session.profilePath)).isDirectory(), true);
+
     const endpoint = await f.manager.resolveDevToolsEndpoint(personaUid);
     assert.ok(endpoint);
     assert.deepEqual(endpoint, session.devTools);
@@ -190,6 +199,35 @@ test("generic CDP client attaches, interacts and detaches from the running Perso
     });
     await client.disconnect();
     client = undefined;
+
+    assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
+    assert.equal((await stat(session.profilePath)).isDirectory(), true);
+
+    const runtimeAfter = f.database.prepare(`
+      SELECT state, pid, devtools_port, devtools_path
+      FROM persona_browser_runtime
+      WHERE persona_uid = ?
+    `).get(personaUid);
+    assert.deepEqual(runtimeAfter, runtimeBefore);
+
+    const rediscovered = await f.manager.resolveDevToolsEndpoint(personaUid);
+    assert.ok(rediscovered);
+    assert.deepEqual(rediscovered, endpoint);
+
+    const version = await fetch(`${rediscovered.httpOrigin}/json/version`);
+    assert.equal(version.status, 200);
+    const versionPayload = await version.json();
+    assert.equal(
+      versionPayload.webSocketDebuggerUrl,
+      rediscovered.webSocketUrl
+    );
+
+    const reattached = await connectCdp(rediscovered.webSocketUrl);
+    const browserVersion = await reattached.send("Browser.getVersion");
+    assert.equal(typeof browserVersion.product, "string");
+    await reattached.disconnect();
+
+    assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
   } finally {
     if (client !== undefined) {
       await client.disconnect();
