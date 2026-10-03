@@ -11,6 +11,7 @@ import {
   type OperationOwner,
   type OperationRecord
 } from "../operations/operation-coordinator.js";
+import { OperationReconciler } from "../operations/reconciliation.js";
 import {
   PerchanceMutationError,
   PerchanceProvider,
@@ -27,6 +28,8 @@ import {
 } from "./target-mapping.js";
 
 const PRECONDITION_MAX_AGE_MS = 60_000;
+const DEPLOYMENT_OPERATION_KIND = "deployer.initial-deployment";
+const DEPLOYMENT_SCHEMA_VERSION = 1;
 
 export interface InitialDeploymentInput {
   readonly page: BrowserPage;
@@ -44,7 +47,8 @@ export interface InitialDeploymentInput {
 
 export type DeploymentDisposition =
   | "NO_OP"
-  | "APPLIED";
+  | "APPLIED"
+  | "RECONCILED_APPLIED";
 
 export interface InitialDeploymentResult {
   readonly disposition: DeploymentDisposition;
@@ -58,7 +62,9 @@ export class InitialDeploymentError extends Error {
   public constructor(
     public readonly code:
       | "DEPLOYER_DEPLOYMENT_MUTATION_FAILED"
-      | "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
+      | "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED"
+      | "DEPLOYER_DEPLOYMENT_OPERATION_CONFLICT"
+      | "DEPLOYER_DEPLOYMENT_RECONCILIATION_UNRESOLVED",
     message: string,
     public readonly operationId: string,
     options?: ErrorOptions
@@ -137,10 +143,78 @@ function sameDeployment(
   );
 }
 
+function sameOwner(
+  left: OperationOwner,
+  right: OperationOwner
+): boolean {
+  if (left.kind !== right.kind) {
+    return false;
+  }
+  if (left.kind === "CORE" && right.kind === "CORE") {
+    return true;
+  }
+  return (
+    left.kind === "MODULE" &&
+    right.kind === "MODULE" &&
+    left.moduleId === right.moduleId &&
+    left.moduleVersion === right.moduleVersion &&
+    left.runtimeGeneration === right.runtimeGeneration
+  );
+}
+
+function deploymentProvenance(
+  artifact: ResolvedDeploymentArtifact
+): Readonly<{
+  source: string;
+  repositoryOwner: string;
+  repository: string;
+  commitSha: string;
+  artifactPath: string;
+  artifactSha256: string;
+}> {
+  return Object.freeze({
+    source: "github-repository",
+    repositoryOwner: artifact.owner,
+    repository: artifact.repository,
+    commitSha: artifact.commitSha,
+    artifactPath: artifact.path,
+    artifactSha256: artifact.sha256
+  });
+}
+
+function sameOperationIntent(
+  operation: OperationRecord,
+  input: InitialDeploymentInput,
+  target: ResolvedRepositoryTarget,
+  desired: PerchanceDesiredDeployment
+): boolean {
+  const provenance = operation.provenance;
+  return (
+    operation.idempotencyKey === input.idempotencyKey &&
+    operation.targetKey ===
+      generatorOperationTargetKey(target.generator.generatorLocalId) &&
+    operation.operationKind === DEPLOYMENT_OPERATION_KIND &&
+    operation.schemaVersion === DEPLOYMENT_SCHEMA_VERSION &&
+    sameOwner(operation.owner, input.owner) &&
+    operation.actorSource === input.actorSource &&
+    operation.personaUid === target.personaUid &&
+    operation.accountId === target.account.accountId &&
+    operation.desiredFingerprint === desiredFingerprint(desired) &&
+    operation.attempt === 1 &&
+    provenance["source"] === "github-repository" &&
+    provenance["repositoryOwner"] === input.artifact.owner &&
+    provenance["repository"] === input.artifact.repository &&
+    provenance["commitSha"] === input.artifact.commitSha &&
+    provenance["artifactPath"] === input.artifact.path &&
+    provenance["artifactSha256"] === input.artifact.sha256
+  );
+}
+
 export class InitialDeploymentService {
   readonly #provider: PerchanceProvider;
   readonly #coordinator: OperationCoordinator;
   readonly #targets: DeployerTargetResolver;
+  readonly #reconciler: OperationReconciler;
 
   public constructor(options: Readonly<{
     database: DatabaseSync;
@@ -155,6 +229,7 @@ export class InitialDeploymentService {
       database: options.database,
       provider: options.provider
     });
+    this.#reconciler = new OperationReconciler(this.#coordinator);
   }
 
   public async deploy(
@@ -174,23 +249,85 @@ export class InitialDeploymentService {
       input.requiredPublic
     );
 
-    let current: PerchanceDeploymentObservation;
-    try {
-      current = await this.#provider.observeGeneratorDeployment(
-        input.page,
-        input.expectedProviderIdentity,
-        target.generator.providerStableId,
-        input.commandOptions
-      );
-    } catch (error: unknown) {
+    const byOperationId = this.#coordinator.get(input.operationId);
+    const byIdempotency =
+      this.#coordinator.getByIdempotencyKey(input.idempotencyKey);
+    if (
+      byOperationId !== null &&
+      byIdempotency !== null &&
+      byOperationId.operationId !== byIdempotency.operationId
+    ) {
       throw new InitialDeploymentError(
-        "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
-        "Deployment current provider state could not be verified before mutation",
-        input.operationId,
-        { cause: error }
+        "DEPLOYER_DEPLOYMENT_OPERATION_CONFLICT",
+        "Deployment operation ID and idempotency key refer to different durable operations",
+        input.operationId
+      );
+    }
+    const existing = byOperationId ?? byIdempotency;
+    if (existing !== null) {
+      if (!sameOperationIntent(existing, input, target, desired)) {
+        throw new InitialDeploymentError(
+          "DEPLOYER_DEPLOYMENT_OPERATION_CONFLICT",
+          "Existing deployment operation identity is bound to a different durable intent",
+          existing.operationId
+        );
+      }
+
+      if (
+        existing.state === "UNCERTAIN" ||
+        existing.state === "NEEDS_HUMAN"
+      ) {
+        const gate = this.#coordinator.providerGate.acquire({
+          provider: "perchance",
+          accountId: target.account.accountId,
+          personaUid: target.personaUid
+        });
+        try {
+          return await this.#reconcileDeployment(
+            input,
+            target,
+            desired,
+            existing
+          );
+        } finally {
+          gate.release();
+        }
+      }
+
+      if (existing.state === "SUCCEEDED") {
+        const observation = await this.#observeCurrent(
+          input,
+          target,
+          existing.operationId
+        );
+        if (!sameDeployment(target, desired, observation)) {
+          throw new InitialDeploymentError(
+            "DEPLOYER_DEPLOYMENT_OPERATION_CONFLICT",
+            "Completed deployment idempotency key cannot be reused after provider state drift",
+            existing.operationId
+          );
+        }
+        return Object.freeze({
+          disposition: "NO_OP",
+          target,
+          desired,
+          observation,
+          operation: existing
+        });
+      }
+
+      throw new InitialDeploymentError(
+        "DEPLOYER_DEPLOYMENT_RECONCILIATION_UNRESOLVED",
+        `Existing deployment operation is ${existing.state} and cannot be redispatched`,
+        existing.operationId
       );
     }
 
+    const current = await this.#observeCurrent(
+      input,
+      target,
+      input.operationId
+    );
     if (sameDeployment(target, desired, current)) {
       return Object.freeze({
         disposition: "NO_OP",
@@ -210,19 +347,12 @@ export class InitialDeploymentService {
       targetKey: generatorOperationTargetKey(
         target.generator.generatorLocalId
       ),
-      operationKind: "deployer.initial-deployment",
-      schemaVersion: 1,
+      operationKind: DEPLOYMENT_OPERATION_KIND,
+      schemaVersion: DEPLOYMENT_SCHEMA_VERSION,
       personaUid: target.personaUid,
       accountId: target.account.accountId,
       desiredFingerprint: desiredFingerprint(desired),
-      provenance: {
-        source: "github-repository",
-        repositoryOwner: input.artifact.owner,
-        repository: input.artifact.repository,
-        commitSha: input.artifact.commitSha,
-        artifactPath: input.artifact.path,
-        artifactSha256: input.artifact.sha256
-      },
+      provenance: deploymentProvenance(input.artifact),
       preconditions: [
         {
           key: "accountBinding",
@@ -281,15 +411,25 @@ export class InitialDeploymentService {
           error instanceof PerchanceMutationError
             ? error.effectState
             : "MAY_HAVE_OCCURRED";
-        this.#coordinator.recordExecutionLoss({
+        const lost = this.#coordinator.recordExecutionLoss({
           operationId: operation.operationId,
           expectedClaimEpoch: operation.claimEpoch,
           source: "NETWORK",
           effectState
         });
+
+        if (effectState === "MAY_HAVE_OCCURRED") {
+          return await this.#reconcileDeployment(
+            input,
+            target,
+            desired,
+            lost
+          );
+        }
+
         throw new InitialDeploymentError(
           "DEPLOYER_DEPLOYMENT_MUTATION_FAILED",
-          "Deployment mutation did not produce a safely acknowledged save",
+          "Deployment mutation was rejected before a remote effect could be established",
           operation.operationId,
           { cause: error }
         );
@@ -301,29 +441,11 @@ export class InitialDeploymentService {
         "provider-save-acknowledged"
       );
 
-      let observation: PerchanceDeploymentObservation;
-      try {
-        observation =
-          await this.#provider.observeGeneratorDeployment(
-            input.page,
-            input.expectedProviderIdentity,
-            target.generator.providerStableId,
-            input.commandOptions
-          );
-      } catch (error: unknown) {
-        this.#coordinator.markUncertain(
-          operation.operationId,
-          operation.claimEpoch,
-          "post-save-provider-read-failed"
-        );
-        throw new InitialDeploymentError(
-          "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
-          "Deployment could not read provider state after save",
-          operation.operationId,
-          { cause: error }
-        );
-      }
-
+      const observation = await this.#observeAfterDispatch(
+        input,
+        target,
+        operation
+      );
       if (!sameDeployment(target, desired, observation)) {
         this.#coordinator.markUncertain(
           operation.operationId,
@@ -352,5 +474,104 @@ export class InitialDeploymentService {
     } finally {
       gate.release();
     }
+  }
+
+  async #observeCurrent(
+    input: InitialDeploymentInput,
+    target: ResolvedRepositoryTarget,
+    operationId: string
+  ): Promise<PerchanceDeploymentObservation> {
+    try {
+      return await this.#provider.observeGeneratorDeployment(
+        input.page,
+        input.expectedProviderIdentity,
+        target.generator.providerStableId,
+        input.commandOptions
+      );
+    } catch (error: unknown) {
+      throw new InitialDeploymentError(
+        "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
+        "Deployment current provider state could not be verified",
+        operationId,
+        { cause: error }
+      );
+    }
+  }
+
+  async #observeAfterDispatch(
+    input: InitialDeploymentInput,
+    target: ResolvedRepositoryTarget,
+    operation: OperationRecord
+  ): Promise<PerchanceDeploymentObservation> {
+    try {
+      return await this.#provider.observeGeneratorDeployment(
+        input.page,
+        input.expectedProviderIdentity,
+        target.generator.providerStableId,
+        input.commandOptions
+      );
+    } catch (error: unknown) {
+      this.#coordinator.markUncertain(
+        operation.operationId,
+        operation.claimEpoch,
+        "post-save-provider-read-failed"
+      );
+      throw new InitialDeploymentError(
+        "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
+        "Deployment could not read provider state after save",
+        operation.operationId,
+        { cause: error }
+      );
+    }
+  }
+
+  async #reconcileDeployment(
+    input: InitialDeploymentInput,
+    target: ResolvedRepositoryTarget,
+    desired: PerchanceDesiredDeployment,
+    operation: OperationRecord
+  ): Promise<InitialDeploymentResult> {
+    let observation: PerchanceDeploymentObservation | null = null;
+    const reconciled = await this.#reconciler.reconcile({
+      operationId: operation.operationId,
+      expectedClaimEpoch: operation.claimEpoch,
+      read: async () => {
+        observation = await this.#provider.observeGeneratorDeployment(
+          input.page,
+          input.expectedProviderIdentity,
+          target.generator.providerStableId,
+          input.commandOptions
+        );
+        if (sameDeployment(target, desired, observation)) {
+          return {
+            kind: "CONFIRMED_APPLIED",
+            reason: "deployment-reconciliation-confirmed-applied"
+          };
+        }
+        return {
+          kind: "UNKNOWN",
+          reason: "deployment-reconciliation-state-mismatch"
+        };
+      }
+    });
+
+    if (
+      reconciled.operation.state === "SUCCEEDED" &&
+      observation !== null
+    ) {
+      return Object.freeze({
+        disposition: "RECONCILED_APPLIED",
+        target,
+        desired,
+        observation,
+        operation: reconciled.operation
+      });
+    }
+
+    throw new InitialDeploymentError(
+      "DEPLOYER_DEPLOYMENT_RECONCILIATION_UNRESOLVED",
+      "Deployment outcome remains uncertain after read-first reconciliation; automatic redispatch is blocked",
+      reconciled.operation.operationId
+    );
   }
 }
