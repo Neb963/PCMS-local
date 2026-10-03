@@ -144,12 +144,27 @@ test("module-runner surfaces structured backend errors without terminating", asy
 });
 
 test("module SDK exposes semantic serialized calls and rejects raw Core authority", async () => {
+  const sensitiveCoreValue =
+    "P040-SENSITIVE-CORE-SDK-ERROR-DO-NOT-ECHO";
   const fixture = await moduleFixture(`
     export function createModule(context) {
       return {
         async handle(method, params) {
           if (method === "sdk") {
             return context.sdk.call(params.method, params.payload);
+          }
+          if (method === "sdkCaptureError") {
+            try {
+              return await context.sdk.call(
+                params.method,
+                params.payload
+              );
+            } catch (error) {
+              return {
+                code: error.code,
+                message: error.message
+              };
+            }
           }
           if (method === "authority") {
             return {
@@ -177,7 +192,12 @@ test("module SDK exposes semantic serialized calls and rejects raw Core authorit
       "accounts.read": async (params) => ({
         source: "core-semantic-handler",
         params
-      })
+      }),
+      "accounts.readSensitive": async () => {
+        const error = new Error(sensitiveCoreValue);
+        error.code = "SENSITIVE_CORE_FAILURE";
+        throw error;
+      }
     }
   });
 
@@ -199,6 +219,17 @@ test("module SDK exposes semantic serialized calls and rejects raw Core authorit
       {
         source: "core-semantic-handler",
         params: { accountUid: "acct-fixture" }
+      }
+    );
+
+    assert.deepEqual(
+      await runtime.request("sdkCaptureError", {
+        method: "accounts.readSensitive",
+        payload: null
+      }),
+      {
+        code: "SENSITIVE_CORE_FAILURE",
+        message: "Core SDK handler failed"
       }
     );
 
