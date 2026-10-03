@@ -86,7 +86,7 @@
     {
       "id": "M05",
       "name": "Accounts, Generator identity and inventory",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P021",
         "P022",
@@ -97,7 +97,7 @@
     {
       "id": "M06",
       "name": "Provider automation and operation safety",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P025",
         "P026",
@@ -1102,7 +1102,7 @@
       "id": "P024",
       "milestone": "M05",
       "name": "Wrong-account guard and 50+ inventory resilience",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P023"
       ],
@@ -1142,7 +1142,7 @@
       "id": "P025",
       "milestone": "M06",
       "name": "BrowserDriver connection, cancellation and diagnostics",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P024"
       ],
