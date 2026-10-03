@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P025**  
 Current milestone: **M06 — Provider automation and operation safety**  
-Current phase: **P026 — READY**  
+Current phase: **P026 — IN_PROGRESS**  
 Next phase: **P027 — BLOCKED (P026)**
 
 Canonical execution view: `ROADMAP.md`.

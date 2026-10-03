@@ -1181,7 +1181,7 @@
       "id": "P026",
       "milestone": "M06",
       "name": "Perchance emulator and identity/read probes",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P025"
       ],
