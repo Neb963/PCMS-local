@@ -159,6 +159,20 @@ export async function startPerchanceEmulator(options = {}) {
     sessions.set(account.sessionToken, account.comparisonKey);
   }
 
+  const explorerAvailableSlugs = new Set();
+  const configuredExplorerAvailableSlugs =
+    options.explorerAvailableSlugs ?? [];
+  if (!Array.isArray(configuredExplorerAvailableSlugs)) {
+    throw new TypeError("explorerAvailableSlugs must be an array");
+  }
+  for (const slug of configuredExplorerAvailableSlugs) {
+    assertText(slug, "Explorer candidate slug", 512);
+    if (explorerAvailableSlugs.has(slug)) {
+      throw new Error("duplicate Explorer candidate slug");
+    }
+    explorerAvailableSlugs.add(slug);
+  }
+
   let scenario = "NORMAL";
   let refreshSequence = 0;
   let recentObservationComplete = true;
@@ -365,6 +379,48 @@ export async function startPerchanceEmulator(options = {}) {
               publicId
             }
           : refreshEffectFixture(publicId)
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/explorer/availability"
+    ) {
+      const slug = requestUrl.searchParams.get("slug");
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        slug,
+        scenario
+      }));
+      if (slug === null || slug.length < 1 || slug.length > 512) {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid slug");
+        return;
+      }
+
+      const occupied = [...accounts.values()].some((account) =>
+        account.generators.some((generator) => generator.slug === slug)
+      );
+      jsonResponse(
+        response,
+        200,
+        scenario === "COMPATIBILITY_DRIFT"
+          ? {
+              contractVersion: 2,
+              semantic: "EXPLORER_AVAILABILITY_VNEXT",
+              candidate: slug
+            }
+          : {
+              contractVersion: 1,
+              semantic: "EXPLORER_AVAILABILITY",
+              slug,
+              available:
+                explorerAvailableSlugs.has(slug) && !occupied
+            }
       );
       return;
     }

@@ -895,8 +895,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement Account Provisioning in this phase.
 
 **Work:**
-- [~] T037.1 — Implement emulator-backed availability observation distinct from ownership
-- [ ] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
+- [x] T037.1 — Implement emulator-backed availability observation distinct from ownership
+- [~] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
 - [ ] T037.3 — Handoff verified acquisition to stable Generator/Project target
 
 **Acceptance:**
