@@ -20,6 +20,9 @@ const DEFAULT_STARTUP_TIMEOUT_MS = 15_000;
 const DEFAULT_CLOSE_TIMEOUT_MS = 5_000;
 const MAX_STDERR_BYTES = 8 * 1024;
 const DEVTOOLS_ACTIVE_PORT = "DevToolsActivePort";
+const PROTECTED_HOST_RESOLVER_RULES =
+  "MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1";
+const PROTECTED_WEBRTC_IP_POLICY = "disable_non_proxied_udp";
 
 export type ChromiumBrowserErrorCode =
   | "CHROMIUM_EXECUTABLE_INVALID"
@@ -133,7 +136,7 @@ function validateTimeout(value: number, label: string): void {
 
 function validateProtectedProxy(
   value: ChromiumProtectedProxy | undefined
-): string | null {
+): readonly string[] | null {
   if (value === undefined) {
     return null;
   }
@@ -148,7 +151,12 @@ function validateProtectedProxy(
       "Protected Chromium proxy must be an IPv4 loopback endpoint with a valid port"
     );
   }
-  return `--proxy-server=socks5://127.0.0.1:${value.port}`;
+  return Object.freeze([
+    `--proxy-server=socks5://127.0.0.1:${value.port}`,
+    `--host-resolver-rules=${PROTECTED_HOST_RESOLVER_RULES}`,
+    "--disable-quic",
+    `--force-webrtc-ip-handling-policy=${PROTECTED_WEBRTC_IP_POLICY}`
+  ]);
 }
 
 function validateInitialUrl(value: string | undefined): string {
@@ -1044,7 +1052,7 @@ export class ChromiumBrowserManager {
         args.push("--no-sandbox");
       }
       if (protectedProxyArgument !== null) {
-        args.push(protectedProxyArgument);
+        args.push(...protectedProxyArgument);
       }
       args.push(initialUrl);
 
