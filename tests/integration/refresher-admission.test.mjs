@@ -152,8 +152,6 @@ test("P035 Refresher and Deployer share the same stable Generator mutation claim
       generatorLocalId,
       owner: { kind: "CORE" },
       actorSource: "refresher",
-      accountId: "account-p035",
-      personaUid: "persona-p035",
       desiredFingerprint: "e".repeat(64),
       provenance: { source: "p035-refresher" },
       preconditions: precondition(f.now, "refresher")
