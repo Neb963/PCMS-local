@@ -704,8 +704,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not build a generic workflow engine.
 
 **Work:**
-- [~] T029.1 — Implement independent batch child result/cancellation accounting
-- [ ] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
+- [x] T029.1 — Implement independent batch child result/cancellation accounting
+- [~] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
 - [ ] T029.3 — Exercise clock jump/restart/backpressure integration
 
 **Acceptance:**

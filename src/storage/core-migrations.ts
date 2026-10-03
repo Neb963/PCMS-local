@@ -581,5 +581,63 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         ON human_tasks(operation_id, required_action_kind)
         WHERE status = 'OPEN' AND operation_id IS NOT NULL;
     `
+  }),
+  Object.freeze({
+    version: 12,
+    id: "0012-batches",
+    sql: `
+      CREATE TABLE batches (
+        batch_id TEXT PRIMARY KEY
+          CHECK (length(batch_id) BETWEEN 1 AND 128),
+        actor_source TEXT NOT NULL
+          CHECK (length(actor_source) BETWEEN 1 AND 128),
+        label TEXT
+          CHECK (label IS NULL OR length(label) BETWEEN 1 AND 256),
+        cancellation_requested_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0)
+      ) STRICT;
+
+      CREATE TABLE batch_children (
+        batch_id TEXT NOT NULL,
+        ordinal INTEGER NOT NULL
+          CHECK (ordinal >= 0),
+        operation_id TEXT NOT NULL,
+        cancellation_requested_at TEXT,
+        cancellation_outcome TEXT
+          CHECK (
+            cancellation_outcome IS NULL OR
+            cancellation_outcome IN (
+              'CANCELLED_CLEAN',
+              'UNCERTAIN',
+              'NEEDS_HUMAN',
+              'TERMINAL_UNCHANGED',
+              'ERROR'
+            )
+          ),
+        cancellation_error_code TEXT
+          CHECK (
+            cancellation_error_code IS NULL OR
+            length(cancellation_error_code) BETWEEN 1 AND 128
+          ),
+        PRIMARY KEY (batch_id, operation_id),
+        UNIQUE (batch_id, ordinal),
+        FOREIGN KEY (batch_id)
+          REFERENCES batches(batch_id)
+          ON DELETE CASCADE,
+        FOREIGN KEY (operation_id)
+          REFERENCES operations(operation_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE INDEX batch_children_operation
+        ON batch_children(operation_id);
+
+      CREATE INDEX batches_cancellation
+        ON batches(cancellation_requested_at)
+        WHERE cancellation_requested_at IS NOT NULL;
+    `
   })
 ]);
