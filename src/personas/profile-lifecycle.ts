@@ -460,7 +460,7 @@ export class PersonaProfileLifecycle {
       FROM personas
       WHERE profile_state = 'OPEN'
       ORDER BY persona_uid
-    `).all() as PersonaRow[];
+    `).all() as unknown as PersonaRow[];
 
     return Object.freeze(
       rows.map((row) => {
