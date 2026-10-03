@@ -939,13 +939,9 @@ class ExitForwarder:
             self.token_expires_at = 0
             self.token_generation += 1
             sockets = list(self.active_sockets)
-            server, thread, expiry_timer = self.server, self.thread, self.expiry_timer
+            server, thread = self.server, self.thread
             self.server = None
             self.thread = None
-            self.expiry_timer = None
-
-        if expiry_timer:
-            expiry_timer.cancel()
 
         errors = []
         if server:
@@ -1167,9 +1163,13 @@ class ChromiumExitForwarder:
             self.stopping = True
             self.revocation_generation += 1
             sockets = list(self.active_sockets)
-            server, thread = self.server, self.thread
+            server, thread, expiry_timer = self.server, self.thread, self.expiry_timer
             self.server = None
             self.thread = None
+            self.expiry_timer = None
+
+        if expiry_timer:
+            expiry_timer.cancel()
 
         errors = []
         if server:
