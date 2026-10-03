@@ -26,12 +26,13 @@ function assertText(value, label, maxLength = 512) {
   }
 }
 
-function jsonResponse(response, statusCode, value) {
+function jsonResponse(response, statusCode, value, headers = {}) {
   const body = JSON.stringify(value);
   response.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(body),
-    "cache-control": "no-store"
+    "cache-control": "no-store",
+    ...headers
   });
   response.end(body);
 }
@@ -131,6 +132,8 @@ function normalizedGenerator(generator) {
 function normalizedAccount(account) {
   assertText(account.identity, "account identity", 320);
   assertText(account.sessionToken, "session token", 4096);
+  const password = account.password ?? "emulator-password";
+  assertText(password, "account password", 4096);
   if (!Array.isArray(account.generators)) {
     throw new TypeError("account generators must be an array");
   }
@@ -138,6 +141,7 @@ function normalizedAccount(account) {
     identity: account.identity,
     comparisonKey: asciiLowercase(account.identity),
     sessionToken: account.sessionToken,
+    password,
     generators: account.generators.map(normalizedGenerator)
   };
 }
@@ -174,6 +178,7 @@ export async function startPerchanceEmulator(options = {}) {
   }
 
   let scenario = "NORMAL";
+  let provisioningSessionSequence = 0;
   let explorerClaimSequence = 0;
   let refreshSequence = 0;
   let recentObservationComplete = true;
@@ -279,6 +284,30 @@ export async function startPerchanceEmulator(options = {}) {
     };
   }
 
+  function provisioningSessionToken(cookieHeader) {
+    if (typeof cookieHeader !== "string") {
+      return null;
+    }
+    for (const part of cookieHeader.split(";")) {
+      const [name, ...rawValue] = part.trim().split("=");
+      if (name !== "pcms_emulator_session") {
+        continue;
+      }
+      try {
+        return decodeURIComponent(rawValue.join("="));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function provisioningCookie(sessionToken) {
+    return "pcms_emulator_session=" +
+      encodeURIComponent(sessionToken) +
+      "; HttpOnly; Path=/; SameSite=Lax";
+  }
+
   const server = createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
 
@@ -290,6 +319,169 @@ export async function startPerchanceEmulator(options = {}) {
         "cache-control": "no-store"
       });
       response.end(body);
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/provisioning"
+    ) {
+      const body = `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>PCMS Provisioning Emulator</title></head>
+<body>
+  <main id="pcms-provisioning">PCMS Provisioning Emulator</main>
+  <script>
+    window.pcmsProvisioning = Object.freeze({
+      signup(identity, password) {
+        return fetch("/__pcms_emulator__/provisioning/signup", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ identity, password })
+        }).then((response) => response.json());
+      },
+      login(identity, password) {
+        return fetch("/__pcms_emulator__/provisioning/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ identity, password })
+        }).then((response) => response.json());
+      },
+      session() {
+        return fetch("/__pcms_emulator__/provisioning/session", {
+          cache: "no-store",
+          credentials: "same-origin"
+        }).then((response) => response.json());
+      }
+    });
+  </script>
+</body>
+</html>`;
+      response.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": Buffer.byteLength(body),
+        "cache-control": "no-store"
+      });
+      response.end(body);
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      (
+        requestUrl.pathname === "/__pcms_emulator__/provisioning/signup" ||
+        requestUrl.pathname === "/__pcms_emulator__/provisioning/login"
+      )
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid request");
+        return;
+      }
+
+      const identity =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.identity
+          : undefined;
+      const password =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.password
+          : undefined;
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: requestUrl.pathname,
+        identity: typeof identity === "string" ? identity : null,
+        passwordPresent: typeof password === "string" && password.length > 0,
+        scenario
+      }));
+
+      if (
+        typeof identity !== "string" ||
+        identity.length < 1 ||
+        identity.length > 320 ||
+        typeof password !== "string" ||
+        password.length < 1 ||
+        password.length > 4096
+      ) {
+        jsonResponse(response, 200, {
+          contractVersion: 1,
+          semantic: "PROVISIONING_FLOW",
+          status: "invalid-input"
+        });
+        return;
+      }
+
+      const key = asciiLowercase(identity);
+      let account = accounts.get(key);
+      if (requestUrl.pathname.endsWith("/signup")) {
+        if (account !== undefined) {
+          jsonResponse(response, 200, {
+            contractVersion: 1,
+            semantic: "PROVISIONING_FLOW",
+            status: "duplicate"
+          });
+          return;
+        }
+        provisioningSessionSequence += 1;
+        account = normalizedAccount({
+          identity,
+          password,
+          sessionToken:
+            "provisioning-session-" + provisioningSessionSequence,
+          generators: []
+        });
+        accounts.set(account.comparisonKey, account);
+        sessions.set(account.sessionToken, account.comparisonKey);
+      } else if (account === undefined || account.password !== password) {
+        jsonResponse(response, 200, {
+          contractVersion: 1,
+          semantic: "PROVISIONING_FLOW",
+          status: "invalid-credentials"
+        });
+        return;
+      }
+
+      jsonResponse(
+        response,
+        200,
+        {
+          contractVersion: 1,
+          semantic: "PROVISIONING_FLOW",
+          status: requestUrl.pathname.endsWith("/signup")
+            ? "submitted"
+            : "authenticated"
+        },
+        { "set-cookie": provisioningCookie(account.sessionToken) }
+      );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/provisioning/session"
+    ) {
+      const token = provisioningSessionToken(request.headers.cookie);
+      const key = token === null ? undefined : sessions.get(token);
+      const account = key === undefined ? undefined : accounts.get(key);
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        sessionPresent: token !== null,
+        scenario
+      }));
+      jsonResponse(response, 200, {
+        contractVersion: 1,
+        semantic: "PROVISIONING_SESSION",
+        authenticated: account !== undefined,
+        identity: account?.identity ?? null
+      });
       return;
     }
 
