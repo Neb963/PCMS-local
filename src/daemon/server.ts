@@ -761,11 +761,15 @@ function createRequestHandler(
             });
             return;
           }
+          const navigation = inventory.accountPersona(accountId);
           writeJson(
             request,
             response,
             200,
-            inventory.accountPersona(accountId)
+            {
+              accountId: navigation.accountId,
+              persona: navigation.persona
+            }
           );
           return;
         }
