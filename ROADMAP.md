@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P029**
-- Current phase: **P030 — READY**
+- Current phase: **P030 — IN_PROGRESS**
 - Next phase: **P031 — BLOCKED (P030)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
@@ -720,7 +720,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P030 — Deployer GitHub scanner and artifact selection
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P029  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -730,7 +730,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not mutate Perchance or guess ambiguous versions/layouts.
 
 **Work:**
-- [ ] T030.1 — Implement exact-commit repository tree scan
+- [~] T030.1 — Implement exact-commit repository tree scan
 - [ ] T030.2 — Validate ZIP/layout/required files and compute SHA-256
 - [ ] T030.3 — Implement deterministic version selection and explicit ambiguity failure
 

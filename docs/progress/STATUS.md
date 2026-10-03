@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P029**  
 Current milestone: **M07 — Deployer**  
-Current phase: **P030 — READY**  
+Current phase: **P030 — IN_PROGRESS**  
 Next phase: **P031 — BLOCKED (P030)**
 
 Canonical execution view: `ROADMAP.md`.
