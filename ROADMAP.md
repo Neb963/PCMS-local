@@ -548,8 +548,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T022.1 — Add GeneratorRef schema/current-slug/provider-ID constraints
-- [~] T022.2 — Implement identity-preserving slug/provider-ID updates
-- [ ] T022.3 — Implement validate-first all-or-nothing Account/Generator import
+- [x] T022.2 — Implement identity-preserving slug/provider-ID updates
+- [~] T022.3 — Implement validate-first all-or-nothing Account/Generator import
 
 **Acceptance:**
 - [ ] A05-03
