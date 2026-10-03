@@ -598,18 +598,15 @@ async function readInstalledModuleArchive(
     reference.moduleId,
     reference.version
   );
-  let entries;
-  try {
-    entries = await readdir(versionRoot, {
-      withFileTypes: true
-    });
-  } catch (error: unknown) {
+  const entries = await readdir(versionRoot, {
+    withFileTypes: true
+  }).catch((error: unknown) =>
     fail(
       "BACKUP_MODULE_PACKAGE_MISSING",
       `module package is missing: ${reference.moduleId}@${reference.version}`,
       error
-    );
-  }
+    )
+  );
   if (
     entries.length !== 1 ||
     !entries[0]?.isDirectory() ||
@@ -646,7 +643,7 @@ async function readInstalledModuleArchive(
     );
   }
 
-  let parsed;
+  let parsed: ReturnType<typeof parsePcmsModulePackage>;
   try {
     parsed = parsePcmsModulePackage(bytes);
   } catch (error: unknown) {

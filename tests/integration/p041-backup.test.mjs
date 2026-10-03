@@ -45,15 +45,6 @@ test("coherent Core backup validates DB, module package manifests and hashes whi
     const installed = await manager.installPackage(
       createReferenceModulePackage("1.0.0")
     );
-    manager.stateStore.writeActiveState(
-      REFERENCE_MODULE_ID,
-      installed.registration.runtimeGeneration,
-      installed.registration.stateRevision,
-      {
-        backupMarker: "authoritative-module-state"
-      }
-    );
-
     const profileSentinel = join(
       liveDataRoot,
       "personas",
