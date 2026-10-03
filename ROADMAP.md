@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P024**
-- Current phase: **P025 — READY**
+- Current phase: **P025 — IN_PROGRESS**
 - Next phase: **P026 — BLOCKED (P025)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
@@ -607,7 +607,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 Milestone status: **READY**
 
 ### P025 — BrowserDriver connection, cancellation and diagnostics
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P024  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -617,7 +617,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not create automation-only profiles or implement Perchance semantics.
 
 **Work:**
-- [ ] T025.1 — Implement connect/target selection against owned Persona DevTools endpoint
+- [~] T025.1 — Implement connect/target selection against owned Persona DevTools endpoint
 - [ ] T025.2 — Implement bounded timeout/cancellation/target-loss errors
 - [ ] T025.3 — Test that BrowserDriver never synthesizes a separate browser identity
 

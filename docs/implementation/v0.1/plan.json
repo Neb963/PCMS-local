@@ -1142,7 +1142,7 @@
       "id": "P025",
       "milestone": "M06",
       "name": "BrowserDriver connection, cancellation and diagnostics",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P024"
       ],
