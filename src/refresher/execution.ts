@@ -7,6 +7,7 @@ import {
   type OperationPrecondition,
   type OperationRecord
 } from "../operations/operation-coordinator.js";
+import { OperationReconciler } from "../operations/reconciliation.js";
 import {
   PerchanceMutationError
 } from "../providers/perchance-provider.js";
@@ -87,6 +88,7 @@ export interface RefresherHistorySnapshot {
 
 export type RefresherExecutionDisposition =
   | "APPLIED"
+  | "RECONCILED_APPLIED"
   | "ALREADY_VERIFIED";
 
 export interface RefresherExecutionResult {
@@ -392,6 +394,7 @@ export class RefresherExecutionService {
   readonly #coordinator: OperationCoordinator;
   readonly #admission: RefresherAdmission;
   readonly #history: RefresherHistoryLedger;
+  readonly #reconciler: OperationReconciler;
 
   public constructor(options: Readonly<{
     coordinator: OperationCoordinator;
@@ -400,6 +403,60 @@ export class RefresherExecutionService {
     this.#coordinator = options.coordinator;
     this.#admission = new RefresherAdmission(options.coordinator);
     this.#history = options.history;
+    this.#reconciler = new OperationReconciler(options.coordinator);
+  }
+
+  async #reconcile(
+    input: RefresherExecutionInput,
+    operation: OperationRecord
+  ): Promise<RefresherExecutionResult> {
+    const permit = this.#admission.acquireProviderPermit({
+      provider: "perchance",
+      accountId: input.accountId,
+      personaUid: input.personaUid
+    });
+    try {
+      let verified: VerifiedRemoteState | null = null;
+      const reconciled = await this.#reconciler.reconcile({
+        operationId: operation.operationId,
+        expectedClaimEpoch: operation.claimEpoch,
+        read: async () => {
+          verified = await verifyRemoteState(input);
+          if (verified === null) {
+            return {
+              kind: "UNKNOWN" as const,
+              reason: "refresh-reconciliation-not-proven"
+            };
+          }
+          return {
+            kind: "CONFIRMED_APPLIED" as const,
+            reason: "refresh-reconciliation-confirmed-applied"
+          };
+        }
+      });
+
+      if (
+        reconciled.operation.state === "SUCCEEDED" &&
+        verified !== null
+      ) {
+        const history = this.#history.append(
+          historyRecord(input, reconciled.operation, verified)
+        );
+        return Object.freeze({
+          disposition: "RECONCILED_APPLIED",
+          operation: reconciled.operation,
+          history
+        });
+      }
+
+      throw new RefresherExecutionError(
+        "REFRESHER_EXECUTION_UNRESOLVED",
+        "refresh outcome remains uncertain after read-first reconciliation; automatic redispatch is blocked",
+        reconciled.operation.operationId
+      );
+    } finally {
+      permit.release();
+    }
   }
 
   public async execute(
@@ -447,6 +504,12 @@ export class RefresherExecutionService {
           operation: existing,
           history: existingHistory
         });
+      }
+      if (
+        existing.state === "UNCERTAIN" ||
+        existing.state === "NEEDS_HUMAN"
+      ) {
+        return this.#reconcile(input, existing);
       }
       throw new RefresherExecutionError(
         "REFRESHER_EXECUTION_UNRESOLVED",
