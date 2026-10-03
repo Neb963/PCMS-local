@@ -416,8 +416,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T016.1 — Re-run exact port/provenance/native hardening baseline
-- [~] T016.2 — Implement bounded Unix-socket router client and typed errors
-- [ ] T016.3 — Prove pcmsd requires no root/NET_ADMIN privileges
+- [x] T016.2 — Implement bounded Unix-socket router client and typed errors
+- [~] T016.3 — Prove pcmsd requires no root/NET_ADMIN privileges
 
 **Acceptance:**
 - [ ] A04-01
