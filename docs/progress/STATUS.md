@@ -1,10 +1,10 @@
 # PCMS-local Status
 
 Baseline: **v0.1**  
-Completed through: **P015**  
+Completed through: **P016**  
 Current milestone: **M04 — Protected routing**  
-Current phase: **P016 — READY**  
-Next phase: **P017 — BLOCKED (P016)**
+Current phase: **P017 — READY**  
+Next phase: **P018 — BLOCKED (P017)**
 
 Canonical execution view: `ROADMAP.md`.
 
@@ -19,4 +19,4 @@ Canonical execution view: `ROADMAP.md`.
 - Normal phase sizing is structural (≤3 work items, ≤5 acceptance gates), targeting the empirically reliable ~20–30 minute cloud-agent window without relying on agent time awareness.
 - Repository operations may use local Git or the GitHub connector; GitHub publication is the durability boundary.
 
-Latest completed report: `reports/phases/P015.md`.
+Latest completed report: `reports/phases/P016.md`.

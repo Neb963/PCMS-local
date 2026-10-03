@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P015**
-- Current phase: **P016 — READY**
-- Next phase: **P017 — BLOCKED (P016)**
+- Completed through: **P016**
+- Current phase: **P017 — READY**
+- Next phase: **P018 — BLOCKED (P017)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
 
@@ -402,10 +402,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M04 — Protected routing
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P016 — Native router baseline and bounded Core client
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P015  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -415,18 +415,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not modify Firefox-compatible prepare_exit semantics or launch Chromium through a route yet.
 
 **Work:**
-- [ ] T016.1 — Re-run exact port/provenance/native hardening baseline
-- [ ] T016.2 — Implement bounded Unix-socket router client and typed errors
-- [ ] T016.3 — Prove pcmsd requires no root/NET_ADMIN privileges
+- [x] T016.1 — Re-run exact port/provenance/native hardening baseline
+- [x] T016.2 — Implement bounded Unix-socket router client and typed errors
+- [x] T016.3 — Prove pcmsd requires no root/NET_ADMIN privileges
 
 **Acceptance:**
-- [ ] A04-01
-- [ ] A04-02
+- [x] A04-01
+- [x] A04-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P016 → COMPLETE; P017 → READY; publish to GitHub; **STOP — do not implement P017.**
 
 ### P017 — Chromium-compatible loopback forwarder lease
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P016  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
