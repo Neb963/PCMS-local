@@ -6,6 +6,9 @@ import {
   ensureLocalApiToken,
   localApiTokenMatches
 } from "../auth/local-api.js";
+import {
+  AccountRepositoryError
+} from "../accounts/account-repository.js";
 
 import {
   DEFAULT_PCMSD_PORT,
@@ -16,6 +19,13 @@ import {
   resolvePcmsPaths,
   type PcmsPaths
 } from "../config/paths.js";
+import {
+  InventoryReadError,
+  InventoryReadService
+} from "../inventory/read-service.js";
+import {
+  InventorySearchError
+} from "../inventory/search.js";
 import {
   acquireInstanceLock,
   type InstanceLock
@@ -87,11 +97,11 @@ function writeText(
   response.end(request.method === "HEAD" ? undefined : body);
 }
 
-function requestPath(request: IncomingMessage): string {
+function requestUrl(request: IncomingMessage): URL | null {
   try {
-    return new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    return new URL(request.url ?? "/", "http://127.0.0.1");
   } catch {
-    return "/";
+    return null;
   }
 }
 
@@ -238,6 +248,51 @@ function moduleSdkStatus(error: unknown): number {
     return 400;
   }
   return 500;
+}
+
+function inventoryApiError(error: unknown): Readonly<{
+  code: string;
+  message: string;
+  status: number;
+}> {
+  if (error instanceof AccountRepositoryError) {
+    if (error.code === "ACCOUNT_NOT_FOUND") {
+      return Object.freeze({
+        code: error.code,
+        message: error.message,
+        status: 404
+      });
+    }
+    if (error.code === "ACCOUNT_ID_INVALID") {
+      return Object.freeze({
+        code: error.code,
+        message: error.message,
+        status: 400
+      });
+    }
+  }
+  if (error instanceof InventorySearchError) {
+    return Object.freeze({
+      code: error.code,
+      message: error.message,
+      status:
+        error.code === "SEARCH_ROW_INVALID"
+          ? 500
+          : 400
+    });
+  }
+  if (error instanceof InventoryReadError) {
+    return Object.freeze({
+      code: error.code,
+      message: "Bound Persona inventory is unavailable",
+      status: 409
+    });
+  }
+  return Object.freeze({
+    code: "INVENTORY_QUERY_FAILED",
+    message: "Inventory query failed",
+    status: 500
+  });
 }
 
 function moduleUiStatus(error: ModuleUiHostError): number {
@@ -485,7 +540,8 @@ function createRequestHandler(
   apiToken: string,
   currentOrigin: () => string,
   paths: PcmsPaths,
-  moduleUiHost: ModuleUiHost | undefined
+  moduleUiHost: ModuleUiHost | undefined,
+  inventory: InventoryReadService
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     const origin = currentOrigin();
@@ -518,7 +574,8 @@ function createRequestHandler(
       return;
     }
 
-    const path = requestPath(request);
+    const url = requestUrl(request);
+    const path = url?.pathname ?? "/";
 
     if (
       moduleUiHost !== undefined &&
@@ -610,7 +667,16 @@ function createRequestHandler(
       return;
     }
 
-    if (path === "/api/v1/status" || path === "/api/v1/diagnostics") {
+    const accountPersonaMatch =
+      /^\/api\/v1\/accounts\/([^/]+)\/persona\/?$/.exec(path);
+    const authenticatedApi =
+      path === "/api/v1/status" ||
+      path === "/api/v1/diagnostics" ||
+      path === "/api/v1/accounts" ||
+      path === "/api/v1/search" ||
+      accountPersonaMatch !== null;
+
+    if (authenticatedApi) {
       const candidate = bearerToken(request.headers.authorization);
       if (
         candidate === null ||
@@ -640,29 +706,83 @@ function createRequestHandler(
         return;
       }
 
-      writeJson(request, response, ready ? 200 : 503, {
-        service: "pcmsd",
-        status: ready ? "ready" : "not_ready",
-        version: workspaceMetadata.version,
-        runtime: {
-          node: process.version
-        },
-        database: {
-          status: "ok",
-          schemaVersion
-        },
-        paths: {
-          configRoot: paths.configRoot,
-          dataRoot: paths.dataRoot,
-          cacheRoot: paths.cacheRoot,
-          databasePath: paths.databasePath
-        },
-        localApi: {
-          origin,
-          authentication: "bearer-token"
+      if (path === "/api/v1/diagnostics") {
+        writeJson(request, response, ready ? 200 : 503, {
+          service: "pcmsd",
+          status: ready ? "ready" : "not_ready",
+          version: workspaceMetadata.version,
+          runtime: {
+            node: process.version
+          },
+          database: {
+            status: "ok",
+            schemaVersion
+          },
+          paths: {
+            configRoot: paths.configRoot,
+            dataRoot: paths.dataRoot,
+            cacheRoot: paths.cacheRoot,
+            databasePath: paths.databasePath
+          },
+          localApi: {
+            origin,
+            authentication: "bearer-token"
+          }
+        });
+        return;
+      }
+
+      try {
+        if (path === "/api/v1/accounts") {
+          writeJson(request, response, 200, {
+            accounts: inventory.listAccounts()
+          });
+          return;
         }
-      });
-      return;
+
+        if (path === "/api/v1/search") {
+          writeJson(request, response, 200, {
+            results: inventory.search(url?.searchParams.get("q") ?? "")
+          });
+          return;
+        }
+
+        const encodedAccountId = accountPersonaMatch?.[1];
+        if (encodedAccountId !== undefined) {
+          let accountId: string;
+          try {
+            accountId = decodeURIComponent(encodedAccountId);
+          } catch {
+            writeJson(request, response, 400, {
+              error: {
+                code: "ACCOUNT_ID_INVALID",
+                message: "Account ID path is not valid URL encoding"
+              }
+            });
+            return;
+          }
+          const navigation = inventory.accountPersona(accountId);
+          writeJson(
+            request,
+            response,
+            200,
+            {
+              accountId: navigation.accountId,
+              persona: navigation.persona
+            }
+          );
+          return;
+        }
+      } catch (error: unknown) {
+        const structured = inventoryApiError(error);
+        writeJson(request, response, structured.status, {
+          error: {
+            code: structured.code,
+            message: structured.message
+          }
+        });
+        return;
+      }
     }
 
     if (path === "/api/v1/health") {
@@ -791,7 +911,8 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
       apiToken,
       () => origin,
       paths,
-      options.moduleUiHost
+      options.moduleUiHost,
+      new InventoryReadService({ database: database.connection })
     )
   );
 

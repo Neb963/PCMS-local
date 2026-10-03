@@ -19,6 +19,7 @@ export interface OpenPcmsDatabaseOptions {
 export interface PcmsDatabase {
   readonly applicationId: number;
   readonly schemaVersion: number;
+  readonly connection: DatabaseSync;
   close(): void;
 }
 
@@ -48,6 +49,7 @@ export function openPcmsDatabase(
     return Object.freeze({
       applicationId: migrationResult.applicationId,
       schemaVersion: migrationResult.schemaVersion,
+      connection: database,
       close(): void {
         if (closed) {
           return;

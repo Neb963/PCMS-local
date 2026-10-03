@@ -1062,7 +1062,7 @@
       "id": "P023",
       "milestone": "M05",
       "name": "Health projections, search and Account-to-Persona navigation",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P022"
       ],
@@ -1102,7 +1102,7 @@
       "id": "P024",
       "milestone": "M05",
       "name": "Wrong-account guard and 50+ inventory resilience",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P023"
       ],
