@@ -896,8 +896,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T037.1 — Implement emulator-backed availability observation distinct from ownership
-- [~] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
-- [ ] T037.3 — Handoff verified acquisition to stable Generator/Project target
+- [x] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
+- [~] T037.3 — Handoff verified acquisition to stable Generator/Project target
 
 **Acceptance:**
 - [ ] A09-01

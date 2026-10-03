@@ -174,6 +174,7 @@ export async function startPerchanceEmulator(options = {}) {
   }
 
   let scenario = "NORMAL";
+  let explorerClaimSequence = 0;
   let refreshSequence = 0;
   let recentObservationComplete = true;
   const requestLog = [];
@@ -422,6 +423,103 @@ export async function startPerchanceEmulator(options = {}) {
                 explorerAvailableSlugs.has(slug) && !occupied
             }
       );
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      requestUrl.pathname === "/__pcms_emulator__/explorer/claim"
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid request");
+        return;
+      }
+
+      const email =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.email
+          : undefined;
+      const sessionToken =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.sessionToken
+          : undefined;
+      const slug =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.slug
+          : undefined;
+
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: requestUrl.pathname,
+        email: typeof email === "string" ? email : null,
+        slug: typeof slug === "string" ? slug : null,
+        sessionPresent:
+          typeof sessionToken === "string" && sessionToken.length > 0,
+        scenario
+      }));
+
+      const accountKey =
+        typeof sessionToken === "string" ? sessions.get(sessionToken) : undefined;
+      const suppliedKey =
+        typeof email === "string" ? asciiLowercase(email) : null;
+      if (
+        accountKey === undefined ||
+        suppliedKey === null ||
+        suppliedKey !== accountKey ||
+        typeof slug !== "string" ||
+        slug.length < 1 ||
+        slug.length > 512
+      ) {
+        jsonResponse(response, 200, { status: "session-token-error" });
+        return;
+      }
+
+      const account = accounts.get(accountKey);
+      if (account === undefined) {
+        jsonResponse(response, 200, { status: "session-token-error" });
+        return;
+      }
+      const occupied = [...accounts.values()].some((candidateAccount) =>
+        candidateAccount.generators.some((generator) =>
+          generator.slug === slug
+        )
+      );
+      if (!explorerAvailableSlugs.has(slug) || occupied) {
+        jsonResponse(response, 200, { status: "unavailable" });
+        return;
+      }
+
+      explorerAvailableSlugs.delete(slug);
+      explorerClaimSequence += 1;
+      const generator = normalizedGenerator({
+        publicId: "explorer-claim-" + explorerClaimSequence,
+        slug,
+        isPublic: false
+      });
+      account.generators.push(generator);
+
+      if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
+        setTimeout(() => {
+          if (!response.destroyed) {
+            jsonResponse(response, 200, {
+              status: "claimed",
+              publicId: generator.publicId
+            });
+          }
+        }, 1_000);
+        return;
+      }
+
+      jsonResponse(response, 200, {
+        status: "claimed",
+        publicId: generator.publicId
+      });
       return;
     }
 
