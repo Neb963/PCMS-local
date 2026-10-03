@@ -56,11 +56,17 @@ export async function startSyntheticSocksExit({
   expectedPort = 80
 }) {
   const observations = [];
+  const clientErrors = [];
   const sockets = new Set();
 
   const server = createServer((socket) => {
     sockets.add(socket);
     socket.on("close", () => sockets.delete(socket));
+    socket.on("error", (error) => {
+      if (error.code !== "ECONNRESET" && error.code !== "EPIPE") {
+        clientErrors.push(error);
+      }
+    });
 
     let state = "greeting";
     let buffer = Buffer.alloc(0);
@@ -158,6 +164,7 @@ export async function startSyntheticSocksExit({
     expectedHost,
     expectedPort,
     observations,
+    clientErrors,
     async close() {
       for (const socket of sockets) socket.destroy();
       await new Promise((resolve, reject) => {
