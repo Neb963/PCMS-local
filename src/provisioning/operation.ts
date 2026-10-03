@@ -30,7 +30,7 @@ import {
   type ProvisioningIdentityVerification
 } from "./browser-flow.js";
 
-const OPERATION_KIND = "provisioning.account";
+export const PROVISIONING_OPERATION_KIND = "provisioning.account";
 const OPERATION_SCHEMA_VERSION = 1;
 const PRECONDITION_MAX_AGE_MS = 60_000;
 const MAX_IDENTITY_LENGTH = 320;
@@ -332,7 +332,7 @@ export class ProvisioningOperationService {
       owner: input.owner,
       actorSource: input.actorSource,
       targetKey: accountOperationTargetKey(input.accountId),
-      operationKind: OPERATION_KIND,
+      operationKind: PROVISIONING_OPERATION_KIND,
       schemaVersion: OPERATION_SCHEMA_VERSION,
       accountId: input.accountId,
       personaUid: input.personaUid,
