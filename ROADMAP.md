@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P036**
-- Current phase: **P037 — IN_PROGRESS**
-- Next phase: **P038 — BLOCKED (P037)**
+- Completed through: **P037**
+- Current phase: **P038 — READY**
+- Next phase: **P039 — BLOCKED (P038)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
 
@@ -882,10 +882,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M09 — Explorer and Account Provisioning
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P037 — Explorer observation, claim and stable handoff
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P036  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -897,17 +897,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T037.1 — Implement emulator-backed availability observation distinct from ownership
 - [x] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
-- [~] T037.3 — Handoff verified acquisition to stable Generator/Project target
+- [x] T037.3 — Handoff verified acquisition to stable Generator/Project target
 
 **Acceptance:**
-- [ ] A09-01
-- [ ] A09-02
-- [ ] A09-03
+- [x] A09-01
+- [x] A09-02
+- [x] A09-03
 
 **Closure:** relevant tests + CI green; phase report finalized; P037 → COMPLETE; P038 → READY; publish to GitHub; **STOP — do not implement P038.**
 
 ### P038 — Provisioning staging and dedicated Persona allocation
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P037  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

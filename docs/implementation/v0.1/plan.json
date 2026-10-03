@@ -130,7 +130,7 @@
     {
       "id": "M09",
       "name": "Explorer and Account Provisioning",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P037",
         "P038",
@@ -1605,7 +1605,7 @@
       "id": "P037",
       "milestone": "M09",
       "name": "Explorer observation, claim and stable handoff",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P036"
       ],
@@ -1641,7 +1641,7 @@
       "id": "P038",
       "milestone": "M09",
       "name": "Provisioning staging and dedicated Persona allocation",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P037"
       ],
