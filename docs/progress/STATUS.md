@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P036**  
 Current milestone: **M09 — Explorer and Account Provisioning**  
-Current phase: **P037 — READY**  
+Current phase: **P037 — IN_PROGRESS**  
 Next phase: **P038 — BLOCKED (P037)**
 
 Canonical execution view: `ROADMAP.md`.

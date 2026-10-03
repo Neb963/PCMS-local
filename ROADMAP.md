@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P036**
-- Current phase: **P037 — READY**
+- Current phase: **P037 — IN_PROGRESS**
 - Next phase: **P038 — BLOCKED (P037)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
@@ -882,10 +882,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M09 — Explorer and Account Provisioning
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P037 — Explorer observation, claim and stable handoff
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P036  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -895,7 +895,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement Account Provisioning in this phase.
 
 **Work:**
-- [ ] T037.1 — Implement emulator-backed availability observation distinct from ownership
+- [~] T037.1 — Implement emulator-backed availability observation distinct from ownership
 - [ ] T037.2 — Use OperationCoordinator for claim/reconciliation/reservation
 - [ ] T037.3 — Handoff verified acquisition to stable Generator/Project target
 
