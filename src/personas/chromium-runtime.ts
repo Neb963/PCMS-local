@@ -271,7 +271,7 @@ export class ChromiumRuntimeRegistry {
         last_error
       FROM persona_browser_runtime
       ORDER BY persona_uid
-    `).all() as ChromiumRuntimeRow[];
+    `).all() as unknown as ChromiumRuntimeRow[];
 
     return Object.freeze(
       rows.map((row) => {
