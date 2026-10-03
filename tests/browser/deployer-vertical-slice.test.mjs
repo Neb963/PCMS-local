@@ -639,10 +639,9 @@ test("P033 routed Account Persona emulator Deployer module vertical slice reconc
       "/api/save",
       "/api/getGeneratorPageData"
     ]);
-    assert.equal(
-      syntheticExit.forwardedConnections.length,
-      providerPaths.length + 1,
-      "initial emulator navigation plus every provider request must traverse the synthetic protected exit"
+    assert.ok(
+      syntheticExit.forwardedConnections.length >= 1,
+      "routed emulator traffic must create at least one protected SOCKS tunnel"
     );
     assert.ok(
       syntheticExit.forwardedConnections.every(
@@ -651,6 +650,23 @@ test("P033 routed Account Persona emulator Deployer module vertical slice reconc
             "pcms-emulator.invalid" &&
           entry.requestedPort === emulatorPort
       )
+    );
+    const routedTraffic =
+      syntheticExit.forwardedConnections
+        .map((entry) =>
+          Buffer.concat(entry.clientChunks)
+            .toString("latin1")
+        )
+        .join("\n");
+    const routedApiPaths = [
+      ...routedTraffic.matchAll(
+        /^POST\s+(\/api\/\S+)\s+HTTP\/1\.[01]\r?$/gmu
+      )
+    ].map((match) => match[1]);
+    assert.deepEqual(
+      routedApiPaths,
+      providerPaths,
+      "every provider API request must be visible inside the protected SOCKS tunnel"
     );
     assert.ok(
       syntheticExit.observations.some(
