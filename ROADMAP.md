@@ -499,8 +499,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T020.1 — Implement/test explicit Direct and Block launch modes
-- [~] T020.2 — Implement safe route switch/relaunch with fresh egress verification
-- [ ] T020.3 — Test multiple active protected Personas on independent synthetic exits
+- [x] T020.2 — Implement safe route switch/relaunch with fresh egress verification
+- [~] T020.3 — Test multiple active protected Personas on independent synthetic exits
 
 **Acceptance:**
 - [ ] A04-08
