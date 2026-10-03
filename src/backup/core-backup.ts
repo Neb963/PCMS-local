@@ -979,7 +979,6 @@ export async function createCoreStateBackup(
     const snapshotPath = join(staging, "pcms.db");
     try {
       await backup(options.database, snapshotPath);
-      await chmod(snapshotPath, 0o400);
     } catch (error: unknown) {
       fail(
         "BACKUP_DATABASE_FAILED",
@@ -989,7 +988,6 @@ export async function createCoreStateBackup(
     }
 
     const snapshot = new DatabaseSync(snapshotPath, {
-      readOnly: true,
       allowExtension: false,
       enableForeignKeyConstraints: true,
       enableDoubleQuotedStringLiterals: false,
@@ -1002,9 +1000,19 @@ export async function createCoreStateBackup(
     let moduleRefs: readonly ModuleVersionRef[];
     try {
       snapshot.enableLoadExtension(false);
-      snapshot.exec(
-        "PRAGMA query_only = ON; PRAGMA trusted_schema = OFF;"
-      );
+      snapshot.exec("PRAGMA trusted_schema = OFF;");
+      const journalMode = snapshot.prepare(
+        "PRAGMA journal_mode = DELETE"
+      ).get()?.["journal_mode"];
+      if (
+        typeof journalMode !== "string" ||
+        journalMode.toLowerCase() !== "delete"
+      ) {
+        fail(
+          "BACKUP_DATABASE_INVALID",
+          "database snapshot could not be normalized to a self-contained journal mode"
+        );
+      }
       applicationId = pragmaInteger(
         snapshot,
         "PRAGMA application_id",
@@ -1026,6 +1034,9 @@ export async function createCoreStateBackup(
     } finally {
       snapshot.close();
     }
+    await rm(`${snapshotPath}-wal`, { force: true });
+    await rm(`${snapshotPath}-shm`, { force: true });
+    await chmod(snapshotPath, 0o400);
 
     const databaseBytes = await readFile(snapshotPath);
     const files: CoreBackupFile[] = [
