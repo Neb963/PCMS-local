@@ -63,7 +63,7 @@
     {
       "id": "M03",
       "name": "Chromium Persona runtime",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P012",
         "P013",
@@ -74,7 +74,7 @@
     {
       "id": "M04",
       "name": "Protected routing",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P016",
         "P017",
@@ -763,7 +763,7 @@
       "id": "P015",
       "milestone": "M03",
       "name": "Generic DevTools attach/detach acceptance",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P014"
       ],
@@ -798,7 +798,7 @@
       "id": "P016",
       "milestone": "M04",
       "name": "Native router baseline and bounded Core client",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P015"
       ],

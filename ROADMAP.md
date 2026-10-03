@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P011**
-- Current phase: **P012 — READY**
-- Next phase: **P013 — BLOCKED (P012)**
-- Current milestone: **M03 — Chromium Persona runtime**
+- Completed through: **P015**
+- Current phase: **P016 — READY**
+- Next phase: **P017 — BLOCKED (P016)**
+- Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -311,7 +311,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M03 — Chromium Persona runtime
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P012 — Persona profile-root lifecycle
 Status: **COMPLETE**  
@@ -380,7 +380,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P014 → COMPLETE; P015 → READY; publish to GitHub; **STOP — do not implement P015.**
 
 ### P015 — Generic DevTools attach/detach acceptance
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P014  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -395,17 +395,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - [x] T015.3 — Verify browser/profile/process survive client disconnect
 
 **Acceptance:**
-- [ ] A03-08
+- [x] A03-08
 
 **Closure:** relevant tests + CI green; phase report finalized; P015 → COMPLETE; P016 → READY; publish to GitHub; **STOP — do not implement P016.**
 
 ---
 
 ## M04 — Protected routing
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P016 — Native router baseline and bounded Core client
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P015  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
