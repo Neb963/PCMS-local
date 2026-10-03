@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P028**
-- Current phase: **P029 — IN_PROGRESS**
-- Next phase: **P030 — BLOCKED (P029)**
-- Current milestone: **M06 — Provider automation and operation safety**
+- Completed through: **P029**
+- Current phase: **P030 — READY**
+- Next phase: **P031 — BLOCKED (P030)**
+- Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -604,7 +604,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M06 — Provider automation and operation safety
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P025 — BrowserDriver connection, cancellation and diagnostics
 Status: **COMPLETE**  
@@ -694,7 +694,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P028 → COMPLETE; P029 → READY; publish to GitHub; **STOP — do not implement P029.**
 
 ### P029 — Batch isolation and scheduler/time semantics
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P028  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -706,21 +706,21 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T029.1 — Implement independent batch child result/cancellation accounting
 - [x] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
-- [~] T029.3 — Exercise clock jump/restart/backpressure integration
+- [x] T029.3 — Exercise clock jump/restart/backpressure integration
 
 **Acceptance:**
-- [ ] A06-11
-- [ ] A06-13
+- [x] A06-11
+- [x] A06-13
 
 **Closure:** relevant tests + CI green; phase report finalized; P029 → COMPLETE; P030 → READY; publish to GitHub; **STOP — do not implement P030.**
 
 ---
 
 ## M07 — Deployer
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P030 — Deployer GitHub scanner and artifact selection
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P029  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
