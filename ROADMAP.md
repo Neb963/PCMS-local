@@ -705,8 +705,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T029.1 — Implement independent batch child result/cancellation accounting
-- [~] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
-- [ ] T029.3 — Exercise clock jump/restart/backpressure integration
+- [x] T029.2 — Implement duplicate wake coalescing and persisted time/budget semantics
+- [~] T029.3 — Exercise clock jump/restart/backpressure integration
 
 **Acceptance:**
 - [ ] A06-11
