@@ -357,7 +357,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P013 → COMPLETE; P014 → READY; publish to GitHub; **STOP — do not implement P014.**
 
 ### P014 — Browser ownership, crash/restart reconciliation and resource cap
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P013  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -367,7 +367,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement routing or provider automation.
 
 **Work:**
-- [ ] T014.1 — Implement runtime fingerprint/ownership and ambiguous-attach refusal
+- [~] T014.1 — Implement runtime fingerprint/ownership and ambiguous-attach refusal
 - [ ] T014.2 — Implement Chromium/pcmsd restart reconciliation
 - [ ] T014.3 — Implement active-Persona admission cap and recovery tests
 
