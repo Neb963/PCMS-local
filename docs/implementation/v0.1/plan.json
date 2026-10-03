@@ -1220,7 +1220,7 @@
       "id": "P027",
       "milestone": "M06",
       "name": "OperationCoordinator claims and uncertainty state machine",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P026"
       ],
@@ -1260,7 +1260,7 @@
       "id": "P028",
       "milestone": "M06",
       "name": "Response reconciliation, ProviderGate and Human Tasks",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P027"
       ],
