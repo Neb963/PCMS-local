@@ -73,6 +73,23 @@ export interface DispatchAuthorizationInput {
   readonly evidence: SafeOperationMetadata;
 }
 
+export type OperationExecutionLossSource =
+  | "MODULE"
+  | "BROWSER"
+  | "NETWORK"
+  | "CONTROL_PLANE";
+
+export type OperationEffectState =
+  | "NOT_DISPATCHED"
+  | "MAY_HAVE_OCCURRED";
+
+export interface RecordExecutionLossInput {
+  readonly operationId: string;
+  readonly expectedClaimEpoch: number;
+  readonly source: OperationExecutionLossSource;
+  readonly effectState: OperationEffectState;
+}
+
 export interface DispatchPermit {
   readonly operationId: string;
   readonly targetKey: string;
@@ -196,22 +213,23 @@ const TERMINAL_STATES: readonly OperationState[] = Object.freeze([
   "CANCELLED"
 ]);
 
-const LEGAL_TRANSITIONS: Readonly<Record<OperationState, readonly OperationState[]>> =
-  Object.freeze({
-    PREPARED: Object.freeze(["RUNNING", "CANCELLED"]),
-    RUNNING: Object.freeze(["VERIFYING", "FAILED_SAFE", "UNCERTAIN"]),
-    VERIFYING: Object.freeze([
-      "SUCCEEDED",
-      "FAILED_SAFE",
-      "UNCERTAIN",
-      "NEEDS_HUMAN"
-    ]),
-    SUCCEEDED: Object.freeze([]),
-    FAILED_SAFE: Object.freeze([]),
-    UNCERTAIN: Object.freeze(["VERIFYING"]),
-    CANCELLED: Object.freeze([]),
-    NEEDS_HUMAN: Object.freeze(["VERIFYING"])
-  });
+const LEGAL_TRANSITIONS = {
+  PREPARED: ["RUNNING", "CANCELLED"],
+  RUNNING: ["VERIFYING", "FAILED_SAFE", "UNCERTAIN"],
+  VERIFYING: [
+    "SUCCEEDED",
+    "FAILED_SAFE",
+    "UNCERTAIN",
+    "NEEDS_HUMAN"
+  ],
+  SUCCEEDED: [],
+  FAILED_SAFE: [],
+  UNCERTAIN: ["VERIFYING"],
+  CANCELLED: [],
+  NEEDS_HUMAN: ["VERIFYING"]
+} as const satisfies Readonly<
+  Record<OperationState, readonly OperationState[]>
+>;
 
 function fail(
   code: OperationCoordinatorErrorCode,
@@ -373,50 +391,65 @@ function normalizePreconditions(
 
   const keys = new Set<string>();
   const normalized = input.map((item) => {
+    if (!isPlainObject(item)) {
+      fail("OPERATION_INVALID_INPUT", "precondition must be an object");
+    }
+
+    const key = item["key"];
+    const evidenceRef = item["evidenceRef"];
+    const maxAgeMs = item["maxAgeMs"];
+    const observedAt = item["observedAt"];
+
     if (
-      !isPlainObject(item) ||
-      typeof item.key !== "string" ||
-      !SAFE_METADATA_KEY.test(item.key) ||
-      SENSITIVE_METADATA_KEY.test(item.key)
+      typeof key !== "string" ||
+      !SAFE_METADATA_KEY.test(key) ||
+      SENSITIVE_METADATA_KEY.test(key)
     ) {
       fail("OPERATION_INVALID_INPUT", "precondition key has invalid syntax");
     }
-    if (keys.has(item.key)) {
+    if (keys.has(key)) {
       fail(
         "OPERATION_INVALID_INPUT",
-        `duplicate precondition key: ${item.key}`
+        `duplicate precondition key: ${key}`
       );
     }
-    keys.add(item.key);
+    keys.add(key);
 
     if (
-      typeof item.evidenceRef !== "string" ||
-      !SAFE_REFERENCE.test(item.evidenceRef)
+      typeof evidenceRef !== "string" ||
+      !SAFE_REFERENCE.test(evidenceRef)
     ) {
       fail(
         "OPERATION_INVALID_INPUT",
-        `precondition ${item.key} evidenceRef has invalid syntax`
+        `precondition ${key} evidenceRef has invalid syntax`
       );
     }
     if (
-      !Number.isSafeInteger(item.maxAgeMs) ||
-      item.maxAgeMs < 1 ||
-      item.maxAgeMs > MAX_PRECONDITION_AGE_MS
+      typeof maxAgeMs !== "number" ||
+      !Number.isSafeInteger(maxAgeMs) ||
+      maxAgeMs < 1 ||
+      maxAgeMs > MAX_PRECONDITION_AGE_MS
     ) {
       fail(
         "OPERATION_INVALID_INPUT",
-        `precondition ${item.key} maxAgeMs must be between 1 and ${MAX_PRECONDITION_AGE_MS}`
+        `precondition ${key} maxAgeMs must be between 1 and ${MAX_PRECONDITION_AGE_MS}`
+      );
+    }
+    if (typeof observedAt !== "string") {
+      fail(
+        "OPERATION_INVALID_INPUT",
+        `precondition ${key} observedAt must be a string timestamp`
       );
     }
 
     return Object.freeze({
-      key: item.key,
+      key,
       observedAt: normalizeTimestamp(
-        item.observedAt,
-        `precondition ${item.key} observedAt`
+        observedAt,
+        `precondition ${key} observedAt`
       ),
-      maxAgeMs: item.maxAgeMs,
-      evidenceRef: item.evidenceRef
+      maxAgeMs,
+      evidenceRef
     });
   });
 
@@ -1121,6 +1154,206 @@ export class OperationCoordinator {
         attempt: operation.attempt,
         authorizedAt
       });
+    });
+  }
+
+  public recordExecutionLoss(
+    input: RecordExecutionLossInput
+  ): OperationRecord {
+    validateEvidenceId(input.operationId, "operationId");
+    validatePositiveInteger(
+      input.expectedClaimEpoch,
+      "expectedClaimEpoch"
+    );
+    if (
+      input.source !== "MODULE" &&
+      input.source !== "BROWSER" &&
+      input.source !== "NETWORK" &&
+      input.source !== "CONTROL_PLANE"
+    ) {
+      fail("OPERATION_INVALID_INPUT", "execution loss source is invalid");
+    }
+    if (
+      input.effectState !== "NOT_DISPATCHED" &&
+      input.effectState !== "MAY_HAVE_OCCURRED"
+    ) {
+      fail("OPERATION_INVALID_INPUT", "execution loss effect state is invalid");
+    }
+
+    const current = this.require(input.operationId);
+    if (
+      current.claimEpoch !== input.expectedClaimEpoch ||
+      !isUnresolved(current.state)
+    ) {
+      fail(
+        "OPERATION_CLAIM_STALE",
+        `operation ${input.operationId} no longer owns unresolved claim epoch ${input.expectedClaimEpoch}`,
+        true
+      );
+    }
+
+    const source = input.source.toLowerCase().replace("_", "-");
+    if (input.effectState === "MAY_HAVE_OCCURRED") {
+      if (current.state === "UNCERTAIN") {
+        return this.#requireCurrentClaim(
+          input.operationId,
+          input.expectedClaimEpoch
+        );
+      }
+      if (current.state !== "RUNNING" && current.state !== "VERIFYING") {
+        fail(
+          "OPERATION_INVALID_TRANSITION",
+          `possible-dispatch loss requires RUNNING or VERIFYING state, found ${current.state}`
+        );
+      }
+      return this.#transition(
+        input.operationId,
+        input.expectedClaimEpoch,
+        "UNCERTAIN",
+        `${source}-loss-after-possible-dispatch`
+      );
+    }
+
+    if (current.state !== "RUNNING") {
+      fail(
+        "OPERATION_INVALID_TRANSITION",
+        `proven non-dispatch can become FAILED_SAFE only from RUNNING, found ${current.state}`
+      );
+    }
+    return this.#transition(
+      input.operationId,
+      input.expectedClaimEpoch,
+      "FAILED_SAFE",
+      `${source}-loss-proven-not-dispatched`
+    );
+  }
+
+  public requestCancellation(
+    operationId: string,
+    expectedClaimEpoch: number,
+    reason = "operator-cancelled"
+  ): OperationRecord {
+    validateEvidenceId(operationId, "operationId");
+    validatePositiveInteger(expectedClaimEpoch, "expectedClaimEpoch");
+    const normalizedReason = validateReason(reason);
+
+    return transaction(this.#database, () => {
+      const operation = this.#requireCurrentClaim(
+        operationId,
+        expectedClaimEpoch
+      );
+      const now = this.#currentIso();
+
+      let nextState: OperationState;
+      if (operation.state === "PREPARED") {
+        nextState = "CANCELLED";
+      } else if (
+        operation.state === "RUNNING" ||
+        operation.state === "VERIFYING"
+      ) {
+        nextState = "UNCERTAIN";
+      } else if (
+        operation.state === "UNCERTAIN" ||
+        operation.state === "NEEDS_HUMAN"
+      ) {
+        nextState = operation.state;
+      } else {
+        fail(
+          "OPERATION_INVALID_TRANSITION",
+          `operation in state ${operation.state} cannot accept cancellation`
+        );
+      }
+
+      if (nextState !== operation.state) {
+        assertLegalTransition(operation.state, nextState);
+      }
+      const terminalAt = nextState === "CANCELLED" ? now : null;
+      const transitionReason =
+        nextState === "CANCELLED"
+          ? normalizedReason
+          : nextState === operation.state
+            ? `${normalizedReason}-recorded`
+            : `${normalizedReason}-after-possible-dispatch`;
+
+      const result = this.#database.prepare(`
+        UPDATE operations
+        SET state = ?,
+            cancellation_requested_at = ?,
+            updated_at = ?,
+            terminal_at = ?,
+            last_transition_reason = ?,
+            revision = revision + 1
+        WHERE operation_id = ?
+          AND claim_epoch = ?
+          AND state = ?
+      `).run(
+        nextState,
+        now,
+        now,
+        terminalAt,
+        transitionReason,
+        operationId,
+        expectedClaimEpoch,
+        operation.state
+      );
+      if (result.changes !== 1) {
+        fail(
+          "OPERATION_CLAIM_STALE",
+          "operation changed during cancellation request",
+          true
+        );
+      }
+
+      if (nextState === "CANCELLED" && operation.owner.kind === "MODULE") {
+        this.#resolveModuleEvidence(
+          operation.owner.moduleId,
+          operation.operationId,
+          now
+        );
+      }
+      return this.#requireByOperationId(operationId);
+    });
+  }
+
+  public recoverInterrupted(): readonly OperationRecord[] {
+    return transaction(this.#database, () => {
+      const rows = this.#database.prepare(
+        selectOperationSql("state IN ('RUNNING','VERIFYING')")
+      ).all() as unknown as OperationRow[];
+      if (rows.length === 0) {
+        return Object.freeze([]);
+      }
+
+      const now = this.#currentIso();
+      const recovered: OperationRecord[] = [];
+      for (const row of rows) {
+        const operation = parseOperationRow(row);
+        if (operation === null) {
+          fail(
+            "OPERATION_ROW_INVALID",
+            "interrupted operation unexpectedly disappeared"
+          );
+        }
+        const result = this.#database.prepare(`
+          UPDATE operations
+          SET state = 'UNCERTAIN',
+              updated_at = ?,
+              last_transition_reason = 'startup-recovery-after-possible-dispatch',
+              revision = revision + 1
+          WHERE operation_id = ?
+            AND claim_epoch = ?
+            AND state IN ('RUNNING','VERIFYING')
+        `).run(now, operation.operationId, operation.claimEpoch);
+        if (result.changes !== 1) {
+          fail(
+            "OPERATION_CLAIM_STALE",
+            `operation ${operation.operationId} changed during startup recovery`,
+            true
+          );
+        }
+        recovered.push(this.#requireByOperationId(operation.operationId));
+      }
+      return Object.freeze(recovered);
     });
   }
 

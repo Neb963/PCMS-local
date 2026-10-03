@@ -221,3 +221,181 @@ test("P027 dispatch authorization refuses stale preflight and accepts refreshed 
     await rm(f.root, { recursive: true, force: true });
   }
 });
+
+
+test("P027 possible-dispatch loss becomes UNCERTAIN while proven non-dispatch is FAILED_SAFE", async () => {
+  const f = await fixture("pcms-operation-loss-");
+
+  try {
+    const uncertain = f.coordinator.prepare(input({
+      operationId: "operation-loss-uncertain",
+      idempotencyKey: "request-loss-uncertain"
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: uncertain.operationId,
+      expectedClaimEpoch: uncertain.claimEpoch,
+      evidence: { step: "save" }
+    });
+    const lost = f.coordinator.recordExecutionLoss({
+      operationId: uncertain.operationId,
+      expectedClaimEpoch: uncertain.claimEpoch,
+      source: "BROWSER",
+      effectState: "MAY_HAVE_OCCURRED"
+    });
+    assert.equal(lost.state, "UNCERTAIN");
+    assert.equal(
+      lost.lastTransitionReason,
+      "browser-loss-after-possible-dispatch"
+    );
+    assert.equal(
+      f.coordinator.getUnresolvedClaim(uncertain.targetKey)?.operationId,
+      uncertain.operationId
+    );
+
+    assert.throws(
+      () => f.coordinator.prepare(input({
+        operationId: "operation-loss-blocked",
+        idempotencyKey: "request-loss-blocked"
+      })),
+      (error) => {
+        assert.ok(error instanceof OperationCoordinatorError);
+        assert.equal(error.code, "OPERATION_TARGET_CLAIMED");
+        return true;
+      }
+    );
+
+    const safeTarget = generatorOperationTargetKey("generator-safe");
+    const safe = f.coordinator.prepare(input({
+      operationId: "operation-loss-safe",
+      idempotencyKey: "request-loss-safe",
+      targetKey: safeTarget
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: safe.operationId,
+      expectedClaimEpoch: safe.claimEpoch,
+      evidence: { step: "save" }
+    });
+    const failedSafe = f.coordinator.recordExecutionLoss({
+      operationId: safe.operationId,
+      expectedClaimEpoch: safe.claimEpoch,
+      source: "BROWSER",
+      effectState: "NOT_DISPATCHED"
+    });
+    assert.equal(failedSafe.state, "FAILED_SAFE");
+    assert.equal(f.coordinator.getUnresolvedClaim(safeTarget), null);
+  } finally {
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("P027 cancellation is clean only before dispatch and becomes UNCERTAIN afterwards", async () => {
+  const f = await fixture("pcms-operation-cancel-");
+
+  try {
+    const prepared = f.coordinator.prepare(input({
+      operationId: "operation-cancel-prepared",
+      idempotencyKey: "request-cancel-prepared"
+    }));
+    const cancelled = f.coordinator.requestCancellation(
+      prepared.operationId,
+      prepared.claimEpoch
+    );
+    assert.equal(cancelled.state, "CANCELLED");
+    assert.ok(cancelled.cancellationRequestedAt);
+    assert.ok(cancelled.terminalAt);
+
+    const dispatchedTarget = generatorOperationTargetKey("generator-dispatched");
+    const dispatched = f.coordinator.prepare(input({
+      operationId: "operation-cancel-dispatched",
+      idempotencyKey: "request-cancel-dispatched",
+      targetKey: dispatchedTarget
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: dispatched.operationId,
+      expectedClaimEpoch: dispatched.claimEpoch,
+      evidence: { step: "save" }
+    });
+    const uncertain = f.coordinator.requestCancellation(
+      dispatched.operationId,
+      dispatched.claimEpoch
+    );
+    assert.equal(uncertain.state, "UNCERTAIN");
+    assert.equal(uncertain.terminalAt, null);
+    assert.ok(uncertain.cancellationRequestedAt);
+    assert.equal(
+      f.coordinator.getUnresolvedClaim(dispatchedTarget)?.operationId,
+      dispatched.operationId
+    );
+
+    const repeated = f.coordinator.requestCancellation(
+      dispatched.operationId,
+      dispatched.claimEpoch,
+      "operator-cancelled-again"
+    );
+    assert.equal(repeated.state, "UNCERTAIN");
+    assert.equal(repeated.terminalAt, null);
+  } finally {
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("P027 explicit startup recovery converts interrupted dispatched states to UNCERTAIN", async () => {
+  const f = await fixture("pcms-operation-recover-");
+
+  try {
+    const running = f.coordinator.prepare(input({
+      operationId: "operation-recover-running",
+      idempotencyKey: "request-recover-running",
+      targetKey: generatorOperationTargetKey("generator-running")
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: running.operationId,
+      expectedClaimEpoch: running.claimEpoch,
+      evidence: { step: "save" }
+    });
+
+    const verifying = f.coordinator.prepare(input({
+      operationId: "operation-recover-verifying",
+      idempotencyKey: "request-recover-verifying",
+      targetKey: generatorOperationTargetKey("generator-verifying")
+    }));
+    f.coordinator.authorizeDispatch({
+      operationId: verifying.operationId,
+      expectedClaimEpoch: verifying.claimEpoch,
+      evidence: { step: "save" }
+    });
+    f.coordinator.beginVerification(
+      verifying.operationId,
+      verifying.claimEpoch
+    );
+
+    const untouched = f.coordinator.prepare(input({
+      operationId: "operation-recover-prepared",
+      idempotencyKey: "request-recover-prepared",
+      targetKey: generatorOperationTargetKey("generator-prepared")
+    }));
+
+    const recovered = f.coordinator.recoverInterrupted();
+    assert.deepEqual(
+      recovered.map((item) => item.operationId).sort(),
+      [running.operationId, verifying.operationId].sort()
+    );
+    assert.equal(
+      f.coordinator.require(running.operationId).state,
+      "UNCERTAIN"
+    );
+    assert.equal(
+      f.coordinator.require(verifying.operationId).state,
+      "UNCERTAIN"
+    );
+    assert.equal(
+      f.coordinator.require(untouched.operationId).state,
+      "PREPARED"
+    );
+  } finally {
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
