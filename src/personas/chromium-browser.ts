@@ -45,6 +45,11 @@ export interface ChromiumDevToolsEndpoint {
 export interface ChromiumLaunchOptions {
   readonly initialUrl?: string;
   readonly headless?: boolean;
+  /**
+   * CI-only escape hatch for Linux runners where the Chrome sandbox cannot start.
+   * Production callers should leave this false/undefined.
+   */
+  readonly disableSandboxForTesting?: boolean;
 }
 
 export interface ChromiumBrowserSession {
@@ -429,6 +434,9 @@ export class ChromiumBrowserManager {
       ];
       if (options.headless === true) {
         args.push("--headless=new");
+      }
+      if (options.disableSandboxForTesting === true) {
+        args.push("--no-sandbox");
       }
       args.push(initialUrl);
 

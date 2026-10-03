@@ -60,7 +60,8 @@ test("launches real Chromium on an owned non-default profile with loopback DevTo
     assert.match(probe.version, /(Chrome|Chromium)/u);
 
     session = await f.manager.launch("persona_browser_launch", {
-      headless: true
+      headless: true,
+      disableSandboxForTesting: true
     });
 
     assert.ok(session.pid > 0);
