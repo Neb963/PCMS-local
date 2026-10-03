@@ -159,7 +159,22 @@ export async function startPerchanceEmulator(options = {}) {
     sessions.set(account.sessionToken, account.comparisonKey);
   }
 
+  const explorerAvailableSlugs = new Set();
+  const configuredExplorerAvailableSlugs =
+    options.explorerAvailableSlugs ?? [];
+  if (!Array.isArray(configuredExplorerAvailableSlugs)) {
+    throw new TypeError("explorerAvailableSlugs must be an array");
+  }
+  for (const slug of configuredExplorerAvailableSlugs) {
+    assertText(slug, "Explorer candidate slug", 512);
+    if (explorerAvailableSlugs.has(slug)) {
+      throw new Error("duplicate Explorer candidate slug");
+    }
+    explorerAvailableSlugs.add(slug);
+  }
+
   let scenario = "NORMAL";
+  let explorerClaimSequence = 0;
   let refreshSequence = 0;
   let recentObservationComplete = true;
   const requestLog = [];
@@ -366,6 +381,145 @@ export async function startPerchanceEmulator(options = {}) {
             }
           : refreshEffectFixture(publicId)
       );
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/explorer/availability"
+    ) {
+      const slug = requestUrl.searchParams.get("slug");
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        slug,
+        scenario
+      }));
+      if (slug === null || slug.length < 1 || slug.length > 512) {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid slug");
+        return;
+      }
+
+      const occupied = [...accounts.values()].some((account) =>
+        account.generators.some((generator) => generator.slug === slug)
+      );
+      jsonResponse(
+        response,
+        200,
+        scenario === "COMPATIBILITY_DRIFT"
+          ? {
+              contractVersion: 2,
+              semantic: "EXPLORER_AVAILABILITY_VNEXT",
+              candidate: slug
+            }
+          : {
+              contractVersion: 1,
+              semantic: "EXPLORER_AVAILABILITY",
+              slug,
+              available:
+                explorerAvailableSlugs.has(slug) && !occupied
+            }
+      );
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      requestUrl.pathname === "/__pcms_emulator__/explorer/claim"
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid request");
+        return;
+      }
+
+      const email =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.email
+          : undefined;
+      const sessionToken =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.sessionToken
+          : undefined;
+      const slug =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.slug
+          : undefined;
+
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: requestUrl.pathname,
+        email: typeof email === "string" ? email : null,
+        slug: typeof slug === "string" ? slug : null,
+        sessionPresent:
+          typeof sessionToken === "string" && sessionToken.length > 0,
+        scenario
+      }));
+
+      const accountKey =
+        typeof sessionToken === "string" ? sessions.get(sessionToken) : undefined;
+      const suppliedKey =
+        typeof email === "string" ? asciiLowercase(email) : null;
+      if (
+        accountKey === undefined ||
+        suppliedKey === null ||
+        suppliedKey !== accountKey ||
+        typeof slug !== "string" ||
+        slug.length < 1 ||
+        slug.length > 512
+      ) {
+        jsonResponse(response, 200, { status: "session-token-error" });
+        return;
+      }
+
+      const account = accounts.get(accountKey);
+      if (account === undefined) {
+        jsonResponse(response, 200, { status: "session-token-error" });
+        return;
+      }
+      const occupied = [...accounts.values()].some((candidateAccount) =>
+        candidateAccount.generators.some((generator) =>
+          generator.slug === slug
+        )
+      );
+      if (!explorerAvailableSlugs.has(slug) || occupied) {
+        jsonResponse(response, 200, { status: "unavailable" });
+        return;
+      }
+
+      explorerAvailableSlugs.delete(slug);
+      explorerClaimSequence += 1;
+      const generator = normalizedGenerator({
+        publicId: "explorer-claim-" + explorerClaimSequence,
+        slug,
+        isPublic: false
+      });
+      account.generators.push(generator);
+
+      if (scenario === "RESPONSE_LOSS_AFTER_EFFECT") {
+        setTimeout(() => {
+          if (!response.destroyed) {
+            jsonResponse(response, 200, {
+              status: "claimed",
+              publicId: generator.publicId
+            });
+          }
+        }, 1_000);
+        return;
+      }
+
+      jsonResponse(response, 200, {
+        status: "claimed",
+        publicId: generator.publicId
+      });
       return;
     }
 
