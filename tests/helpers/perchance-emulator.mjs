@@ -9,7 +9,10 @@ export const PERCHANCE_EMULATOR_SCENARIOS = Object.freeze([
   "RESPONSE_LOSS_AFTER_EFFECT",
   "CHALLENGE",
   "RATE_LIMIT",
-  "COMPATIBILITY_DRIFT"
+  "COMPATIBILITY_DRIFT",
+  "PROVISIONING_CAPTCHA",
+  "PROVISIONING_CODE",
+  "PROVISIONING_RESPONSE_LOSS"
 ]);
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -179,6 +182,8 @@ export async function startPerchanceEmulator(options = {}) {
 
   let scenario = "NORMAL";
   let provisioningSessionSequence = 0;
+  let provisioningChallengeSequence = 0;
+  const pendingProvisioning = new Map();
   let explorerClaimSequence = 0;
   let refreshSequence = 0;
   let recentObservationComplete = true;
@@ -354,6 +359,24 @@ export async function startPerchanceEmulator(options = {}) {
           cache: "no-store",
           credentials: "same-origin"
         }).then((response) => response.json());
+      },
+      identity(identity) {
+        return fetch(
+          "/__pcms_emulator__/provisioning/identity?identity=" +
+            encodeURIComponent(identity),
+          {
+            cache: "no-store",
+            credentials: "same-origin"
+          }
+        ).then((response) => response.json());
+      },
+      verify(code) {
+        return fetch("/__pcms_emulator__/provisioning/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ code })
+        }).then((response) => response.json());
       }
     });
   </script>
@@ -448,16 +471,97 @@ export async function startPerchanceEmulator(options = {}) {
         return;
       }
 
+      const isSignup = requestUrl.pathname.endsWith("/signup");
+      const pending = pendingProvisioning.get(account.comparisonKey);
+      if (
+        isSignup &&
+        (scenario === "PROVISIONING_CAPTCHA" ||
+          scenario === "PROVISIONING_CODE")
+      ) {
+        provisioningChallengeSequence += 1;
+        const challenge = {
+          kind:
+            scenario === "PROVISIONING_CAPTCHA"
+              ? "CAPTCHA"
+              : "VERIFICATION_CODE",
+          challengeRef:
+            "provisioning-challenge-" + provisioningChallengeSequence,
+          verificationCode:
+            scenario === "PROVISIONING_CODE" ? "654321" : null
+        };
+        pendingProvisioning.set(account.comparisonKey, challenge);
+        jsonResponse(
+          response,
+          200,
+          {
+            contractVersion: 1,
+            semantic: "PROVISIONING_FLOW",
+            status:
+              challenge.kind === "CAPTCHA"
+                ? "captcha-needed"
+                : "verification-code-needed",
+            challengeRef: challenge.challengeRef
+          },
+          { "set-cookie": provisioningCookie(account.sessionToken) }
+        );
+        return;
+      }
+
+      if (!isSignup && pending !== undefined) {
+        jsonResponse(
+          response,
+          200,
+          {
+            contractVersion: 1,
+            semantic: "PROVISIONING_FLOW",
+            status:
+              pending.kind === "CAPTCHA"
+                ? "captcha-needed"
+                : "verification-code-needed",
+            challengeRef: pending.challengeRef
+          },
+          { "set-cookie": provisioningCookie(account.sessionToken) }
+        );
+        return;
+      }
+
+      const successBody = {
+        contractVersion: 1,
+        semantic: "PROVISIONING_FLOW",
+        status: isSignup ? "submitted" : "authenticated"
+      };
+      if (scenario === "PROVISIONING_RESPONSE_LOSS" && isSignup) {
+        setTimeout(() => {
+          if (!response.destroyed) {
+            jsonResponse(
+              response,
+              200,
+              successBody,
+              { "set-cookie": provisioningCookie(account.sessionToken) }
+            );
+          }
+        }, 1_000);
+        return;
+      }
+      if (scenario === "PROVISIONING_RESPONSE_LOSS" && !isSignup) {
+        const body = JSON.stringify(successBody);
+        response.writeHead(200, {
+          "content-type": "application/json; charset=utf-8",
+          "content-length": Buffer.byteLength(body),
+          "cache-control": "no-store",
+          "set-cookie": provisioningCookie(account.sessionToken)
+        });
+        response.flushHeaders();
+        setTimeout(() => {
+          if (!response.destroyed) response.end(body);
+        }, 1_000);
+        return;
+      }
+
       jsonResponse(
         response,
         200,
-        {
-          contractVersion: 1,
-          semantic: "PROVISIONING_FLOW",
-          status: requestUrl.pathname.endsWith("/signup")
-            ? "submitted"
-            : "authenticated"
-        },
+        successBody,
         { "set-cookie": provisioningCookie(account.sessionToken) }
       );
       return;
@@ -470,6 +574,20 @@ export async function startPerchanceEmulator(options = {}) {
       const token = provisioningSessionToken(request.headers.cookie);
       const key = token === null ? undefined : sessions.get(token);
       const account = key === undefined ? undefined : accounts.get(key);
+      if (key !== undefined) {
+        const pending = pendingProvisioning.get(key);
+        if (
+          pending?.kind === "CAPTCHA" &&
+          scenario !== "PROVISIONING_CAPTCHA"
+        ) {
+          // Models the operator completing CAPTCHA in the same visible Persona.
+          pendingProvisioning.delete(key);
+        }
+      }
+      const stillPending =
+        key === undefined ? undefined : pendingProvisioning.get(key);
+      const authenticated =
+        account !== undefined && stillPending === undefined;
       requestLog.push(Object.freeze({
         method: "GET",
         path: requestUrl.pathname,
@@ -479,8 +597,85 @@ export async function startPerchanceEmulator(options = {}) {
       jsonResponse(response, 200, {
         contractVersion: 1,
         semantic: "PROVISIONING_SESSION",
-        authenticated: account !== undefined,
-        identity: account?.identity ?? null
+        authenticated,
+        identity: authenticated ? account.identity : null
+      });
+      return;
+    }
+
+    if (
+      request.method === "GET" &&
+      requestUrl.pathname === "/__pcms_emulator__/provisioning/identity"
+    ) {
+      const identity = requestUrl.searchParams.get("identity");
+      requestLog.push(Object.freeze({
+        method: "GET",
+        path: requestUrl.pathname,
+        identity,
+        scenario
+      }));
+      if (identity === null || identity.length < 1 || identity.length > 320) {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid identity");
+        return;
+      }
+      jsonResponse(response, 200, {
+        contractVersion: 1,
+        semantic: "PROVISIONING_IDENTITY",
+        identity,
+        exists: accounts.has(asciiLowercase(identity))
+      });
+      return;
+    }
+
+    if (
+      request.method === "POST" &&
+      requestUrl.pathname === "/__pcms_emulator__/provisioning/verify"
+    ) {
+      let payload;
+      try {
+        payload = await readJson(request);
+      } catch {
+        response.writeHead(400, {
+          "content-type": "text/plain; charset=utf-8"
+        });
+        response.end("invalid request");
+        return;
+      }
+      const code =
+        payload !== null && typeof payload === "object" && !Array.isArray(payload)
+          ? payload.code
+          : undefined;
+      const token = provisioningSessionToken(request.headers.cookie);
+      const key = token === null ? undefined : sessions.get(token);
+      const pending =
+        key === undefined ? undefined : pendingProvisioning.get(key);
+      requestLog.push(Object.freeze({
+        method: "POST",
+        path: requestUrl.pathname,
+        codePresent: typeof code === "string" && code.length > 0,
+        scenario
+      }));
+      if (
+        pending === undefined ||
+        pending.kind !== "VERIFICATION_CODE" ||
+        typeof code !== "string" ||
+        code !== pending.verificationCode
+      ) {
+        jsonResponse(response, 200, {
+          contractVersion: 1,
+          semantic: "PROVISIONING_VERIFICATION",
+          status: "invalid-code"
+        });
+        return;
+      }
+      pendingProvisioning.delete(key);
+      jsonResponse(response, 200, {
+        contractVersion: 1,
+        semantic: "PROVISIONING_VERIFICATION",
+        status: "verified"
       });
       return;
     }

@@ -1,7 +1,11 @@
-import type { BrowserPage } from "../browser/browser-driver.js";
+import type {
+  BrowserDriverCommandOptions,
+  BrowserPage
+} from "../browser/browser-driver.js";
 
 const MAX_IDENTITY_LENGTH = 320;
 const MAX_PASSWORD_LENGTH = 4096;
+const MAX_CHALLENGE_REF_LENGTH = 256;
 
 export type ProvisioningBrowserAction = "SIGNUP" | "LOGIN";
 
@@ -16,11 +20,49 @@ export interface ProvisioningSessionObservation {
   readonly verification: "UNVERIFIED";
 }
 
-export interface ProvisioningBrowserFlowResult {
+export type ProvisioningIdentityVerification =
+  | Readonly<{
+      authenticated: true;
+      observedIdentity: string;
+      verification: "VERIFIED";
+    }>
+  | Readonly<{
+      authenticated: false;
+      observedIdentity: string | null;
+      verification: "UNAUTHENTICATED";
+    }>
+  | Readonly<{
+      authenticated: true;
+      observedIdentity: string;
+      verification: "MISMATCH";
+    }>;
+
+export interface ProvisioningIdentityExistence {
+  readonly expectedIdentity: string;
+  readonly exists: boolean;
+}
+
+export interface ProvisioningBrowserFlowSuccess {
   readonly action: ProvisioningBrowserAction;
   readonly providerStatus: "submitted" | "authenticated";
   readonly session: ProvisioningSessionObservation;
 }
+
+export interface ProvisioningHumanRequirement {
+  readonly kind: "CAPTCHA" | "VERIFICATION_CODE";
+  readonly challengeRef: string;
+}
+
+export interface ProvisioningBrowserFlowHumanRequired {
+  readonly action: ProvisioningBrowserAction;
+  readonly providerStatus: "captcha-needed" | "verification-code-needed";
+  readonly session: ProvisioningSessionObservation;
+  readonly humanRequired: ProvisioningHumanRequirement;
+}
+
+export type ProvisioningBrowserFlowResult =
+  | ProvisioningBrowserFlowSuccess
+  | ProvisioningBrowserFlowHumanRequired;
 
 export type ProvisioningBrowserFlowErrorCode =
   | "PROVISIONING_BROWSER_INPUT_INVALID"
@@ -37,13 +79,32 @@ export class ProvisioningBrowserFlowError extends Error {
   }
 }
 
+function asciiLowercase(value: string): string {
+  return value.replace(/[A-Z]/gu, (character) =>
+    String.fromCharCode(character.charCodeAt(0) + 32)
+  );
+}
+
+function normalizeIdentity(value: string): string {
+  const normalized = value.trim();
+  if (
+    normalized.length < 1 ||
+    normalized.length > MAX_IDENTITY_LENGTH ||
+    /[\r\n\0]/u.test(normalized)
+  ) {
+    throw new ProvisioningBrowserFlowError(
+      "PROVISIONING_BROWSER_INPUT_INVALID",
+      "Provisioning provider identity is invalid"
+    );
+  }
+  return normalized;
+}
+
 function validateCredentials(
   credentials: ProvisioningTransientCredentials
 ): void {
+  normalizeIdentity(credentials.providerIdentity);
   if (
-    credentials.providerIdentity.length < 1 ||
-    credentials.providerIdentity.length > MAX_IDENTITY_LENGTH ||
-    /[\r\n\0]/u.test(credentials.providerIdentity) ||
     credentials.password.length < 1 ||
     credentials.password.length > MAX_PASSWORD_LENGTH
   ) {
@@ -66,7 +127,11 @@ function record(value: unknown): Record<string, unknown> {
 
 function assertContract(
   value: unknown,
-  semantic: "PROVISIONING_FLOW" | "PROVISIONING_SESSION"
+  semantic:
+    | "PROVISIONING_FLOW"
+    | "PROVISIONING_SESSION"
+    | "PROVISIONING_IDENTITY"
+    | "PROVISIONING_VERIFICATION"
 ): Record<string, unknown> {
   const parsed = record(value);
   if (
@@ -81,14 +146,25 @@ function assertContract(
   return parsed;
 }
 
+function evaluateOptions(
+  options: BrowserDriverCommandOptions
+): BrowserDriverCommandOptions & { readonly awaitPromise: true } {
+  return {
+    awaitPromise: true,
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+    ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs })
+  };
+}
+
 export class ProvisioningBrowserFlow {
   public async observeSession(
-    page: BrowserPage
+    page: BrowserPage,
+    options: BrowserDriverCommandOptions = {}
   ): Promise<ProvisioningSessionObservation> {
     const response = assertContract(
       await page.evaluate(
         "window.pcmsProvisioning.session()",
-        { awaitPromise: true }
+        evaluateOptions(options)
       ),
       "PROVISIONING_SESSION"
     );
@@ -110,24 +186,121 @@ export class ProvisioningBrowserFlow {
     });
   }
 
+  public async verifyAuthenticatedIdentity(
+    page: BrowserPage,
+    expectedIdentity: string,
+    options: BrowserDriverCommandOptions = {}
+  ): Promise<ProvisioningIdentityVerification> {
+    const expected = normalizeIdentity(expectedIdentity);
+    const session = await this.observeSession(page, options);
+    if (!session.authenticated) {
+      return Object.freeze({
+        authenticated: false,
+        observedIdentity: session.observedIdentity,
+        verification: "UNAUTHENTICATED"
+      });
+    }
+    if (session.observedIdentity === null) {
+      throw new ProvisioningBrowserFlowError(
+        "PROVISIONING_BROWSER_PROTOCOL_INVALID",
+        "Authenticated provisioning session omitted provider identity"
+      );
+    }
+    return Object.freeze({
+      authenticated: true,
+      observedIdentity: session.observedIdentity,
+      verification:
+        asciiLowercase(session.observedIdentity) === asciiLowercase(expected)
+          ? "VERIFIED"
+          : "MISMATCH"
+    });
+  }
+
+  public async probeIdentity(
+    page: BrowserPage,
+    expectedIdentity: string,
+    options: BrowserDriverCommandOptions = {}
+  ): Promise<ProvisioningIdentityExistence> {
+    const expected = normalizeIdentity(expectedIdentity);
+    const expression =
+      "window.pcmsProvisioning.identity(" +
+      JSON.stringify(expected) +
+      ")";
+    const response = assertContract(
+      await page.evaluate(expression, evaluateOptions(options)),
+      "PROVISIONING_IDENTITY"
+    );
+    if (
+      response["identity"] !== expected ||
+      typeof response["exists"] !== "boolean"
+    ) {
+      throw new ProvisioningBrowserFlowError(
+        "PROVISIONING_BROWSER_PROTOCOL_INVALID",
+        "Provisioning identity observation has invalid fields"
+      );
+    }
+    return Object.freeze({
+      expectedIdentity: expected,
+      exists: response["exists"]
+    });
+  }
+
   public signup(
     page: BrowserPage,
-    credentials: ProvisioningTransientCredentials
+    credentials: ProvisioningTransientCredentials,
+    options: BrowserDriverCommandOptions = {}
   ): Promise<ProvisioningBrowserFlowResult> {
-    return this.#run(page, "SIGNUP", credentials);
+    return this.#run(page, "SIGNUP", credentials, options);
   }
 
   public login(
     page: BrowserPage,
-    credentials: ProvisioningTransientCredentials
+    credentials: ProvisioningTransientCredentials,
+    options: BrowserDriverCommandOptions = {}
   ): Promise<ProvisioningBrowserFlowResult> {
-    return this.#run(page, "LOGIN", credentials);
+    return this.#run(page, "LOGIN", credentials, options);
+  }
+
+  public async submitVerificationCode(
+    page: BrowserPage,
+    code: string,
+    options: BrowserDriverCommandOptions = {}
+  ): Promise<ProvisioningSessionObservation> {
+    if (typeof code !== "string" || code.length < 1 || code.length > 4096) {
+      throw new ProvisioningBrowserFlowError(
+        "PROVISIONING_BROWSER_INPUT_INVALID",
+        "Provisioning verification code is invalid"
+      );
+    }
+    const expression =
+      "window.pcmsProvisioning.verify(" +
+      JSON.stringify(code) +
+      ")";
+    const response = assertContract(
+      await page.evaluate(expression, evaluateOptions(options)),
+      "PROVISIONING_VERIFICATION"
+    );
+    if (response["status"] !== "verified") {
+      const status = response["status"];
+      if (typeof status !== "string") {
+        throw new ProvisioningBrowserFlowError(
+          "PROVISIONING_BROWSER_PROTOCOL_INVALID",
+          "Provisioning verification response omitted a valid status"
+        );
+      }
+      throw new ProvisioningBrowserFlowError(
+        "PROVISIONING_BROWSER_PROVIDER_REJECTED",
+        `Provisioning verification was rejected with status ${status}`
+      );
+    }
+    return this.observeSession(page, options);
   }
 
   async #run(
     page: BrowserPage,
     action: ProvisioningBrowserAction,
-    credentials: ProvisioningTransientCredentials
+    credentials: ProvisioningTransientCredentials,
+    options: BrowserDriverCommandOptions
   ): Promise<ProvisioningBrowserFlowResult> {
     validateCredentials(credentials);
     const functionName = action === "SIGNUP" ? "signup" : "login";
@@ -138,28 +311,51 @@ export class ProvisioningBrowserFlow {
       JSON.stringify(credentials.password) +
       ")";
     const response = assertContract(
-      await page.evaluate(expression, { awaitPromise: true }),
+      await page.evaluate(expression, evaluateOptions(options)),
       "PROVISIONING_FLOW"
     );
     const status = response["status"];
     const expected = action === "SIGNUP" ? "submitted" : "authenticated";
-    if (status !== expected) {
-      if (typeof status !== "string") {
-        throw new ProvisioningBrowserFlowError(
-          "PROVISIONING_BROWSER_PROTOCOL_INVALID",
-          "Provisioning flow response omitted a valid status"
-        );
-      }
-      throw new ProvisioningBrowserFlowError(
-        "PROVISIONING_BROWSER_PROVIDER_REJECTED",
-        `Provisioning provider rejected ${action.toLowerCase()} with status ${status}`
-      );
+    if (status === expected) {
+      return Object.freeze({
+        action,
+        providerStatus: expected,
+        session: await this.observeSession(page, options)
+      });
     }
 
-    return Object.freeze({
-      action,
-      providerStatus: expected,
-      session: await this.observeSession(page)
-    });
+    if (status === "captcha-needed" || status === "verification-code-needed") {
+      const challengeRef = response["challengeRef"];
+      if (
+        typeof challengeRef !== "string" ||
+        challengeRef.length < 1 ||
+        challengeRef.length > MAX_CHALLENGE_REF_LENGTH
+      ) {
+        throw new ProvisioningBrowserFlowError(
+          "PROVISIONING_BROWSER_PROTOCOL_INVALID",
+          "Provisioning human-required response omitted a valid challenge reference"
+        );
+      }
+      return Object.freeze({
+        action,
+        providerStatus: status,
+        session: await this.observeSession(page, options),
+        humanRequired: Object.freeze({
+          kind: status === "captcha-needed" ? "CAPTCHA" : "VERIFICATION_CODE",
+          challengeRef
+        })
+      });
+    }
+
+    if (typeof status !== "string") {
+      throw new ProvisioningBrowserFlowError(
+        "PROVISIONING_BROWSER_PROTOCOL_INVALID",
+        "Provisioning flow response omitted a valid status"
+      );
+    }
+    throw new ProvisioningBrowserFlowError(
+      "PROVISIONING_BROWSER_PROVIDER_REJECTED",
+      `Provisioning provider rejected ${action.toLowerCase()} with status ${status}`
+    );
   }
 }

@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P038**
-- Current phase: **P039 — READY**
-- Next phase: **P040 — BLOCKED (P039)**
+- Completed through: **P039**
+- Current phase: **P040 — READY**
+- Next phase: **P041 — BLOCKED (P040)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
 
@@ -928,7 +928,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P038 → COMPLETE; P039 → READY; publish to GitHub; **STOP — do not implement P039.**
 
 ### P039 — Provisioning HumanTask, identity activation and interrupted-flow recovery
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P038  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -938,19 +938,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not bypass CAPTCHA or blindly retry ambiguous signup effects.
 
 **Work:**
-- [ ] T039.1 — Implement CAPTCHA/code/verification-needed HumanTask continuation
-- [ ] T039.2 — Verify authenticated provider identity before ACTIVE
-- [ ] T039.3 — Reconcile interrupted signup/login without duplicate account creation
+- [x] T039.1 — Implement CAPTCHA/code/verification-needed HumanTask continuation
+- [x] T039.2 — Verify authenticated provider identity before ACTIVE
+- [x] T039.3 — Reconcile interrupted signup/login without duplicate account creation
 
 **Acceptance:**
-- [ ] A09-06
-- [ ] A09-07
-- [ ] A09-08
+- [x] A09-06
+- [x] A09-07
+- [x] A09-08
 
 **Closure:** relevant tests + CI green; phase report finalized; P039 → COMPLETE; P040 → READY; publish to GitHub; **STOP — do not implement P040.**
 
 ### P040 — Provisioning batches, module lifecycle and secret hygiene
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P039  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

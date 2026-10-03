@@ -32,12 +32,20 @@ export interface AccountRepositoryOptions {
   readonly now?: () => Date;
 }
 
+export interface ActivateVerifiedAccountInput {
+  readonly accountId: string;
+  readonly personaUid: string;
+  readonly expectedRevision: number;
+}
+
 export type AccountRepositoryErrorCode =
   | "ACCOUNT_ID_INVALID"
   | "ACCOUNT_DISPLAY_NAME_INVALID"
   | "ACCOUNT_LIFECYCLE_INVALID"
   | "ACCOUNT_EXISTS"
   | "ACCOUNT_NOT_FOUND"
+  | "ACCOUNT_ACTIVATION_INVALID"
+  | "ACCOUNT_REVISION_CONFLICT"
   | "ACCOUNT_ROW_INVALID";
 
 export class AccountRepositoryError extends Error {
@@ -225,6 +233,64 @@ export class AccountRepository {
       );
     }
     return account;
+  }
+
+  public activateVerified(
+    input: ActivateVerifiedAccountInput
+  ): AccountRecord {
+    assertAccountId(input.accountId);
+    if (
+      typeof input.personaUid !== "string" ||
+      input.personaUid.length < 1 ||
+      input.personaUid.length > 128 ||
+      !Number.isSafeInteger(input.expectedRevision) ||
+      input.expectedRevision < 0
+    ) {
+      throw new AccountRepositoryError(
+        "ACCOUNT_ACTIVATION_INVALID",
+        "Verified Account activation input is invalid"
+      );
+    }
+
+    const account = this.require(input.accountId);
+    if (account.personaUid !== input.personaUid) {
+      throw new AccountRepositoryError(
+        "ACCOUNT_ACTIVATION_INVALID",
+        "Verified Account activation requires the currently bound Persona"
+      );
+    }
+    if (account.lifecycleStatus === "ACTIVE") {
+      return account;
+    }
+    if (account.revision !== input.expectedRevision) {
+      throw new AccountRepositoryError(
+        "ACCOUNT_REVISION_CONFLICT",
+        `Account ${input.accountId} changed before verified activation`
+      );
+    }
+
+    const result = this.#database.prepare(`
+      UPDATE accounts
+      SET lifecycle_status = 'ACTIVE',
+          updated_at = ?,
+          revision = revision + 1
+      WHERE account_id = ?
+        AND lifecycle_status = 'INACTIVE'
+        AND persona_uid = ?
+        AND revision = ?
+    `).run(
+      this.#now().toISOString(),
+      input.accountId,
+      input.personaUid,
+      input.expectedRevision
+    );
+    if (result.changes !== 1) {
+      throw new AccountRepositoryError(
+        "ACCOUNT_REVISION_CONFLICT",
+        `Account ${input.accountId} changed during verified activation`
+      );
+    }
+    return this.require(input.accountId);
   }
 
   public list(): readonly AccountRecord[] {

@@ -38,6 +38,7 @@ import {
 } from "../../dist/personas/profile-lifecycle.js";
 import { ProvisioningAllocationService } from "../../dist/provisioning/allocation.js";
 import { ProvisioningBrowserFlow } from "../../dist/provisioning/browser-flow.js";
+import { ProvisioningOperationService } from "../../dist/provisioning/operation.js";
 import { ProvisioningStagingService } from "../../dist/provisioning/staging.js";
 import { applyPcmsMigrations } from "../../dist/storage/migrations.js";
 import { openConfiguredSqliteDatabase } from "../../dist/storage/sqlite.js";
@@ -744,6 +745,258 @@ test("P038 signup and login operate the allocated Account's same managed Persona
       provisioningRequests.filter((entry) => entry.passwordPresent === true).length,
       2
     );
+  } finally {
+    if (connection !== undefined) await connection.disconnect().catch(() => {});
+    if (session !== undefined) await session.close().catch(() => {});
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P039 provisioning CAPTCHA and verification-code HumanTasks resume the same operation before activation", async (t) => {
+  for (const scenario of ["PROVISIONING_CAPTCHA", "PROVISIONING_CODE"]) {
+    await t.test(scenario, async () => {
+      const emulator = await startPerchanceEmulator();
+      const f = await fixture("pcms-p039-human-");
+      const staging = new ProvisioningStagingService({ database: f.database });
+      const allocation = new ProvisioningAllocationService({
+        database: f.database,
+        personasRoot: f.paths.personasRoot
+      });
+      const accounts = new AccountRepository({ database: f.database });
+      const personaUid =
+        scenario === "PROVISIONING_CAPTCHA"
+          ? "persona_p039_captcha"
+          : "persona_p039_code";
+      const accountId =
+        scenario === "PROVISIONING_CAPTCHA"
+          ? "account_p039_captcha"
+          : "account_p039_code";
+      const providerIdentity =
+        scenario === "PROVISIONING_CAPTCHA"
+          ? "p039-captcha@example.test"
+          : "p039-code@example.test";
+      const password = "p039-transient-password";
+      const operationId =
+        scenario === "PROVISIONING_CAPTCHA"
+          ? "operation-p039-captcha"
+          : "operation-p039-code";
+      const provisioningUrl =
+        new URL("/__pcms_emulator__/provisioning", emulator.origin).href;
+      let session;
+      let connection;
+
+      try {
+        const [staged] = staging.stageBatch([{
+          accountId,
+          displayName: "P039 Human Account",
+          providerIdentity,
+          credentialSecretRef: "secret:accounts/p039-human"
+        }]);
+        await allocation.allocate(staged, personaUid);
+        session = await f.manager.launch(personaUid, {
+          initialUrl: provisioningUrl,
+          headless: true,
+          disableSandboxForTesting: true
+        });
+        connection = await f.driver.connect(personaUid);
+        const page = await selectLoadedPage(connection, provisioningUrl);
+        const coordinator = new OperationCoordinator({ database: f.database });
+        const service = new ProvisioningOperationService({
+          database: f.database,
+          coordinator
+        });
+
+        emulator.setScenario(scenario);
+        const blocked = await service.provision({
+          operationId,
+          idempotencyKey: operationId + "-request",
+          accountId,
+          personaUid,
+          providerIdentity,
+          credentialRef: staged.credentialSecretRef,
+          owner: { kind: "CORE" },
+          actorSource: "p039-browser-test",
+          page,
+          resolveCredential: async () => password
+        });
+
+        assert.equal(blocked.disposition, "HUMAN_REQUIRED");
+        assert.equal(blocked.operation.state, "NEEDS_HUMAN");
+        assert.equal(blocked.account.lifecycleStatus, "INACTIVE");
+        assert.ok(blocked.task);
+        assert.equal(blocked.task.status, "OPEN");
+        assert.equal(
+          blocked.task.requiredActionKind,
+          scenario === "PROVISIONING_CAPTCHA"
+            ? "COMPLETE_BROWSER_CHALLENGE"
+            : "ENTER_VERIFICATION_CODE"
+        );
+        assert.equal(
+          JSON.stringify(blocked.task).includes("654321"),
+          false,
+          "HumanTask must never persist verification-code bytes"
+        );
+
+        if (scenario === "PROVISIONING_CAPTCHA") {
+          emulator.setScenario("NORMAL");
+        }
+        const resumed = await service.resumeHumanTask({
+          taskId: blocked.task.taskId,
+          page,
+          resolveCredential: async () => password,
+          ...(scenario === "PROVISIONING_CODE"
+            ? { verificationCode: "654321" }
+            : {})
+        });
+
+        assert.equal(resumed.disposition, "ACTIVE");
+        assert.equal(resumed.operation.operationId, operationId);
+        assert.equal(resumed.operation.state, "SUCCEEDED");
+        assert.equal(resumed.account.lifecycleStatus, "ACTIVE");
+        assert.equal(resumed.account.personaUid, personaUid);
+        assert.equal(accounts.require(accountId).lifecycleStatus, "ACTIVE");
+        assert.equal(service.tasks.require(blocked.task.taskId).status, "RESOLVED");
+
+        const requests = emulator.requests();
+        assert.equal(
+          requests.filter((entry) =>
+            entry.path === "/__pcms_emulator__/provisioning/signup"
+          ).length,
+          1
+        );
+        assert.equal(
+          JSON.stringify(requests).includes(password),
+          false,
+          "request evidence must never contain transient password bytes"
+        );
+        assert.equal(
+          JSON.stringify(requests).includes("654321"),
+          false,
+          "request evidence must never contain transient verification-code bytes"
+        );
+        if (scenario === "PROVISIONING_CODE") {
+          assert.equal(
+            requests.filter((entry) =>
+              entry.path === "/__pcms_emulator__/provisioning/verify" &&
+              entry.codePresent === true
+            ).length,
+            1
+          );
+        }
+      } finally {
+        if (connection !== undefined) await connection.disconnect().catch(() => {});
+        if (session !== undefined) await session.close().catch(() => {});
+        f.database.close();
+        await rm(f.root, { recursive: true, force: true });
+        await emulator.close();
+      }
+    });
+  }
+});
+
+test("P039 interrupted signup and login reconcile read-first without duplicate account creation", async () => {
+  const emulator = await startPerchanceEmulator();
+  const f = await fixture("pcms-p039-recovery-");
+  const staging = new ProvisioningStagingService({ database: f.database });
+  const allocation = new ProvisioningAllocationService({
+    database: f.database,
+    personasRoot: f.paths.personasRoot
+  });
+  const accounts = new AccountRepository({ database: f.database });
+  const personaUid = "persona_p039_recovery";
+  const accountId = "account_p039_recovery";
+  const providerIdentity = "p039-recovery@example.test";
+  const password = "p039-recovery-password";
+  const provisioningUrl =
+    new URL("/__pcms_emulator__/provisioning", emulator.origin).href;
+  let session;
+  let connection;
+
+  try {
+    const [staged] = staging.stageBatch([{
+      accountId,
+      displayName: "P039 Recovery Account",
+      providerIdentity,
+      credentialSecretRef: "secret:accounts/p039-recovery"
+    }]);
+    await allocation.allocate(staged, personaUid);
+    session = await f.manager.launch(personaUid, {
+      initialUrl: provisioningUrl,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, provisioningUrl);
+
+    emulator.setScenario("PROVISIONING_RESPONSE_LOSS");
+    const coordinator = new OperationCoordinator({ database: f.database });
+    const service = new ProvisioningOperationService({
+      database: f.database,
+      coordinator
+    });
+    const result = await service.provision({
+      operationId: "operation-p039-recovery",
+      idempotencyKey: "request-p039-recovery",
+      accountId,
+      personaUid,
+      providerIdentity,
+      credentialRef: staged.credentialSecretRef,
+      owner: { kind: "CORE" },
+      actorSource: "p039-browser-test",
+      page,
+      resolveCredential: async (credentialRef) => {
+        assert.equal(credentialRef, staged.credentialSecretRef);
+        return password;
+      },
+      commandTimeoutMs: 150
+    });
+
+    assert.equal(result.disposition, "ACTIVE");
+    assert.equal(result.operation.state, "SUCCEEDED");
+    assert.equal(result.account.lifecycleStatus, "ACTIVE");
+    assert.equal(accounts.require(accountId).lifecycleStatus, "ACTIVE");
+
+    const requests = emulator.requests();
+    const signupIndex = requests.findIndex((entry) =>
+      entry.path === "/__pcms_emulator__/provisioning/signup"
+    );
+    const identityIndex = requests.findIndex((entry) =>
+      entry.path === "/__pcms_emulator__/provisioning/identity"
+    );
+    const loginIndex = requests.findIndex((entry) =>
+      entry.path === "/__pcms_emulator__/provisioning/login"
+    );
+    const sessionAfterLoginIndex = requests.findIndex((entry, index) =>
+      index > loginIndex &&
+      entry.path === "/__pcms_emulator__/provisioning/session"
+    );
+    assert.ok(signupIndex >= 0);
+    assert.ok(identityIndex > signupIndex);
+    assert.ok(loginIndex > identityIndex);
+    assert.ok(sessionAfterLoginIndex > loginIndex);
+    assert.equal(
+      requests.filter((entry) =>
+        entry.path === "/__pcms_emulator__/provisioning/signup"
+      ).length,
+      1,
+      "ambiguous signup must never be blindly redispatched"
+    );
+    assert.equal(
+      requests.filter((entry) =>
+        entry.path === "/__pcms_emulator__/provisioning/login"
+      ).length,
+      1,
+      "ambiguous login must be reconciled by session read, not blind redispatch"
+    );
+    assert.equal(JSON.stringify(requests).includes(password), false);
+
+    const stored = coordinator.require("operation-p039-recovery");
+    assert.equal(stored.provenance.expectedIdentity, providerIdentity);
+    assert.equal(stored.provenance.credentialRef, staged.credentialSecretRef);
+    assert.equal(JSON.stringify(stored).includes(password), false);
   } finally {
     if (connection !== undefined) await connection.disconnect().catch(() => {});
     if (session !== undefined) await session.close().catch(() => {});
