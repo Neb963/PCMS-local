@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P022**
-- Current phase: **P023 — READY**
+- Current phase: **P023 — IN_PROGRESS**
 - Next phase: **P024 — BLOCKED (P023)**
 - Current milestone: **M05 — Accounts, Generator identity and inventory**
 - Final live milestone: **M12 — P048–P049**
@@ -558,7 +558,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P022 → COMPLETE; P023 → READY; publish to GitHub; **STOP — do not implement P023.**
 
 ### P023 — Health projections, search and Account-to-Persona navigation
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P022  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -568,7 +568,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not infer provider truth from labels or stale observations.
 
 **Work:**
-- [ ] T023.1 — Implement route/session/account health projections with evidence age
+- [~] T023.1 — Implement route/session/account health projections with evidence age
 - [ ] T023.2 — Implement metadata search using stable IDs
 - [ ] T023.3 — Add UI/CLI navigation from Account to the actual bound Persona
 
