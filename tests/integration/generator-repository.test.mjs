@@ -38,7 +38,11 @@ async function cleanup(value) {
 test("P022 migration creates stable Generator identity schema", async () => {
   const f = await fixture("pcms-generator-schema-");
   try {
-    assert.equal(CORE_MIGRATIONS.at(-1).id, "0008-generator-identity");
+    assert.ok(
+      CORE_MIGRATIONS.some((migration) =>
+        migration.id === "0008-generator-identity"
+      )
+    );
 
     const objects = f.database.prepare(`
       SELECT type, name
