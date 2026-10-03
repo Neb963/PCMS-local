@@ -367,9 +367,9 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not implement routing or provider automation.
 
 **Work:**
-- [~] T014.1 — Implement runtime fingerprint/ownership and ambiguous-attach refusal
-- [ ] T014.2 — Implement Chromium/pcmsd restart reconciliation
-- [ ] T014.3 — Implement active-Persona admission cap and recovery tests
+- [x] T014.1 — Implement runtime fingerprint/ownership and ambiguous-attach refusal
+- [x] T014.2 — Implement Chromium/pcmsd restart reconciliation
+- [~] T014.3 — Implement active-Persona admission cap and recovery tests
 
 **Acceptance:**
 - [ ] A03-05
