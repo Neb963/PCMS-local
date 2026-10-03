@@ -1378,7 +1378,7 @@
       "id": "P031",
       "milestone": "M07",
       "name": "Stable target mapping and initial emulated deployment",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P030"
       ],
@@ -1416,7 +1416,7 @@
       "id": "P032",
       "milestone": "M07",
       "name": "Deployer update, no-op, drift and response-loss reconciliation",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P031"
       ],

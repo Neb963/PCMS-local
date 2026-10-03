@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P030**
-- Current phase: **P031 — IN_PROGRESS**
-- Next phase: **P032 — BLOCKED (P031)**
+- Completed through: **P031**
+- Current phase: **P032 — READY**
+- Next phase: **P033 — BLOCKED (P032)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
 
@@ -741,7 +741,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P030 → COMPLETE; P031 → READY; publish to GitHub; **STOP — do not implement P031.**
 
 ### P031 — Stable target mapping and initial emulated deployment
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P030  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -751,18 +751,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not use slug alone as durable target identity or real Perchance.
 
 **Work:**
-- [~] T031.1 — Resolve repository mapping to stable Account/GeneratorRef and freshly revalidate provider identity
-- [ ] T031.2 — Implement initial save/public-state path through OperationCoordinator
-- [ ] T031.3 — Verify desired content and public state through independent emulator read
+- [x] T031.1 — Resolve repository mapping to stable Account/GeneratorRef and freshly revalidate provider identity
+- [x] T031.2 — Implement initial save/public-state path through OperationCoordinator
+- [x] T031.3 — Verify desired content and public state through independent emulator read
 
 **Acceptance:**
-- [ ] A07-03
-- [ ] A07-04
+- [x] A07-03
+- [x] A07-04
 
 **Closure:** relevant tests + CI green; phase report finalized; P031 → COMPLETE; P032 → READY; publish to GitHub; **STOP — do not implement P032.**
 
 ### P032 — Deployer update, no-op, drift and response-loss reconciliation
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P031  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
