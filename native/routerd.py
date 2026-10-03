@@ -939,9 +939,13 @@ class ExitForwarder:
             self.token_expires_at = 0
             self.token_generation += 1
             sockets = list(self.active_sockets)
-            server, thread = self.server, self.thread
+            server, thread, expiry_timer = self.server, self.thread, self.expiry_timer
             self.server = None
             self.thread = None
+            self.expiry_timer = None
+
+        if expiry_timer:
+            expiry_timer.cancel()
 
         errors = []
         if server:
@@ -974,7 +978,17 @@ class ExitForwarder:
 class ChromiumExitForwarder:
     """Loopback-only SOCKS5 bridge scoped to one Core runtime lease."""
 
-    def __init__(self, route_id, relay_ip, relay_port, listen_port, lease_id, lease_generation, lease_ttl_seconds):
+    def __init__(
+        self,
+        route_id,
+        relay_ip,
+        relay_port,
+        listen_port,
+        lease_id,
+        lease_generation,
+        lease_ttl_seconds,
+        on_expire=None,
+    ):
         self.route_id = route_id
         self.relay_ip = relay_ip
         self.relay_port = relay_port
@@ -983,6 +997,8 @@ class ChromiumExitForwarder:
         self.lease_generation = lease_generation
         self.lease_ttl_seconds = lease_ttl_seconds
         self.lease_expires_at = time.monotonic() + lease_ttl_seconds
+        self.on_expire = on_expire
+        self.expiry_timer = None
         self.revocation_generation = 0
         self.server = None
         self.thread = None
@@ -1058,6 +1074,20 @@ class ChromiumExitForwarder:
             daemon=True,
         )
         self.thread.start()
+        self.expiry_timer = threading.Timer(self.lease_ttl_seconds, self._expire)
+        self.expiry_timer.daemon = True
+        self.expiry_timer.name = f"chromium-expiry-{self.route_id}-{self.lease_generation}"
+        self.expiry_timer.start()
+
+    def _expire(self):
+        with self.active_clients_lock:
+            if self.stopping:
+                return
+            callback = self.on_expire
+        if callback is None:
+            self.stop()
+        else:
+            callback(self)
 
     def is_expired(self, now=None):
         now = time.monotonic() if now is None else now
@@ -1411,6 +1441,14 @@ class Router:
             raise ValueError("invalid Chromium lease TTL")
         return lease_id, lease_generation, lease_ttl_seconds
 
+    def _expire_chromium_forwarder(self, forwarder):
+        with self.lock:
+            current = self.chromium_forwarders.get(forwarder.route_id)
+            if current is not forwarder:
+                return
+            self.chromium_forwarders.pop(forwarder.route_id, None)
+        forwarder.stop()
+
     def prepare_chromium_exit(
         self,
         route_id,
@@ -1450,6 +1488,7 @@ class Router:
                     lease_id,
                     lease_generation,
                     lease_ttl_seconds,
+                    self._expire_chromium_forwarder,
                 )
                 existing.start()
                 self.chromium_forwarders[route_id] = existing
