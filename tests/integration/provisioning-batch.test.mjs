@@ -45,6 +45,7 @@ async function fixture() {
     accounts,
     coordinator,
     batches,
+    now,
     async cleanup() {
       database.close();
       await rm(root, { recursive: true, force: true });
