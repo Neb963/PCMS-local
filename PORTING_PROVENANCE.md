@@ -43,6 +43,7 @@ The imported `native/routerd.py` baseline blob remains `345911a056c4a01db86e6a80
 
 - `5c4fc952f56b6a020090b998e2ec585aaf780374` — adds the distinct `prepare_chromium_exit` / `release_chromium_exit` route-lease contract and leaves the authenticated Firefox-compatible `prepare_exit` path intact.
 - `399079541a1b09e44f8fa04a4eeea0592ce74034` — adds active TTL expiry for Chromium leases so the matching loopback listener and sockets are revoked and removed from Router ownership.
+- `fdc59bfd8b011ce90baf7dc2ead5c083d8d21959` — confines expiry-timer cleanup to the Chromium forwarder after CI caught an accidental touch to the authenticated legacy cleanup path.
 
 All other files still listed by `scripts/verify-ported-blobs.mjs` remain byte/Git-blob identical to their recorded upstream PersonaMonkey blobs.
 

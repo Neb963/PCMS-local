@@ -437,8 +437,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T017.1 — Implement prepare_chromium_exit-equivalent daemon contract
-- [~] T017.2 — Bind forwarder loopback-only with route/lease lifetime
-- [ ] T017.3 — Test expiration, release, stale lease and unauthorized access paths
+- [x] T017.2 — Bind forwarder loopback-only with route/lease lifetime
+- [~] T017.3 — Test expiration, release, stale lease and unauthorized access paths
 
 **Acceptance:**
 - [ ] A04-03
