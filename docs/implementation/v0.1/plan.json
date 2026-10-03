@@ -1455,7 +1455,7 @@
       "id": "P033",
       "milestone": "M07",
       "name": "Deployer polling, module lifecycle and CI vertical slice",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P032"
       ],

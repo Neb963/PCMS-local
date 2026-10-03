@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P032**
-- Current phase: **P033 — READY**
+- Current phase: **P033 — IN_PROGRESS**
 - Next phase: **P034 — BLOCKED (P033)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
@@ -784,7 +784,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P032 → COMPLETE; P033 → READY; publish to GitHub; **STOP — do not implement P033.**
 
 ### P033 — Deployer polling, module lifecycle and CI vertical slice
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P032  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -794,7 +794,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not use MCP or real Perchance/Mullvad.
 
 **Work:**
-- [ ] T033.1 — Implement/coalesce polling under shared provider backpressure
+- [~] T033.1 — Implement/coalesce polling under shared provider backpressure
 - [ ] T033.2 — Exercise update/disable/crash/rollback while preserving Core operation evidence
 - [ ] T033.3 — Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance
 
