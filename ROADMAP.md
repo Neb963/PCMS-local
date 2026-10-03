@@ -987,8 +987,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not let Statistics mutate authoritative state or silently include profiles.
 
 **Work:**
-- [~] T041.1 — Implement Statistics projections from operational facts only
-- [ ] T041.2 — Implement DB/module-state backup manifest and hashes
+- [x] T041.1 — Implement Statistics projections from operational facts only
+- [~] T041.2 — Implement DB/module-state backup manifest and hashes
 - [ ] T041.3 — Implement automatic retention with explicit profile exclusion
 
 **Acceptance:**
