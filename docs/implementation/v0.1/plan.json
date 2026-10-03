@@ -688,7 +688,7 @@
       "id": "P013",
       "milestone": "M03",
       "name": "Chromium persistence, isolation and simultaneous Personas",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P012"
       ],
