@@ -234,9 +234,25 @@ class ChromiumForwarderLeaseTests(unittest.TestCase):
                 app.release_chromium_exit("route-1", "runtime-a", 2)
             self.assertIs(app.chromium_forwarders["route-1"], forwarder)
 
+            downstream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            downstream.settimeout(2)
+            downstream.connect(("127.0.0.1", first["local_port"]))
+            deadline = time.monotonic() + 1
+            while not forwarder.active_sockets and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertTrue(forwarder.active_sockets)
+
             self.assertTrue(
                 app.release_chromium_exit("route-1", "runtime-a", 1)["released"]
             )
+            try:
+                self.assertEqual(downstream.recv(1), b"")
+            except OSError:
+                pass
+            finally:
+                downstream.close()
+            with self.assertRaises(OSError):
+                socket.create_connection(("127.0.0.1", first["local_port"]), timeout=0.2)
             self.assertFalse(
                 app.release_chromium_exit("route-1", "runtime-a", 1)["released"]
             )
