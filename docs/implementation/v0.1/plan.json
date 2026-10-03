@@ -97,7 +97,7 @@
     {
       "id": "M06",
       "name": "Provider automation and operation safety",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P025",
         "P026",
@@ -109,7 +109,7 @@
     {
       "id": "M07",
       "name": "Deployer",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P030",
         "P031",
@@ -1301,7 +1301,7 @@
       "id": "P029",
       "milestone": "M06",
       "name": "Batch isolation and scheduler/time semantics",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P028"
       ],
@@ -1340,7 +1340,7 @@
       "id": "P030",
       "milestone": "M07",
       "name": "Deployer GitHub scanner and artifact selection",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P029"
       ],

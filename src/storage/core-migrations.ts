@@ -581,5 +581,164 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         ON human_tasks(operation_id, required_action_kind)
         WHERE status = 'OPEN' AND operation_id IS NOT NULL;
     `
+  }),
+  Object.freeze({
+    version: 12,
+    id: "0012-batches",
+    sql: `
+      CREATE TABLE batches (
+        batch_id TEXT PRIMARY KEY
+          CHECK (length(batch_id) BETWEEN 1 AND 128),
+        actor_source TEXT NOT NULL
+          CHECK (length(actor_source) BETWEEN 1 AND 128),
+        label TEXT
+          CHECK (label IS NULL OR length(label) BETWEEN 1 AND 256),
+        cancellation_requested_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0)
+      ) STRICT;
+
+      CREATE TABLE batch_children (
+        batch_id TEXT NOT NULL,
+        ordinal INTEGER NOT NULL
+          CHECK (ordinal >= 0),
+        operation_id TEXT NOT NULL,
+        cancellation_requested_at TEXT,
+        cancellation_outcome TEXT
+          CHECK (
+            cancellation_outcome IS NULL OR
+            cancellation_outcome IN (
+              'CANCELLED_CLEAN',
+              'UNCERTAIN',
+              'NEEDS_HUMAN',
+              'TERMINAL_UNCHANGED',
+              'ERROR'
+            )
+          ),
+        cancellation_error_code TEXT
+          CHECK (
+            cancellation_error_code IS NULL OR
+            length(cancellation_error_code) BETWEEN 1 AND 128
+          ),
+        PRIMARY KEY (batch_id, operation_id),
+        UNIQUE (batch_id, ordinal),
+        FOREIGN KEY (batch_id)
+          REFERENCES batches(batch_id)
+          ON DELETE CASCADE,
+        FOREIGN KEY (operation_id)
+          REFERENCES operations(operation_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE INDEX batch_children_operation
+        ON batch_children(operation_id);
+
+      CREATE INDEX batches_cancellation
+        ON batches(cancellation_requested_at)
+        WHERE cancellation_requested_at IS NOT NULL;
+    `
+  }),
+  Object.freeze({
+    version: 13,
+    id: "0013-schedules",
+    sql: `
+      CREATE TABLE schedules (
+        schedule_id TEXT PRIMARY KEY
+          CHECK (length(schedule_id) BETWEEN 1 AND 128),
+        owner_module_id TEXT
+          CHECK (
+            owner_module_id IS NULL OR
+            length(owner_module_id) BETWEEN 1 AND 128
+          ),
+        operation_kind TEXT NOT NULL
+          CHECK (length(operation_kind) BETWEEN 1 AND 128),
+        schema_version INTEGER NOT NULL
+          CHECK (schema_version > 0),
+        target_ref TEXT NOT NULL
+          CHECK (length(target_ref) BETWEEN 1 AND 320),
+        payload_ref TEXT
+          CHECK (
+            payload_ref IS NULL OR
+            length(payload_ref) BETWEEN 1 AND 256
+          ),
+        interval_ms INTEGER NOT NULL
+          CHECK (interval_ms > 0),
+        time_zone TEXT NOT NULL
+          CHECK (length(time_zone) BETWEEN 1 AND 128),
+        priority TEXT NOT NULL
+          CHECK (
+            priority IN (
+              'RECOVERY',
+              'INTERACTIVE',
+              'SCHEDULED',
+              'BACKGROUND'
+            )
+          ),
+        fairness_key TEXT NOT NULL
+          CHECK (length(fairness_key) BETWEEN 1 AND 128),
+        enabled INTEGER NOT NULL
+          CHECK (enabled IN (0, 1)),
+        next_due_at TEXT NOT NULL,
+        last_clock_at TEXT NOT NULL,
+        pending_dispatch_id TEXT
+          CHECK (
+            pending_dispatch_id IS NULL OR
+            length(pending_dispatch_id) BETWEEN 1 AND 128
+          ),
+        pending_created_at TEXT,
+        last_dispatched_operation_id TEXT,
+        last_terminal_operation_id TEXT,
+        last_failure_code TEXT
+          CHECK (
+            last_failure_code IS NULL OR
+            length(last_failure_code) BETWEEN 1 AND 128
+          ),
+        budget_limit INTEGER
+          CHECK (budget_limit IS NULL OR budget_limit > 0),
+        budget_window_ms INTEGER
+          CHECK (budget_window_ms IS NULL OR budget_window_ms > 0),
+        budget_window_started_at TEXT,
+        budget_used INTEGER
+          CHECK (budget_used IS NULL OR budget_used >= 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        CHECK (
+          (
+            pending_dispatch_id IS NULL AND
+            pending_created_at IS NULL
+          ) OR
+          (
+            pending_dispatch_id IS NOT NULL AND
+            pending_created_at IS NOT NULL
+          )
+        ),
+        CHECK (
+          (
+            budget_limit IS NULL AND
+            budget_window_ms IS NULL AND
+            budget_window_started_at IS NULL AND
+            budget_used IS NULL
+          ) OR
+          (
+            budget_limit IS NOT NULL AND
+            budget_window_ms IS NOT NULL AND
+            budget_window_started_at IS NOT NULL AND
+            budget_used IS NOT NULL AND
+            budget_used <= budget_limit
+          )
+        )
+      ) STRICT;
+
+      CREATE INDEX schedules_wake_scan
+        ON schedules(enabled, next_due_at, schedule_id);
+
+      CREATE INDEX schedules_pending_dispatch
+        ON schedules(pending_dispatch_id)
+        WHERE pending_dispatch_id IS NOT NULL;
+    `
   })
 ]);
