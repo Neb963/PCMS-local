@@ -834,6 +834,37 @@ export class DurableScheduler {
     return this.require(scheduleId);
   }
 
+  public acknowledgeObservationDispatch(
+    scheduleId: string,
+    dispatchId: string
+  ): ScheduleRecord {
+    validateId(scheduleId, "scheduleId");
+    validateId(dispatchId, "dispatchId");
+    const now = this.#currentDate().toISOString();
+    const result = this.#database.prepare(`
+      UPDATE schedules
+      SET pending_dispatch_id = NULL,
+          pending_created_at = NULL,
+          last_failure_code = NULL,
+          updated_at = ?,
+          revision = revision + 1
+      WHERE schedule_id = ?
+        AND pending_dispatch_id = ?
+    `).run(
+      now,
+      scheduleId,
+      dispatchId
+    );
+    if (result.changes !== 1) {
+      fail(
+        "SCHEDULE_DISPATCH_STALE",
+        "schedule pending observation no longer matches acknowledgement"
+      );
+    }
+    this.#queue.complete(dispatchKey(scheduleId, dispatchId));
+    return this.require(scheduleId);
+  }
+
   public abandonClaim(
     scheduleId: string,
     dispatchId: string
