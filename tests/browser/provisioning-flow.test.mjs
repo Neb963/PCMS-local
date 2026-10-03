@@ -144,12 +144,14 @@ test("P038 signup and login operate the allocated Account's same managed Persona
     connection = undefined;
 
     const runtimeBeforeReconnect = database.prepare(`
-      SELECT pid, profile_path
+      SELECT state, pid, devtools_port
       FROM persona_browser_runtime
       WHERE persona_uid = ?
     `).get(personaUid);
+    assert.equal(runtimeBeforeReconnect.state, "RUNNING");
     assert.equal(runtimeBeforeReconnect.pid, originalPid);
-    assert.equal(runtimeBeforeReconnect.profile_path, originalProfilePath);
+    assert.equal(runtimeBeforeReconnect.devtools_port, browserSession.devTools.port);
+    assert.equal(browserSession.profilePath, originalProfilePath);
 
     connection = await driver.connect(personaUid);
     const reattachedPage = await selectLoadedPage(connection, provisioningUrl);
