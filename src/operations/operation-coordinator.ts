@@ -900,6 +900,13 @@ export class OperationCoordinator {
     return operation;
   }
 
+  public getByIdempotencyKey(
+    idempotencyKey: string
+  ): OperationRecord | null {
+    validateEvidenceId(idempotencyKey, "idempotencyKey");
+    return this.#getByIdempotencyKey(idempotencyKey);
+  }
+
   public getUnresolvedClaim(targetKey: string): OperationRecord | null {
     const normalizedTarget = normalizeTargetKey(targetKey);
     const row = this.#database.prepare(

@@ -10,6 +10,7 @@ import { BrowserDriver } from "../../dist/browser/browser-driver.js";
 import { DeploymentArtifactResolver } from "../../dist/deployer/artifact-selection.js";
 import { ExactCommitRepositoryScanner } from "../../dist/deployer/github-repository.js";
 import { InitialDeploymentService } from "../../dist/deployer/initial-deployment.js";
+import { DeployerTargetMappingError } from "../../dist/deployer/target-mapping.js";
 import { GeneratorRepository } from "../../dist/generators/generator-repository.js";
 import { ModuleStateStore } from "../../dist/modules/state-store.js";
 import { OperationCoordinator } from "../../dist/operations/operation-coordinator.js";
@@ -99,20 +100,24 @@ async function selectLoadedPage(connection, url) {
   assert.fail("emulator page did not become ready");
 }
 
-async function resolvedArtifact() {
+async function resolvedArtifact({
+  marker = "P031",
+  commitCharacter = "c",
+  blobCharacter = "e"
+} = {}) {
   const archive = createZip([
     {
       name: "release/index.html",
-      data: "<main>P031 deployed</main>"
+      data: `<main>${marker} deployed</main>`
     },
     {
       name: "release/src/app.js",
-      data: "export const phase = 'P031';"
+      data: `export const phase = '${marker}';`
     }
   ]);
-  const commitSha = "c".repeat(40);
+  const commitSha = commitCharacter.repeat(40);
   const treeSha = "d".repeat(40);
-  const blobSha = "e".repeat(40);
+  const blobSha = blobCharacter.repeat(40);
   const adapter = {
     async readCommitTree(input) {
       assert.equal(input.commitSha, commitSha);
@@ -245,6 +250,8 @@ test("P031 initial emulator deployment uses stable target, OperationCoordinator 
       actorSource: "p031-browser-test"
     });
 
+    assert.equal(result.disposition, "APPLIED");
+    assert.ok(result.operation);
     assert.equal(result.operation.state, "SUCCEEDED");
     assert.equal(
       result.operation.targetKey,
@@ -281,6 +288,7 @@ test("P031 initial emulator deployment uses stable target, OperationCoordinator 
       requests.map((request) => request.path),
       [
         "/api/getGeneratorsByUser",
+        "/api/getGeneratorPageData",
         "/api/save",
         "/api/getGeneratorPageData"
       ]
@@ -298,6 +306,474 @@ test("P031 initial emulator deployment uses stable target, OperationCoordinator 
     if (session !== undefined) {
       await session.close();
     }
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P032 changed emulator artifact updates and identical verified state is a no-op", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-p032-update",
+      generators: [{
+        publicId: "public-p032-update",
+        slug: "repository-generator",
+        artifactSha256: "1".repeat(64),
+        files: [{
+          path: "index.html",
+          contentBase64: Buffer.from("<main>old</main>").toString("base64")
+        }],
+        isPublic: false
+      }]
+    }]
+  });
+  const f = await fixture("pcms-deployer-update-");
+  const personaUid = "persona_deployer_update";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    const browserSession = emulator.sessionFor("owner@example.test");
+    await page.evaluate(
+      `sessionStorage.setItem(${JSON.stringify(SESSION_STORAGE_KEY)}, ${JSON.stringify(JSON.stringify(browserSession))})`
+    );
+
+    const accounts = new AccountRepository({ database: f.database });
+    const bindings = new PersonaBindingService({ database: f.database });
+    const generators = new GeneratorRepository({ database: f.database });
+    accounts.create({
+      accountId: "account_p032_update",
+      displayName: "P032 Update Account"
+    });
+    bindings.bind({
+      accountId: "account_p032_update",
+      personaUid,
+      expectedRevision: 0,
+      reason: "P032 update Persona"
+    });
+    generators.create({
+      generatorLocalId: "generator_p032_update",
+      accountId: "account_p032_update",
+      providerStableId: "public-p032-update",
+      currentSlug: "repository-generator"
+    });
+
+    const state = new ModuleStateStore(f.database, {
+      now: () => new Date("2026-10-03T17:00:00.000Z")
+    });
+    const registration = state.registerModule("deployer", "1.0.0", 1, {});
+    const now = () => new Date("2026-10-03T17:00:00.000Z");
+    const provider = new PerchanceProvider({
+      browserProfile: { sessionStateExpression: SESSION_STATE_EXPRESSION },
+      now
+    });
+    const coordinator = new OperationCoordinator({
+      database: f.database,
+      now
+    });
+    const service = new InitialDeploymentService({
+      database: f.database,
+      provider,
+      coordinator
+    });
+    const artifact = await resolvedArtifact({
+      marker: "P032",
+      commitCharacter: "f",
+      blobCharacter: "a"
+    });
+    const owner = {
+      kind: "MODULE",
+      moduleId: "deployer",
+      moduleVersion: registration.activeVersion,
+      runtimeGeneration: registration.runtimeGeneration
+    };
+
+    const changed = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_update",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-update",
+      idempotencyKey: "request-p032-update",
+      owner,
+      actorSource: "p032-browser-test"
+    });
+    assert.equal(changed.disposition, "APPLIED");
+    assert.ok(changed.operation);
+    assert.equal(changed.operation.state, "SUCCEEDED");
+
+    const afterUpdate = emulator.readGenerator("public-p032-update");
+    assert.equal(afterUpdate.artifactSha256, artifact.sha256);
+    assert.equal(afterUpdate.isPublic, true);
+
+    const savesAfterUpdate = emulator.requests().filter(
+      (request) => request.path === "/api/save"
+    ).length;
+    assert.equal(savesAfterUpdate, 1);
+
+    const noOp = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_update",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-noop",
+      idempotencyKey: "request-p032-noop",
+      owner,
+      actorSource: "p032-browser-test"
+    });
+    assert.equal(noOp.disposition, "NO_OP");
+    assert.equal(noOp.operation, null);
+    assert.equal(noOp.observation.artifactSha256, artifact.sha256);
+    assert.equal(noOp.observation.isPublic, true);
+
+    const savesAfterNoOp = emulator.requests().filter(
+      (request) => request.path === "/api/save"
+    ).length;
+    assert.equal(savesAfterNoOp, 1);
+    assert.equal(coordinator.get("operation-p032-noop"), null);
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P032 provider identity replacement and old-slug reuse cannot redirect deployment", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-p032-drift",
+      generators: [
+        {
+          publicId: "public-p032-managed",
+          slug: "repository-generator",
+          artifactSha256: "2".repeat(64),
+          files: [{
+            path: "index.html",
+            contentBase64: Buffer.from("<main>managed</main>").toString("base64")
+          }],
+          isPublic: true
+        },
+        {
+          publicId: "public-p032-other",
+          slug: "spare-generator",
+          artifactSha256: "3".repeat(64),
+          files: [{
+            path: "index.html",
+            contentBase64: Buffer.from("<main>other</main>").toString("base64")
+          }],
+          isPublic: true
+        }
+      ]
+    }]
+  });
+  const f = await fixture("pcms-deployer-drift-");
+  const personaUid = "persona_deployer_drift";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    const browserSession = emulator.sessionFor("owner@example.test");
+    await page.evaluate(
+      `sessionStorage.setItem(${JSON.stringify(SESSION_STORAGE_KEY)}, ${JSON.stringify(JSON.stringify(browserSession))})`
+    );
+
+    const accounts = new AccountRepository({ database: f.database });
+    const bindings = new PersonaBindingService({ database: f.database });
+    const generators = new GeneratorRepository({ database: f.database });
+    accounts.create({
+      accountId: "account_p032_drift",
+      displayName: "P032 Drift Account"
+    });
+    bindings.bind({
+      accountId: "account_p032_drift",
+      personaUid,
+      expectedRevision: 0,
+      reason: "P032 drift Persona"
+    });
+    generators.create({
+      generatorLocalId: "generator_p032_drift",
+      accountId: "account_p032_drift",
+      providerStableId: "public-p032-managed",
+      currentSlug: "repository-generator"
+    });
+
+    const state = new ModuleStateStore(f.database, {
+      now: () => new Date("2026-10-03T17:10:00.000Z")
+    });
+    const registration = state.registerModule("deployer", "1.0.0", 1, {});
+    const provider = new PerchanceProvider({
+      browserProfile: { sessionStateExpression: SESSION_STATE_EXPRESSION },
+      now: () => new Date("2026-10-03T17:10:00.000Z")
+    });
+    const service = new InitialDeploymentService({
+      database: f.database,
+      provider,
+      coordinator: new OperationCoordinator({
+        database: f.database,
+        now: () => new Date("2026-10-03T17:10:00.000Z")
+      })
+    });
+    const artifact = await resolvedArtifact({
+      marker: "P032-drift",
+      commitCharacter: "b",
+      blobCharacter: "9"
+    });
+    const owner = {
+      kind: "MODULE",
+      moduleId: "deployer",
+      moduleVersion: registration.activeVersion,
+      runtimeGeneration: registration.runtimeGeneration
+    };
+    const input = {
+      page,
+      artifact,
+      accountId: "account_p032_drift",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      owner,
+      actorSource: "p032-browser-test"
+    };
+
+    emulator.replaceGeneratorStableId(
+      "public-p032-managed",
+      "public-p032-replaced"
+    );
+    await assert.rejects(
+      () => service.deploy({
+        ...input,
+        operationId: "operation-p032-stable-mismatch",
+        idempotencyKey: "request-p032-stable-mismatch"
+      }),
+      (error) => {
+        assert.ok(error instanceof DeployerTargetMappingError);
+        assert.equal(error.code, "DEPLOYER_TARGET_IDENTITY_UNVERIFIED");
+        return true;
+      }
+    );
+    assert.equal(
+      emulator.requests().filter((request) => request.path === "/api/save").length,
+      0
+    );
+
+    emulator.replaceGeneratorStableId(
+      "public-p032-replaced",
+      "public-p032-managed"
+    );
+    emulator.renameGenerator("public-p032-managed", "renamed-managed");
+    emulator.renameGenerator("public-p032-other", "repository-generator");
+
+    await assert.rejects(
+      () => service.deploy({
+        ...input,
+        operationId: "operation-p032-old-slug-reuse",
+        idempotencyKey: "request-p032-old-slug-reuse"
+      }),
+      (error) => {
+        assert.ok(error instanceof DeployerTargetMappingError);
+        assert.equal(error.code, "DEPLOYER_TARGET_SLUG_CHANGED");
+        return true;
+      }
+    );
+
+    const requests = emulator.requests();
+    assert.equal(
+      requests.filter((request) => request.path === "/api/save").length,
+      0
+    );
+    assert.equal(
+      requests.filter(
+        (request) => request.path === "/api/getGeneratorPageData"
+      ).length,
+      0
+    );
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+    await emulator.close();
+  }
+});
+
+
+test("P032 lost save response reconciles applied state before any retry", async () => {
+  const emulator = await startPerchanceEmulator({
+    accounts: [{
+      identity: "Owner@Example.test",
+      sessionToken: "fixture-session-p032-loss",
+      generators: [{
+        publicId: "public-p032-loss",
+        slug: "repository-generator",
+        artifactSha256: "4".repeat(64),
+        files: [{
+          path: "index.html",
+          contentBase64: Buffer.from("<main>before loss</main>").toString("base64")
+        }],
+        isPublic: false
+      }]
+    }]
+  });
+  const f = await fixture("pcms-deployer-response-loss-");
+  const personaUid = "persona_deployer_response_loss";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      initialUrl: emulator.origin,
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await selectLoadedPage(connection, emulator.origin);
+    const browserSession = emulator.sessionFor("owner@example.test");
+    await page.evaluate(
+      `sessionStorage.setItem(${JSON.stringify(SESSION_STORAGE_KEY)}, ${JSON.stringify(JSON.stringify(browserSession))})`
+    );
+
+    const accounts = new AccountRepository({ database: f.database });
+    const bindings = new PersonaBindingService({ database: f.database });
+    const generators = new GeneratorRepository({ database: f.database });
+    accounts.create({
+      accountId: "account_p032_loss",
+      displayName: "P032 Response Loss Account"
+    });
+    bindings.bind({
+      accountId: "account_p032_loss",
+      personaUid,
+      expectedRevision: 0,
+      reason: "P032 response loss Persona"
+    });
+    generators.create({
+      generatorLocalId: "generator_p032_loss",
+      accountId: "account_p032_loss",
+      providerStableId: "public-p032-loss",
+      currentSlug: "repository-generator"
+    });
+
+    const state = new ModuleStateStore(f.database, {
+      now: () => new Date("2026-10-03T17:20:00.000Z")
+    });
+    const registration = state.registerModule("deployer", "1.0.0", 1, {});
+    const now = () => new Date("2026-10-03T17:20:00.000Z");
+    const provider = new PerchanceProvider({
+      browserProfile: { sessionStateExpression: SESSION_STATE_EXPRESSION },
+      now
+    });
+    const coordinator = new OperationCoordinator({
+      database: f.database,
+      now
+    });
+    const service = new InitialDeploymentService({
+      database: f.database,
+      provider,
+      coordinator
+    });
+    const artifact = await resolvedArtifact({
+      marker: "P032-loss",
+      commitCharacter: "8",
+      blobCharacter: "7"
+    });
+    const owner = {
+      kind: "MODULE",
+      moduleId: "deployer",
+      moduleVersion: registration.activeVersion,
+      runtimeGeneration: registration.runtimeGeneration
+    };
+
+    emulator.setScenario("RESPONSE_LOSS_AFTER_EFFECT");
+    const recovered = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_loss",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-response-loss",
+      idempotencyKey: "request-p032-response-loss",
+      owner,
+      actorSource: "p032-browser-test",
+      mutationCommandOptions: { timeoutMs: 200 }
+    });
+
+    assert.equal(recovered.disposition, "RECONCILED_APPLIED");
+    assert.ok(recovered.operation);
+    assert.equal(recovered.operation.state, "SUCCEEDED");
+    assert.equal(
+      recovered.operation.lastTransitionReason,
+      "deployment-reconciliation-confirmed-applied"
+    );
+    assert.equal(recovered.observation.artifactSha256, artifact.sha256);
+    assert.equal(recovered.observation.isPublic, true);
+
+    const persisted = emulator.readGenerator("public-p032-loss");
+    assert.equal(persisted.artifactSha256, artifact.sha256);
+    assert.equal(persisted.isPublic, true);
+    assert.equal(
+      emulator.requests().filter((request) => request.path === "/api/save").length,
+      1
+    );
+
+    const firstRequests = emulator.requests();
+    const saveIndex = firstRequests.findIndex(
+      (request) => request.path === "/api/save"
+    );
+    const reconciliationReadIndex = firstRequests.findIndex(
+      (request, index) =>
+        index > saveIndex &&
+        request.path === "/api/getGeneratorPageData"
+    );
+    assert.ok(saveIndex >= 0);
+    assert.ok(reconciliationReadIndex > saveIndex);
+
+    const retry = await service.deploy({
+      page,
+      artifact,
+      accountId: "account_p032_loss",
+      expectedProviderIdentity: "owner@example.test",
+      requiredPublic: true,
+      operationId: "operation-p032-response-loss-retry",
+      idempotencyKey: "request-p032-response-loss",
+      owner,
+      actorSource: "p032-browser-test"
+    });
+
+    assert.equal(retry.disposition, "NO_OP");
+    assert.ok(retry.operation);
+    assert.equal(
+      retry.operation.operationId,
+      "operation-p032-response-loss"
+    );
+    assert.equal(retry.operation.state, "SUCCEEDED");
+    assert.equal(
+      emulator.requests().filter((request) => request.path === "/api/save").length,
+      1
+    );
+  } finally {
+    if (connection !== undefined) await connection.disconnect();
+    if (session !== undefined) await session.close();
     f.database.close();
     await rm(f.root, { recursive: true, force: true });
     await emulator.close();

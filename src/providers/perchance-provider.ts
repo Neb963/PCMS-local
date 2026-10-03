@@ -841,7 +841,6 @@ function decodeDeploymentObservation(
     !SHA256_HEX.test(artifactSha256) ||
     typeof isPublic !== "boolean" ||
     !Array.isArray(rawFiles) ||
-    rawFiles.length < 1 ||
     rawFiles.length > MAX_DEPLOYMENT_FILES
   ) {
     throw new Error("Perchance deployment read schema is invalid");

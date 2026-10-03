@@ -1416,7 +1416,7 @@
       "id": "P032",
       "milestone": "M07",
       "name": "Deployer update, no-op, drift and response-loss reconciliation",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P031"
       ],
@@ -1455,7 +1455,7 @@
       "id": "P033",
       "milestone": "M07",
       "name": "Deployer polling, module lifecycle and CI vertical slice",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P032"
       ],

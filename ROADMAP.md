@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P031**
-- Current phase: **P032 — READY**
-- Next phase: **P033 — BLOCKED (P032)**
+- Completed through: **P032**
+- Current phase: **P033 — READY**
+- Next phase: **P034 — BLOCKED (P033)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
 
@@ -762,7 +762,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P031 → COMPLETE; P032 → READY; publish to GitHub; **STOP — do not implement P032.**
 
 ### P032 — Deployer update, no-op, drift and response-loss reconciliation
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P031  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -772,19 +772,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not add polling/module-update concerns yet.
 
 **Work:**
-- [ ] T032.1 — Implement verified-SHA no-op and changed-artifact update
-- [ ] T032.2 — Reject old-slug/provider-identity mismatch redirect
-- [ ] T032.3 — Reconcile emulated lost save response before any retry
+- [x] T032.1 — Implement verified-SHA no-op and changed-artifact update
+- [x] T032.2 — Reject old-slug/provider-identity mismatch redirect
+- [x] T032.3 — Reconcile emulated lost save response before any retry
 
 **Acceptance:**
-- [ ] A07-05
-- [ ] A07-06
-- [ ] A07-07
+- [x] A07-05
+- [x] A07-06
+- [x] A07-07
 
 **Closure:** relevant tests + CI green; phase report finalized; P032 → COMPLETE; P033 → READY; publish to GitHub; **STOP — do not implement P033.**
 
 ### P033 — Deployer polling, module lifecycle and CI vertical slice
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P032  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
