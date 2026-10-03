@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { AccountRepository } from "../../dist/accounts/account-repository.js";
 import {
   ProvisioningBatchError,
   ProvisioningBatchService
@@ -25,6 +26,10 @@ async function fixture() {
   let tick = 0;
   const now = () =>
     new Date(Date.UTC(2026, 9, 4, 1, 0, tick++));
+  const accounts = new AccountRepository({
+    database,
+    now
+  });
   const coordinator = new OperationCoordinator({
     database,
     now
@@ -37,6 +42,7 @@ async function fixture() {
   return {
     root,
     database,
+    accounts,
     coordinator,
     batches,
     async cleanup() {
@@ -54,6 +60,23 @@ function prepareProvisioning(
   const personaUid = "persona-" + suffix;
   const providerIdentity = suffix + "@example.test";
   const credentialRef = "secret:accounts/" + suffix;
+  f.database.prepare(`
+    INSERT INTO personas (
+      persona_uid, lifecycle_status, profile_state, browser_backend,
+      profile_relative_path, profile_delete_state, profile_deleted_at,
+      profile_backup_decision, created_at, updated_at, retired_at, revision
+    ) VALUES (?, 'ACTIVE', 'CLOSED', 'chromium-v1', ?, 'PRESENT',
+      NULL, NULL, ?, ?, NULL, 0)
+  `).run(
+    personaUid,
+    "personas/" + personaUid + "/chromium",
+    f.now().toISOString(),
+    f.now().toISOString()
+  );
+  f.accounts.create({
+    accountId,
+    displayName: "P040 " + suffix
+  });
   const operation = f.coordinator.prepare({
     operationId: "operation-provisioning-" + suffix,
     idempotencyKey: "request-provisioning-" + suffix,
@@ -256,6 +279,19 @@ test("P040 provisioning batch rejects duplicate Account membership before durabl
   const f = await fixture();
   try {
     const first = prepareProvisioning(f, "e");
+    f.database.prepare(`
+      INSERT INTO personas (
+        persona_uid, lifecycle_status, profile_state, browser_backend,
+        profile_relative_path, profile_delete_state, profile_deleted_at,
+        profile_backup_decision, created_at, updated_at, retired_at, revision
+      ) VALUES (?, 'ACTIVE', 'CLOSED', 'chromium-v1', ?, 'PRESENT',
+        NULL, NULL, ?, ?, NULL, 0)
+    `).run(
+      "persona-e-2",
+      "personas/persona-e-2/chromium",
+      f.now().toISOString(),
+      f.now().toISOString()
+    );
     const duplicate = f.coordinator.prepare({
       operationId: "operation-provisioning-e-duplicate",
       idempotencyKey: "request-provisioning-e-duplicate",
