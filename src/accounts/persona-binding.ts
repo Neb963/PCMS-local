@@ -40,6 +40,7 @@ export interface PersonaBindingHistoryRecord {
 
 export type PersonaBindingErrorCode =
   | "ACCOUNT_NOT_ACTIVE"
+  | "ACCOUNT_NOT_INACTIVE"
   | "PERSONA_NOT_FOUND"
   | "PERSONA_NOT_ACTIVE"
   | "ACCOUNT_ALREADY_BOUND"
@@ -137,6 +138,27 @@ function requireActiveAccount(
   return account;
 }
 
+function requireInactiveAccount(
+  accounts: AccountRepository,
+  accountId: string,
+  expectedRevision: number
+): AccountRecord {
+  const account = accounts.require(accountId);
+  if (account.lifecycleStatus !== "INACTIVE") {
+    throw new PersonaBindingError(
+      "ACCOUNT_NOT_INACTIVE",
+      `Account ${accountId} is not INACTIVE`
+    );
+  }
+  if (account.revision !== expectedRevision) {
+    throw new PersonaBindingError(
+      "ACCOUNT_REVISION_CONFLICT",
+      `Account ${accountId} revision changed from expected ${expectedRevision} to ${account.revision}`
+    );
+  }
+  return account;
+}
+
 function requireActivePersona(
   database: DatabaseSync,
   personaUid: string
@@ -164,7 +186,8 @@ function requireActivePersona(
 function requirePersonaAvailable(
   database: DatabaseSync,
   personaUid: string,
-  accountId: string
+  accountId: string,
+  includeInactiveOwners = false
 ): void {
   requireActivePersona(database, personaUid);
   const row = database.prepare(`
@@ -172,7 +195,7 @@ function requirePersonaAvailable(
     FROM accounts
     WHERE
       persona_uid = ? AND
-      lifecycle_status = 'ACTIVE' AND
+      ${includeInactiveOwners ? "" : "lifecycle_status = 'ACTIVE' AND"}
       account_id <> ?
     LIMIT 1
   `).get(personaUid, accountId) as unknown as PersonaOwnerRow | undefined;
@@ -360,6 +383,79 @@ export class PersonaBindingService {
       }
       throw error;
     }
+  }
+
+  public bindProvisioningInactive(input: BindPersonaInput): AccountRecord {
+    validateExpectedRevision(input.expectedRevision);
+    const reason = normalizeReason(input.reason);
+
+    return transaction(this.#database, () => {
+      const account = requireInactiveAccount(
+        this.#accounts,
+        input.accountId,
+        input.expectedRevision
+      );
+      if (account.personaUid !== null) {
+        if (account.personaUid === input.personaUid) {
+          return account;
+        }
+        throw new PersonaBindingError(
+          "ACCOUNT_ALREADY_BOUND",
+          `Account ${input.accountId} is already bound to Persona ${account.personaUid}; explicit recovery is required`
+        );
+      }
+
+      // Provisioning reserves a dedicated Persona before activation, so an
+      // INACTIVE Account must not share it with any other managed Account.
+      requirePersonaAvailable(
+        this.#database,
+        input.personaUid,
+        input.accountId,
+        true
+      );
+
+      const changedAt = this.#now().toISOString();
+      this.#database.prepare(`
+        UPDATE accounts
+        SET
+          persona_uid = ?,
+          updated_at = ?,
+          revision = revision + 1
+        WHERE
+          account_id = ? AND
+          lifecycle_status = 'INACTIVE' AND
+          persona_uid IS NULL AND
+          revision = ?
+      `).run(
+        input.personaUid,
+        changedAt,
+        input.accountId,
+        input.expectedRevision
+      );
+
+      const updated = this.#accounts.require(input.accountId);
+      if (
+        updated.personaUid !== input.personaUid ||
+        updated.lifecycleStatus !== "INACTIVE" ||
+        updated.revision !== input.expectedRevision + 1
+      ) {
+        throw new PersonaBindingError(
+          "ACCOUNT_REVISION_CONFLICT",
+          `Account ${input.accountId} changed while reserving its provisioning Persona`
+        );
+      }
+
+      appendHistory(this.#database, {
+        accountId: input.accountId,
+        eventKind: "BIND",
+        previousPersonaUid: null,
+        nextPersonaUid: input.personaUid,
+        reason,
+        changedAt,
+        accountRevision: updated.revision
+      });
+      return updated;
+    });
   }
 
   public rebind(input: RebindPersonaInput): AccountRecord {

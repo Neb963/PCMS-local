@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P037**
-- Current phase: **P038 — READY**
-- Next phase: **P039 — BLOCKED (P038)**
+- Completed through: **P038**
+- Current phase: **P039 — READY**
+- Next phase: **P040 — BLOCKED (P039)**
 - Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
 
@@ -907,7 +907,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P037 → COMPLETE; P038 → READY; publish to GitHub; **STOP — do not implement P038.**
 
 ### P038 — Provisioning staging and dedicated Persona allocation
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P037  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -917,18 +917,18 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not complete verification/challenge/recovery behavior yet.
 
 **Work:**
-- [ ] T038.1 — Implement staged import and duplicate detection before external effects
-- [ ] T038.2 — Allocate/bind dedicated Persona under invariants
-- [ ] T038.3 — Drive signup/login emulator flow in the same human-visible browser session
+- [x] T038.1 — Implement staged import and duplicate detection before external effects
+- [x] T038.2 — Allocate/bind dedicated Persona under invariants
+- [x] T038.3 — Drive signup/login emulator flow in the same human-visible browser session
 
 **Acceptance:**
-- [ ] A09-04
-- [ ] A09-05
+- [x] A09-04
+- [x] A09-05
 
 **Closure:** relevant tests + CI green; phase report finalized; P038 → COMPLETE; P039 → READY; publish to GitHub; **STOP — do not implement P039.**
 
 ### P039 — Provisioning HumanTask, identity activation and interrupted-flow recovery
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P038  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
