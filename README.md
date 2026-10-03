@@ -33,7 +33,7 @@ A module is an operator-installed/updateable package executed outside the Core p
 
 ## Current status
 
-**P012 Persona profile-root lifecycle is complete; M03 is in progress and P013 is READY.** No production-ready PCMS-local release exists yet.
+**P013 Chromium persistence, isolation and simultaneous Personas is complete; M03 is in progress and P014 is READY.** No production-ready PCMS-local release exists yet.
 
 The repository is intentionally starting fresh rather than incrementally converting the Firefox extension architecture. PersonaMonkey and earlier PCMS repositories are sources of proven requirements, contracts and selected implementation; they are not architecture authority.
 

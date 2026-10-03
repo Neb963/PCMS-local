@@ -335,7 +335,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P012 → COMPLETE; P013 → READY; publish to GitHub; **STOP — do not implement P013.**
 
 ### P013 — Chromium persistence, isolation and simultaneous Personas
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P012  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -347,17 +347,17 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T013.1 — Launch real Chromium with owned non-default user-data-dir and DevTools endpoint
 - [x] T013.2 — Test cookie/localStorage/IndexedDB persistence and cross-Persona isolation
-- [~] T013.3 — Test two simultaneous Personas with distinct process/profile/DevTools ownership
+- [x] T013.3 — Test two simultaneous Personas with distinct process/profile/DevTools ownership
 
 **Acceptance:**
-- [ ] A03-02
-- [ ] A03-03
-- [ ] A03-04
+- [x] A03-02
+- [x] A03-03
+- [x] A03-04
 
 **Closure:** relevant tests + CI green; phase report finalized; P013 → COMPLETE; P014 → READY; publish to GitHub; **STOP — do not implement P014.**
 
 ### P014 — Browser ownership, crash/restart reconciliation and resource cap
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P013  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
