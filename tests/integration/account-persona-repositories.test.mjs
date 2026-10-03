@@ -57,7 +57,7 @@ function insertPersona(database, personaUid, lifecycleStatus = "ACTIVE") {
 test("P021 inventory migration creates Account and append-only binding schema", async () => {
   const f = await fixture("pcms-account-schema-");
   try {
-    assert.equal(CORE_MIGRATIONS.at(-1).id, "0007-account-persona-inventory");
+    assert.equal(CORE_MIGRATIONS.find((migration) => migration.id === "0007-account-persona-inventory")?.version, 7);
 
     const objects = f.database.prepare(`
       SELECT type, name

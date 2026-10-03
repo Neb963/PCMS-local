@@ -21,6 +21,12 @@ export interface CreateAccountInput {
   readonly lifecycleStatus?: AccountLifecycleStatus;
 }
 
+export interface PreparedCreateAccountInput {
+  readonly accountId: string;
+  readonly displayName: string;
+  readonly lifecycleStatus: AccountLifecycleStatus;
+}
+
 export interface AccountRepositoryOptions {
   readonly database: DatabaseSync;
   readonly now?: () => Date;
@@ -29,6 +35,7 @@ export interface AccountRepositoryOptions {
 export type AccountRepositoryErrorCode =
   | "ACCOUNT_ID_INVALID"
   | "ACCOUNT_DISPLAY_NAME_INVALID"
+  | "ACCOUNT_LIFECYCLE_INVALID"
   | "ACCOUNT_EXISTS"
   | "ACCOUNT_NOT_FOUND"
   | "ACCOUNT_ROW_INVALID";
@@ -120,6 +127,25 @@ function normalizeDisplayName(displayName: string): string {
   return normalized;
 }
 
+export function prepareCreateAccountInput(
+  input: CreateAccountInput
+): PreparedCreateAccountInput {
+  assertAccountId(input.accountId);
+  const displayName = normalizeDisplayName(input.displayName);
+  const lifecycleStatus = input.lifecycleStatus ?? "ACTIVE";
+  if (lifecycleStatus !== "ACTIVE" && lifecycleStatus !== "INACTIVE") {
+    throw new AccountRepositoryError(
+      "ACCOUNT_LIFECYCLE_INVALID",
+      "Account lifecycle status must be ACTIVE or INACTIVE"
+    );
+  }
+  return Object.freeze({
+    accountId: input.accountId,
+    displayName,
+    lifecycleStatus
+  });
+}
+
 function isAccountPrimaryKeyConflict(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -137,9 +163,7 @@ export class AccountRepository {
   }
 
   public create(input: CreateAccountInput): AccountRecord {
-    assertAccountId(input.accountId);
-    const displayName = normalizeDisplayName(input.displayName);
-    const lifecycleStatus = input.lifecycleStatus ?? "ACTIVE";
+    const prepared = prepareCreateAccountInput(input);
     const now = this.#now().toISOString();
 
     try {
@@ -154,9 +178,9 @@ export class AccountRepository {
           revision
         ) VALUES (?, ?, ?, NULL, ?, ?, 0)
       `).run(
-        input.accountId,
-        displayName,
-        lifecycleStatus,
+        prepared.accountId,
+        prepared.displayName,
+        prepared.lifecycleStatus,
         now,
         now
       );
@@ -164,14 +188,14 @@ export class AccountRepository {
       if (isAccountPrimaryKeyConflict(error)) {
         throw new AccountRepositoryError(
           "ACCOUNT_EXISTS",
-          `Account ${input.accountId} already exists`,
+          `Account ${prepared.accountId} already exists`,
           error
         );
       }
       throw error;
     }
 
-    return this.require(input.accountId);
+    return this.require(prepared.accountId);
   }
 
   public get(accountId: string): AccountRecord | null {

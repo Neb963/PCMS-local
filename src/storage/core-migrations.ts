@@ -326,5 +326,46 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
         SELECT RAISE(ABORT, 'persona binding history is append-only');
       END;
     `
+  }),
+  Object.freeze({
+    version: 8,
+    id: "0008-generator-identity",
+    sql: `
+      CREATE TABLE generators (
+        generator_local_id TEXT PRIMARY KEY
+          CHECK (length(generator_local_id) BETWEEN 1 AND 128),
+        account_id TEXT NOT NULL,
+        provider_stable_id TEXT
+          CHECK (
+            provider_stable_id IS NULL OR
+            (
+              length(provider_stable_id) BETWEEN 1 AND 256 AND
+              provider_stable_id = trim(provider_stable_id)
+            )
+          ),
+        current_slug TEXT NOT NULL
+          CHECK (
+            length(current_slug) BETWEEN 1 AND 512 AND
+            current_slug = trim(current_slug)
+          ),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        FOREIGN KEY (account_id)
+          REFERENCES accounts(account_id)
+          ON DELETE RESTRICT
+      ) STRICT;
+
+      CREATE UNIQUE INDEX generators_provider_stable_id_unique
+        ON generators(provider_stable_id)
+        WHERE provider_stable_id IS NOT NULL;
+
+      CREATE INDEX generators_account_lookup
+        ON generators(account_id, generator_local_id);
+
+      CREATE INDEX generators_current_slug_lookup
+        ON generators(current_slug);
+    `
   })
 ]);
