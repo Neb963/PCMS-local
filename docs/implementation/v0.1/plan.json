@@ -1378,7 +1378,7 @@
       "id": "P031",
       "milestone": "M07",
       "name": "Stable target mapping and initial emulated deployment",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P030"
       ],

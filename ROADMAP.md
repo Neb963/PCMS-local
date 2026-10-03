@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P030**
-- Current phase: **P031 — READY**
+- Current phase: **P031 — IN_PROGRESS**
 - Next phase: **P032 — BLOCKED (P031)**
 - Current milestone: **M07 — Deployer**
 - Final live milestone: **M12 — P048–P049**
@@ -741,7 +741,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P030 → COMPLETE; P031 → READY; publish to GitHub; **STOP — do not implement P031.**
 
 ### P031 — Stable target mapping and initial emulated deployment
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P030  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -751,7 +751,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not use slug alone as durable target identity or real Perchance.
 
 **Work:**
-- [ ] T031.1 — Resolve repository mapping to stable Account/GeneratorRef and freshly revalidate provider identity
+- [~] T031.1 — Resolve repository mapping to stable Account/GeneratorRef and freshly revalidate provider identity
 - [ ] T031.2 — Implement initial save/public-state path through OperationCoordinator
 - [ ] T031.3 — Verify desired content and public state through independent emulator read
 
