@@ -1,7 +1,10 @@
 import { createServer } from "node:net";
 
 function parseSocksRequest(buffer) {
-  if (buffer.length < 4 || buffer[0] !== 5 || buffer[1] !== 1 || buffer[2] !== 0) {
+  if (buffer.length < 4) {
+    return undefined;
+  }
+  if (buffer[0] !== 5 || buffer[1] !== 1 || buffer[2] !== 0) {
     return null;
   }
 
