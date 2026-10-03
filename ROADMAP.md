@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P027**
-- Current phase: **P028 — READY**
+- Current phase: **P028 — IN_PROGRESS**
 - Next phase: **P029 — BLOCKED (P028)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
@@ -671,7 +671,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P027 → COMPLETE; P028 → READY; publish to GitHub; **STOP — do not implement P028.**
 
 ### P028 — Response reconciliation, ProviderGate and Human Tasks
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P027  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -681,7 +681,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not automate CAPTCHA solving or bypass human challenges.
 
 **Work:**
-- [ ] T028.1 — Implement emulator response-loss-after-effect reconciliation
+- [~] T028.1 — Implement emulator response-loss-after-effect reconciliation
 - [ ] T028.2 — Implement provider/account/Persona admission cooldown/concurrency gate
 - [ ] T028.3 — Implement durable HumanTask + transient input continuation through the same Persona
 

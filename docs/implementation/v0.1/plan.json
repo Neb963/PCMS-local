@@ -1260,7 +1260,7 @@
       "id": "P028",
       "milestone": "M06",
       "name": "Response reconciliation, ProviderGate and Human Tasks",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P027"
       ],
