@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P017**
-- Current phase: **P018 — IN_PROGRESS**
-- Next phase: **P019 — BLOCKED (P018)**
+- Completed through: **P018**
+- Current phase: **P019 — READY**
+- Next phase: **P020 — BLOCKED (P019)**
 - Current milestone: **M04 — Protected routing**
 - Final live milestone: **M12 — P048–P049**
 
@@ -446,7 +446,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P017 → COMPLETE; P018 → READY; publish to GitHub; **STOP — do not implement P018.**
 
 ### P018 — Protected synthetic egress and independent verification
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P017  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -458,16 +458,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T018.1 — Build controlled SOCKS/egress fixture with distinguishable route identity
 - [x] T018.2 — Wire protected Chromium launch to the leased forwarder
-- [~] T018.3 — Verify observed browser egress independently of configured route metadata
+- [x] T018.3 — Verify observed browser egress independently of configured route metadata
 
 **Acceptance:**
-- [ ] A04-04
-- [ ] A04-05
+- [x] A04-04
+- [x] A04-05
 
 **Closure:** relevant tests + CI green; phase report finalized; P018 → COMPLETE; P019 → READY; publish to GitHub; **STOP — do not implement P019.**
 
 ### P019 — Leak resistance and route-loss fail-closed behavior
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P018  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
