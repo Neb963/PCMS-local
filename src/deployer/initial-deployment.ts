@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
-import type { BrowserPage } from "../browser/browser-driver.js";
+import type {
+  BrowserDriverCommandOptions,
+  BrowserPage
+} from "../browser/browser-driver.js";
 import {
   generatorOperationTargetKey,
   OperationCoordinator,
@@ -35,13 +38,20 @@ export interface InitialDeploymentInput {
   readonly idempotencyKey: string;
   readonly owner: OperationOwner;
   readonly actorSource: string;
+  readonly commandOptions?: BrowserDriverCommandOptions;
+  readonly mutationCommandOptions?: BrowserDriverCommandOptions;
 }
 
+export type DeploymentDisposition =
+  | "NO_OP"
+  | "APPLIED";
+
 export interface InitialDeploymentResult {
+  readonly disposition: DeploymentDisposition;
   readonly target: ResolvedRepositoryTarget;
   readonly desired: PerchanceDesiredDeployment;
   readonly observation: PerchanceDeploymentObservation;
-  readonly operation: OperationRecord;
+  readonly operation: OperationRecord | null;
 }
 
 export class InitialDeploymentError extends Error {
@@ -154,12 +164,41 @@ export class InitialDeploymentService {
       page: input.page,
       accountId: input.accountId,
       repositorySlug: input.artifact.repository,
-      expectedProviderIdentity: input.expectedProviderIdentity
+      expectedProviderIdentity: input.expectedProviderIdentity,
+      commandOptions: input.commandOptions
     });
     const desired = materializeDeployment(
       input.artifact,
       input.requiredPublic
     );
+
+    let current: PerchanceDeploymentObservation;
+    try {
+      current = await this.#provider.observeGeneratorDeployment(
+        input.page,
+        input.expectedProviderIdentity,
+        target.generator.providerStableId,
+        input.commandOptions
+      );
+    } catch (error: unknown) {
+      throw new InitialDeploymentError(
+        "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
+        "Deployment current provider state could not be verified before mutation",
+        input.operationId,
+        { cause: error }
+      );
+    }
+
+    if (sameDeployment(target, desired, current)) {
+      return Object.freeze({
+        disposition: "NO_OP",
+        target,
+        desired,
+        observation: current,
+        operation: null
+      });
+    }
+
     const observedAt = target.identityEvidence.observedAt;
     const operation = this.#coordinator.prepare({
       operationId: input.operationId,
@@ -232,7 +271,8 @@ export class InitialDeploymentService {
             providerStableId: target.generator.providerStableId,
             currentSlug: target.generator.currentSlug
           },
-          desired
+          desired,
+          input.mutationCommandOptions ?? input.commandOptions
         );
       } catch (error: unknown) {
         const effectState =
@@ -247,7 +287,7 @@ export class InitialDeploymentService {
         });
         throw new InitialDeploymentError(
           "DEPLOYER_DEPLOYMENT_MUTATION_FAILED",
-          "Initial deployment mutation did not produce a safely acknowledged save",
+          "Deployment mutation did not produce a safely acknowledged save",
           operation.operationId,
           { cause: error }
         );
@@ -265,7 +305,8 @@ export class InitialDeploymentService {
           await this.#provider.observeGeneratorDeployment(
             input.page,
             input.expectedProviderIdentity,
-            target.generator.providerStableId
+            target.generator.providerStableId,
+            input.commandOptions
           );
       } catch (error: unknown) {
         this.#coordinator.markUncertain(
@@ -275,7 +316,7 @@ export class InitialDeploymentService {
         );
         throw new InitialDeploymentError(
           "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
-          "Initial deployment could not read provider state after save",
+          "Deployment could not read provider state after save",
           operation.operationId,
           { cause: error }
         );
@@ -289,7 +330,7 @@ export class InitialDeploymentService {
         );
         throw new InitialDeploymentError(
           "DEPLOYER_DEPLOYMENT_VERIFICATION_FAILED",
-          "Initial deployment provider state does not match desired content/public state",
+          "Deployment provider state does not match desired content/public state",
           operation.operationId
         );
       }
@@ -300,6 +341,7 @@ export class InitialDeploymentService {
         "post-save-provider-state-verified"
       );
       return Object.freeze({
+        disposition: "APPLIED",
         target,
         desired,
         observation,
