@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P035**
-- Current phase: **P036 — READY**
-- Next phase: **P037 — BLOCKED (P036)**
-- Current milestone: **M08 — Refresh measurement and Refresher**
+- Completed through: **P036**
+- Current phase: **P037 — READY**
+- Next phase: **P038 — BLOCKED (P037)**
+- Current milestone: **M09 — Explorer and Account Provisioning**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -810,7 +810,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M08 — Refresh measurement and Refresher
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P034 — Refresh and recent-listing emulator contract
 Status: **COMPLETE**  
@@ -857,7 +857,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P035 → COMPLETE; P036 → READY; publish to GitHub; **STOP — do not implement P036.**
 
 ### P036 — Refresher execution, history, uncertainty and package lifecycle
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P035  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -867,25 +867,25 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not claim live provider refresh semantics beyond emulator contract.
 
 **Work:**
-- [ ] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
-- [ ] T036.2 — Block duplicate work while refresh outcome is uncertain and reconcile first
-- [ ] T036.3 — Package/update/rollback Refresher through standard .pcmsmod lifecycle
+- [x] T036.1 — Implement manual/scheduled/recent-visibility execution and verified history
+- [x] T036.2 — Block duplicate work while refresh outcome is uncertain and reconcile first
+- [x] T036.3 — Package/update/rollback Refresher through standard .pcmsmod lifecycle
 
 **Acceptance:**
-- [ ] A08-07
-- [ ] A08-08
-- [ ] A08-09
-- [ ] A08-10
+- [x] A08-07
+- [x] A08-08
+- [x] A08-09
+- [x] A08-10
 
 **Closure:** relevant tests + CI green; phase report finalized; P036 → COMPLETE; P037 → READY; publish to GitHub; **STOP — do not implement P037.**
 
 ---
 
 ## M09 — Explorer and Account Provisioning
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P037 — Explorer observation, claim and stable handoff
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P036  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
