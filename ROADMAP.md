@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P040**
-- Current phase: **P041 — READY**
-- Next phase: **P042 — BLOCKED (P041)**
+- Completed through: **P041**
+- Current phase: **P042 — READY**
+- Next phase: **P043 — BLOCKED (P042)**
 - Current milestone: **M10 — Statistics, backup, restore and operational UX**
 - Final live milestone: **M12 — P048–P049**
 
@@ -974,10 +974,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M10 — Statistics, backup, restore and operational UX
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P041 — Statistics and coherent Core/module backup
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P040  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -987,19 +987,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not let Statistics mutate authoritative state or silently include profiles.
 
 **Work:**
-- [ ] T041.1 — Implement Statistics projections from operational facts only
-- [ ] T041.2 — Implement DB/module-state backup manifest and hashes
-- [ ] T041.3 — Implement automatic retention with explicit profile exclusion
+- [x] T041.1 — Implement Statistics projections from operational facts only
+- [x] T041.2 — Implement DB/module-state backup manifest and hashes
+- [x] T041.3 — Implement automatic retention with explicit profile exclusion
 
 **Acceptance:**
-- [ ] A10-01
-- [ ] A10-02
-- [ ] A10-03
+- [x] A10-01
+- [x] A10-02
+- [x] A10-03
 
 **Closure:** relevant tests + CI green; phase report finalized; P041 → COMPLETE; P042 → READY; publish to GitHub; **STOP — do not implement P042.**
 
 ### P042 — Optional profile backup and recovery-hold restore
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P041  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
