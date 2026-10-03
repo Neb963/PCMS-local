@@ -97,7 +97,7 @@
     {
       "id": "M06",
       "name": "Provider automation and operation safety",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P025",
         "P026",
@@ -1142,7 +1142,7 @@
       "id": "P025",
       "milestone": "M06",
       "name": "BrowserDriver connection, cancellation and diagnostics",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P024"
       ],
@@ -1181,7 +1181,7 @@
       "id": "P026",
       "milestone": "M06",
       "name": "Perchance emulator and identity/read probes",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P025"
       ],

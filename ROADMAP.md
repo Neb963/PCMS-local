@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P024**
-- Current phase: **P025 — IN_PROGRESS**
-- Next phase: **P026 — BLOCKED (P025)**
+- Completed through: **P025**
+- Current phase: **P026 — READY**
+- Next phase: **P027 — BLOCKED (P026)**
 - Current milestone: **M06 — Provider automation and operation safety**
 - Final live milestone: **M12 — P048–P049**
 
@@ -604,10 +604,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M06 — Provider automation and operation safety
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P025 — BrowserDriver connection, cancellation and diagnostics
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P024  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -619,16 +619,16 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T025.1 — Implement connect/target selection against owned Persona DevTools endpoint
 - [x] T025.2 — Implement bounded timeout/cancellation/target-loss errors
-- [~] T025.3 — Test that BrowserDriver never synthesizes a separate browser identity
+- [x] T025.3 — Test that BrowserDriver never synthesizes a separate browser identity
 
 **Acceptance:**
-- [ ] A06-01
-- [ ] A06-02
+- [x] A06-01
+- [x] A06-02
 
 **Closure:** relevant tests + CI green; phase report finalized; P025 → COMPLETE; P026 → READY; publish to GitHub; **STOP — do not implement P026.**
 
 ### P026 — Perchance emulator and identity/read probes
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P025  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
