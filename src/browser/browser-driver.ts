@@ -723,6 +723,91 @@ async function openSocket(
   });
 }
 
+async function resolveOwnedEndpoint(
+  browserManager: ChromiumBrowserManager,
+  personaUid: string,
+  timeoutMs: number,
+  signal?: AbortSignal
+): Promise<ChromiumDevToolsEndpoint | null> {
+  validateTimeout(timeoutMs, "BrowserDriver connect timeout");
+  if (signal?.aborted === true) {
+    throw new BrowserDriverError(
+      "BROWSER_DRIVER_CANCELLED",
+      "BrowserDriver connection was cancelled before endpoint resolution",
+      personaUid,
+      "connect",
+      null,
+      signal.reason
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (
+      value?: ChromiumDevToolsEndpoint | null,
+      error?: BrowserDriverError
+    ) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      if (signal !== undefined) {
+        signal.removeEventListener("abort", onAbort);
+      }
+      if (error === undefined) {
+        resolve(value ?? null);
+      } else {
+        reject(error);
+      }
+    };
+    const timer = setTimeout(
+      () => finish(
+        undefined,
+        new BrowserDriverError(
+          "BROWSER_DRIVER_CONNECT_TIMEOUT",
+          `BrowserDriver endpoint resolution exceeded ${timeoutMs} ms`,
+          personaUid,
+          "connect"
+        )
+      ),
+      timeoutMs
+    );
+    const onAbort = () => finish(
+      undefined,
+      new BrowserDriverError(
+        "BROWSER_DRIVER_CANCELLED",
+        "BrowserDriver connection was cancelled during endpoint resolution",
+        personaUid,
+        "connect",
+        null,
+        signal?.reason
+      )
+    );
+
+    if (signal !== undefined) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    browserManager.resolveDevToolsEndpoint(personaUid).then(
+      (endpoint) => finish(endpoint),
+      (cause: unknown) => finish(
+        undefined,
+        cause instanceof BrowserDriverError
+          ? cause
+          : new BrowserDriverError(
+              "BROWSER_DRIVER_CONNECT_FAILED",
+              "BrowserDriver could not resolve the owned Persona DevTools endpoint",
+              personaUid,
+              "connect",
+              null,
+              cause
+            )
+      )
+    );
+  });
+}
+
 export class BrowserDriver {
   readonly #browserManager: ChromiumBrowserManager;
   readonly #connectTimeoutMs: number;
@@ -742,7 +827,15 @@ export class BrowserDriver {
     personaUid: string,
     options: BrowserDriverConnectOptions = {}
   ): Promise<BrowserDriverConnection> {
-    const endpoint = await this.#browserManager.resolveDevToolsEndpoint(personaUid);
+    const timeoutMs = options.timeoutMs ?? this.#connectTimeoutMs;
+    validateTimeout(timeoutMs, "BrowserDriver connect timeout");
+    const deadline = Date.now() + timeoutMs;
+    const endpoint = await resolveOwnedEndpoint(
+      this.#browserManager,
+      personaUid,
+      timeoutMs,
+      options.signal
+    );
     if (endpoint === null) {
       throw new BrowserDriverError(
         "BROWSER_DRIVER_PERSONA_NOT_RUNNING",
@@ -752,10 +845,19 @@ export class BrowserDriver {
       );
     }
 
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      throw new BrowserDriverError(
+        "BROWSER_DRIVER_CONNECT_TIMEOUT",
+        `BrowserDriver connection exceeded ${timeoutMs} ms`,
+        personaUid,
+        "connect"
+      );
+    }
     const socket = await openSocket(
       personaUid,
       endpoint,
-      options.timeoutMs ?? this.#connectTimeoutMs,
+      remainingMs,
       options.signal
     );
     const connection = new CdpConnection(

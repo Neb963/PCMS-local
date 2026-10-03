@@ -618,8 +618,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T025.1 — Implement connect/target selection against owned Persona DevTools endpoint
-- [~] T025.2 — Implement bounded timeout/cancellation/target-loss errors
-- [ ] T025.3 — Test that BrowserDriver never synthesizes a separate browser identity
+- [x] T025.2 — Implement bounded timeout/cancellation/target-loss errors
+- [~] T025.3 — Test that BrowserDriver never synthesizes a separate browser identity
 
 **Acceptance:**
 - [ ] A06-01
