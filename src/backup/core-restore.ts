@@ -513,7 +513,9 @@ export async function restoreCoreStateBackup(
     );
     stagedDatabase = openPcmsDatabase(
       join(staging, "pcms.db"),
-      { now: options.now }
+      options.now === undefined
+        ? {}
+        : { now: options.now }
     );
 
     for (let index = 0; index < profileManifests.length; index += 1) {
@@ -532,10 +534,15 @@ export async function restoreCoreStateBackup(
       );
     }
 
-    enterRecoveryHold(stagedDatabase.connection, {
-      sourceBackupId: manifest.backupId,
-      now: options.now
-    });
+    enterRecoveryHold(
+      stagedDatabase.connection,
+      options.now === undefined
+        ? { sourceBackupId: manifest.backupId }
+        : {
+            sourceBackupId: manifest.backupId,
+            now: options.now
+          }
+    );
     assessment = await assessRecoveryState(
       stagedDatabase.connection,
       staging
