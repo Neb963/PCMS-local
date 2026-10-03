@@ -7,10 +7,20 @@ import {
 import { resolvePcmsPaths } from "../config/paths.js";
 import { PcmsApiError, createPcmsApiClient } from "../client/api-client.js";
 
-interface CliArguments {
-  readonly command: "status" | "diagnostics";
-  readonly json: boolean;
-}
+type CliArguments =
+  | Readonly<{ command: "status"; json: boolean }>
+  | Readonly<{ command: "diagnostics"; json: boolean }>
+  | Readonly<{ command: "accounts-list"; json: boolean }>
+  | Readonly<{
+      command: "account-persona";
+      accountId: string;
+      json: boolean;
+    }>
+  | Readonly<{
+      command: "search";
+      query: string;
+      json: boolean;
+    }>;
 
 class CliUsageError extends Error {
   public readonly code = "CLI_USAGE";
@@ -21,21 +31,59 @@ class CliUsageError extends Error {
   }
 }
 
+const USAGE = [
+  "Usage:",
+  "  pcms status [--json]",
+  "  pcms diagnostics [--json]",
+  "  pcms accounts list [--json]",
+  "  pcms accounts persona <account-id> [--json]",
+  "  pcms search <query> [--json]"
+].join("\n");
+
 function parseArguments(argv: readonly string[]): CliArguments {
   const json = argv.includes("--json");
   const positional = argv.filter((value) => value !== "--json");
-  const command = positional[0];
 
+  if (positional.length === 1 && positional[0] === "status") {
+    return Object.freeze({ command: "status", json });
+  }
+  if (positional.length === 1 && positional[0] === "diagnostics") {
+    return Object.freeze({ command: "diagnostics", json });
+  }
   if (
-    positional.length !== 1 ||
-    (command !== "status" && command !== "diagnostics")
+    positional.length === 2 &&
+    positional[0] === "accounts" &&
+    positional[1] === "list"
   ) {
-    throw new CliUsageError(
-      "Usage: pcms <status|diagnostics> [--json]"
-    );
+    return Object.freeze({ command: "accounts-list", json });
+  }
+  if (
+    positional.length === 3 &&
+    positional[0] === "accounts" &&
+    positional[1] === "persona" &&
+    positional[2] !== undefined &&
+    positional[2].length > 0
+  ) {
+    return Object.freeze({
+      command: "account-persona",
+      accountId: positional[2],
+      json
+    });
+  }
+  if (
+    positional.length === 2 &&
+    positional[0] === "search" &&
+    positional[1] !== undefined &&
+    positional[1].trim().length > 0
+  ) {
+    return Object.freeze({
+      command: "search",
+      query: positional[1],
+      json
+    });
   }
 
-  return Object.freeze({ command, json });
+  throw new CliUsageError(USAGE);
 }
 
 function safeError(error: unknown): Readonly<{ code: string; message: string }> {
@@ -97,26 +145,94 @@ async function run(): Promise<void> {
       return;
     }
 
-    const diagnostics = await client.diagnostics();
-    if (args.json) {
+    if (args.command === "diagnostics") {
+      const diagnostics = await client.diagnostics();
+      if (args.json) {
+        process.stdout.write(
+          `${JSON.stringify({ ok: true, diagnostics })}\n`
+        );
+        return;
+      }
+
       process.stdout.write(
-        `${JSON.stringify({ ok: true, diagnostics })}\n`
+        [
+          "PCMS Local diagnostics",
+          `Status: ${diagnostics.status}`,
+          `Node: ${diagnostics.runtime.node}`,
+          `Schema: ${diagnostics.database.schemaVersion}`,
+          `API: ${diagnostics.localApi.origin}`,
+          `Config: ${diagnostics.paths.configRoot}`,
+          `Data: ${diagnostics.paths.dataRoot}`,
+          `Cache: ${diagnostics.paths.cacheRoot}`
+        ].join("\n") + "\n"
       );
       return;
     }
 
-    process.stdout.write(
-      [
-        "PCMS Local diagnostics",
-        `Status: ${diagnostics.status}`,
-        `Node: ${diagnostics.runtime.node}`,
-        `Schema: ${diagnostics.database.schemaVersion}`,
-        `API: ${diagnostics.localApi.origin}`,
-        `Config: ${diagnostics.paths.configRoot}`,
-        `Data: ${diagnostics.paths.dataRoot}`,
-        `Cache: ${diagnostics.paths.cacheRoot}`
-      ].join("\n") + "\n"
-    );
+    if (args.command === "accounts-list") {
+      const accounts = await client.accounts();
+      if (args.json) {
+        process.stdout.write(
+          `${JSON.stringify({ ok: true, accounts })}\n`
+        );
+        return;
+      }
+
+      if (accounts.length === 0) {
+        process.stdout.write("No Accounts.\n");
+        return;
+      }
+      for (const account of accounts) {
+        process.stdout.write(
+          `${account.accountId}\t${account.displayName}\tPersona: ${account.personaUid ?? "unbound"}\n`
+        );
+      }
+      return;
+    }
+
+    if (args.command === "account-persona") {
+      const navigation = await client.accountPersona(args.accountId);
+      if (args.json) {
+        process.stdout.write(
+          `${JSON.stringify({ ok: true, navigation })}\n`
+        );
+        return;
+      }
+
+      if (navigation.persona === null) {
+        process.stdout.write(
+          `Account: ${navigation.accountId}\nPersona: unbound\n`
+        );
+        return;
+      }
+      process.stdout.write(
+        [
+          `Account: ${navigation.accountId}`,
+          `Persona: ${navigation.persona.personaUid}`,
+          `Lifecycle: ${navigation.persona.lifecycleStatus}`,
+          `Profile: ${navigation.persona.profileState}`,
+          `Backend: ${navigation.persona.browserBackend}`
+        ].join("\n") + "\n"
+      );
+      return;
+    }
+
+    const results = await client.search(args.query);
+    if (args.json) {
+      process.stdout.write(
+        `${JSON.stringify({ ok: true, results })}\n`
+      );
+      return;
+    }
+    if (results.length === 0) {
+      process.stdout.write("No matches.\n");
+      return;
+    }
+    for (const result of results) {
+      process.stdout.write(
+        `${result.entityType}\t${result.entityId}\t${result.label}\tmatched: ${result.matchedField}\n`
+      );
+    }
   } catch (error: unknown) {
     const safe = safeError(error);
     if (args.json) {
