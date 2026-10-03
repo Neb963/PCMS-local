@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 
+import { isRecoveryHeld } from "../recovery/recovery-control.js";
 import {
   BoundedWorkQueue,
   WorkQueueError,
@@ -629,6 +630,17 @@ export class DurableScheduler {
 
   public wake(): SchedulerWakeResult {
     const observedNow = this.#currentDate();
+    if (isRecoveryHeld(this.#database)) {
+      return Object.freeze({
+        observedNow: observedNow.toISOString(),
+        scanned: 0,
+        enqueued: 0,
+        coalesced: 0,
+        budgetBlocked: 0,
+        backpressured: 0,
+        scanLimited: false
+      });
+    }
     const rows = this.#database.prepare(
       `${selectScheduleSql("enabled = 1")}
        ORDER BY
@@ -785,6 +797,9 @@ export class DurableScheduler {
   public claimNext(
     now: Date = this.#currentDate()
   ): ScheduleDispatchIntent | null {
+    if (isRecoveryHeld(this.#database)) {
+      return null;
+    }
     return this.#queue.claimNext(now)?.value ?? null;
   }
 
