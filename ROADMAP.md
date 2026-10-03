@@ -436,8 +436,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not weaken existing authenticated Firefox-compatible forwarder behavior.
 
 **Work:**
-- [~] T017.1 — Implement prepare_chromium_exit-equivalent daemon contract
-- [ ] T017.2 — Bind forwarder loopback-only with route/lease lifetime
+- [x] T017.1 — Implement prepare_chromium_exit-equivalent daemon contract
+- [~] T017.2 — Bind forwarder loopback-only with route/lease lifetime
 - [ ] T017.3 — Test expiration, release, stale lease and unauthorized access paths
 
 **Acceptance:**
