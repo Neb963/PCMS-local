@@ -69,6 +69,14 @@ export interface ChromiumBrowserManagerOptions {
   readonly closeTimeoutMs?: number;
 }
 
+interface RuntimeWebSocket {
+  onopen: (() => void) | null;
+  onerror: (() => void) | null;
+  send(data: string): void;
+}
+
+type RuntimeWebSocketConstructor = new (url: string) => RuntimeWebSocket;
+
 interface DevToolsVersionPayload {
   readonly webSocketDebuggerUrl?: unknown;
 }
@@ -244,6 +252,78 @@ async function terminateOwnedProcess(
     "CHROMIUM_CLOSE_TIMEOUT",
     "Owned Chromium process did not exit after SIGTERM/SIGKILL"
   );
+}
+
+function requestBrowserClose(
+  webSocketUrl: string,
+  timeoutMs: number
+): Promise<void> {
+  const constructor = (
+    globalThis as unknown as { WebSocket?: RuntimeWebSocketConstructor }
+  ).WebSocket;
+  if (constructor === undefined) {
+    return Promise.reject(new Error("Node runtime does not provide WebSocket"));
+  }
+
+  return new Promise((resolve, reject) => {
+    const socket = new constructor(webSocketUrl);
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      socket.onopen = null;
+      socket.onerror = null;
+      if (error === undefined) {
+        resolve();
+      } else {
+        reject(error);
+      }
+    };
+    const timer = setTimeout(
+      () => finish(new Error("Timed out opening DevTools WebSocket")),
+      Math.min(timeoutMs, 2_000)
+    );
+
+    socket.onerror = () => {
+      finish(new Error("DevTools WebSocket failed before Browser.close"));
+    };
+    socket.onopen = () => {
+      try {
+        socket.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+        finish();
+      } catch (error: unknown) {
+        finish(
+          error instanceof Error
+            ? error
+            : new Error("Failed to send Browser.close")
+        );
+      }
+    };
+  });
+}
+
+async function closeOwnedBrowser(
+  child: ChildProcess,
+  webSocketUrl: string,
+  timeoutMs: number
+): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+
+  try {
+    await requestBrowserClose(webSocketUrl, timeoutMs);
+    if (await waitForExit(child, timeoutMs)) {
+      return;
+    }
+  } catch {
+    // Bounded signal escalation below remains restricted to our known child.
+  }
+
+  await terminateOwnedProcess(child, timeoutMs);
 }
 
 function parseActivePort(content: string): { port: number; browserPath: string } | null {
@@ -467,7 +547,11 @@ export class ChromiumBrowserManager {
         if (closed) {
           return;
         }
-        await terminateOwnedProcess(child as ChildProcess, this.#closeTimeoutMs);
+        await closeOwnedBrowser(
+          child as ChildProcess,
+          devTools.webSocketUrl,
+          this.#closeTimeoutMs
+        );
         processConfirmedStopped = true;
         this.#lifecycle.close(personaUid);
         this.#claimedPersonas.delete(personaUid);
