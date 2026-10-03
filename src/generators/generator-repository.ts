@@ -23,6 +23,13 @@ export interface CreateGeneratorInput {
   readonly currentSlug: string;
 }
 
+export interface UpdateGeneratorIdentityInput {
+  readonly generatorLocalId: string;
+  readonly expectedRevision: number;
+  readonly providerStableId: string | null;
+  readonly currentSlug: string;
+}
+
 export interface GeneratorRepositoryOptions {
   readonly database: DatabaseSync;
   readonly now?: () => Date;
@@ -34,6 +41,7 @@ export type GeneratorRepositoryErrorCode =
   | "GENERATOR_SLUG_INVALID"
   | "GENERATOR_EXISTS"
   | "GENERATOR_PROVIDER_ID_CONFLICT"
+  | "GENERATOR_REVISION_CONFLICT"
   | "GENERATOR_NOT_FOUND"
   | "GENERATOR_ROW_INVALID";
 
@@ -246,6 +254,82 @@ export class GeneratorRepository {
       );
     }
     return generator;
+  }
+
+  public updateIdentity(input: UpdateGeneratorIdentityInput): GeneratorRecord {
+    assertGeneratorLocalId(input.generatorLocalId);
+    if (
+      !Number.isSafeInteger(input.expectedRevision) ||
+      input.expectedRevision < 0
+    ) {
+      throw new GeneratorRepositoryError(
+        "GENERATOR_REVISION_CONFLICT",
+        "Expected Generator revision must be a non-negative safe integer"
+      );
+    }
+
+    const current = this.require(input.generatorLocalId);
+    if (current.revision !== input.expectedRevision) {
+      throw new GeneratorRepositoryError(
+        "GENERATOR_REVISION_CONFLICT",
+        `Generator ${input.generatorLocalId} revision changed from expected ${input.expectedRevision} to ${current.revision}`
+      );
+    }
+
+    const providerStableId = normalizeProviderStableId(input.providerStableId);
+    const currentSlug = normalizeCurrentSlug(input.currentSlug);
+    if (
+      current.providerStableId === providerStableId &&
+      current.currentSlug === currentSlug
+    ) {
+      return current;
+    }
+
+    const updatedAt = this.#now().toISOString();
+    try {
+      const result = this.#database.prepare(`
+        UPDATE generators
+        SET
+          provider_stable_id = ?,
+          current_slug = ?,
+          updated_at = ?,
+          revision = revision + 1
+        WHERE
+          generator_local_id = ? AND
+          revision = ?
+      `).run(
+        providerStableId,
+        currentSlug,
+        updatedAt,
+        input.generatorLocalId,
+        input.expectedRevision
+      );
+
+      if (result.changes !== 1) {
+        throw new GeneratorRepositoryError(
+          "GENERATOR_REVISION_CONFLICT",
+          `Generator ${input.generatorLocalId} changed while updating provider identity`
+        );
+      }
+    } catch (error: unknown) {
+      if (isProviderStableIdConflict(error)) {
+        throw new GeneratorRepositoryError(
+          "GENERATOR_PROVIDER_ID_CONFLICT",
+          `Provider stable ID ${providerStableId ?? "<unknown>"} is already assigned to another Generator`,
+          error
+        );
+      }
+      throw error;
+    }
+
+    const updated = this.require(input.generatorLocalId);
+    if (updated.revision !== input.expectedRevision + 1) {
+      throw new GeneratorRepositoryError(
+        "GENERATOR_REVISION_CONFLICT",
+        `Generator ${input.generatorLocalId} changed while updating provider identity`
+      );
+    }
+    return updated;
   }
 
   public list(): readonly GeneratorRecord[] {

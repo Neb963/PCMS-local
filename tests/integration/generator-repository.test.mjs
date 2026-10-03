@@ -217,3 +217,145 @@ test("Generator repository validates local identity, provider ID, slug and Accou
     await cleanup(f);
   }
 });
+
+
+test("slug and provider identity updates preserve Generator local identity and Account ownership", async () => {
+  const f = await fixture("pcms-generator-update-");
+  try {
+    f.accounts.create({ accountId: "account_owner", displayName: "Owner" });
+    const created = f.generators.create({
+      generatorLocalId: "generator_stable",
+      accountId: "account_owner",
+      currentSlug: "old-slug"
+    });
+
+    const learned = f.generators.updateIdentity({
+      generatorLocalId: "generator_stable",
+      expectedRevision: created.revision,
+      providerStableId: "provider-stable-777",
+      currentSlug: "new-slug"
+    });
+
+    assert.equal(learned.generatorLocalId, "generator_stable");
+    assert.equal(learned.accountId, "account_owner");
+    assert.equal(learned.providerStableId, "provider-stable-777");
+    assert.equal(learned.currentSlug, "new-slug");
+    assert.equal(learned.revision, 1);
+    assert.equal(learned.createdAt, created.createdAt);
+
+    const renamed = f.generators.updateIdentity({
+      generatorLocalId: "generator_stable",
+      expectedRevision: 1,
+      providerStableId: "provider-stable-777",
+      currentSlug: "renamed-again"
+    });
+    assert.equal(renamed.generatorLocalId, "generator_stable");
+    assert.equal(renamed.accountId, "account_owner");
+    assert.equal(renamed.providerStableId, "provider-stable-777");
+    assert.equal(renamed.currentSlug, "renamed-again");
+    assert.equal(renamed.revision, 2);
+  } finally {
+    await cleanup(f);
+  }
+});
+
+test("Generator identity update is idempotent at the current revision", async () => {
+  const f = await fixture("pcms-generator-update-idempotent-");
+  try {
+    f.accounts.create({ accountId: "account_owner", displayName: "Owner" });
+    const created = f.generators.create({
+      generatorLocalId: "generator_same",
+      accountId: "account_owner",
+      providerStableId: "provider-same",
+      currentSlug: "same-slug"
+    });
+
+    const repeated = f.generators.updateIdentity({
+      generatorLocalId: "generator_same",
+      expectedRevision: 0,
+      providerStableId: "provider-same",
+      currentSlug: "same-slug"
+    });
+
+    assert.deepEqual(repeated, created);
+    assert.equal(f.generators.require("generator_same").revision, 0);
+  } finally {
+    await cleanup(f);
+  }
+});
+
+test("stale Generator revision rejects slug/provider update without mutation", async () => {
+  const f = await fixture("pcms-generator-update-stale-");
+  try {
+    f.accounts.create({ accountId: "account_owner", displayName: "Owner" });
+    f.generators.create({
+      generatorLocalId: "generator_revision",
+      accountId: "account_owner",
+      currentSlug: "initial"
+    });
+    f.generators.updateIdentity({
+      generatorLocalId: "generator_revision",
+      expectedRevision: 0,
+      providerStableId: "provider-revision",
+      currentSlug: "current"
+    });
+
+    assert.throws(
+      () => f.generators.updateIdentity({
+        generatorLocalId: "generator_revision",
+        expectedRevision: 0,
+        providerStableId: "provider-stale",
+        currentSlug: "stale"
+      }),
+      (error) =>
+        error instanceof GeneratorRepositoryError &&
+        error.code === "GENERATOR_REVISION_CONFLICT"
+    );
+
+    const unchanged = f.generators.require("generator_revision");
+    assert.equal(unchanged.providerStableId, "provider-revision");
+    assert.equal(unchanged.currentSlug, "current");
+    assert.equal(unchanged.revision, 1);
+  } finally {
+    await cleanup(f);
+  }
+});
+
+test("provider stable ID conflict during update leaves Generator identity unchanged", async () => {
+  const f = await fixture("pcms-generator-update-conflict-");
+  try {
+    f.accounts.create({ accountId: "account_owner", displayName: "Owner" });
+    f.generators.create({
+      generatorLocalId: "generator_one",
+      accountId: "account_owner",
+      providerStableId: "provider-one",
+      currentSlug: "one"
+    });
+    f.generators.create({
+      generatorLocalId: "generator_two",
+      accountId: "account_owner",
+      providerStableId: "provider-two",
+      currentSlug: "two"
+    });
+
+    assert.throws(
+      () => f.generators.updateIdentity({
+        generatorLocalId: "generator_two",
+        expectedRevision: 0,
+        providerStableId: "provider-one",
+        currentSlug: "two-renamed"
+      }),
+      (error) =>
+        error instanceof GeneratorRepositoryError &&
+        error.code === "GENERATOR_PROVIDER_ID_CONFLICT"
+    );
+
+    const unchanged = f.generators.require("generator_two");
+    assert.equal(unchanged.generatorLocalId, "generator_two");
+    assert.equal(unchanged.providerStableId, "provider-two");
+    assert.equal(unchanged.currentSlug, "two");
+    assert.equal(unchanged.revision, 0);
+  } finally {
+    await cleanup(f);
+  }
+});
