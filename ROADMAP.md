@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P034**
-- Current phase: **P035 — IN_PROGRESS**
-- Next phase: **P036 — BLOCKED (P035)**
+- Completed through: **P035**
+- Current phase: **P036 — READY**
+- Next phase: **P037 — BLOCKED (P036)**
 - Current milestone: **M08 — Refresh measurement and Refresher**
 - Final live milestone: **M12 — P048–P049**
 
@@ -834,7 +834,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P034 → COMPLETE; P035 → READY; publish to GitHub; **STOP — do not implement P035.**
 
 ### P035 — Refresher cohorts, time policy and shared admission
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P034  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -844,15 +844,15 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not couple Refresher policy into Core.
 
 **Work:**
-- [~] T035.1 — Implement configurable cohorts beyond visible recent-page capacity
-- [ ] T035.2 — Implement active/sleep/timezone/budget semantics with DST/clock tests
-- [ ] T035.3 — Enforce Deployer collision exclusion and shared ProviderGate signals
+- [x] T035.1 — Implement configurable cohorts beyond visible recent-page capacity
+- [x] T035.2 — Implement active/sleep/timezone/budget semantics with DST/clock tests
+- [x] T035.3 — Enforce Deployer collision exclusion and shared ProviderGate signals
 
 **Acceptance:**
-- [ ] A08-03
-- [ ] A08-04
-- [ ] A08-05
-- [ ] A08-06
+- [x] A08-03
+- [x] A08-04
+- [x] A08-05
+- [x] A08-06
 
 **Closure:** relevant tests + CI green; phase report finalized; P035 → COMPLETE; P036 → READY; publish to GitHub; **STOP — do not implement P036.**
 
