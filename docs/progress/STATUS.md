@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P042**  
 Current milestone: **M10 — Statistics, backup, restore and operational UX**  
-Current phase: **P043 — READY**  
+Current phase: **P043 — IN_PROGRESS**  
 Next phase: **P044 — BLOCKED (P043)**
 
 Canonical execution view: `ROADMAP.md`.
