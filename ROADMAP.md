@@ -1088,8 +1088,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T045.1 — Automate pcmsd/module/Chromium kill matrices across operation states
-- [~] T045.2 — Inject DB busy/disk-full/corrupt-backup and queue/poison-module pressure
-- [ ] T045.3 — Exercise 50+ Persona inventory/startup/disk with bounded active subset
+- [x] T045.2 — Inject DB busy/disk-full/corrupt-backup and queue/poison-module pressure
+- [~] T045.3 — Exercise 50+ Persona inventory/startup/disk with bounded active subset
 
 **Acceptance:**
 - [ ] A11-03
