@@ -166,17 +166,22 @@ async function loadAttention() {
       return;
     }
     attentionState.textContent =
-      `${payload.attention.length} blocking item(s)`;
+      String(payload.attention.length) + " blocking item(s)";
     for (const task of payload.attention) {
       const item = document.createElement("li");
       const details = document.createElement("span");
       const context = [
-        task.accountId ? `Account: ${task.accountId}` : null,
-        task.personaUid ? `Persona: ${task.personaUid}` : null,
-        task.operationId ? `Operation: ${task.operationId}` : null
+        task.accountId ? "Account: " + task.accountId : null,
+        task.personaUid ? "Persona: " + task.personaUid : null,
+        task.operationId ? "Operation: " + task.operationId : null
       ].filter(Boolean);
       details.textContent =
-        `${task.title} — ${task.explanation} — Action: ${task.requiredActionKind}${context.length === 0 ? "" : ` — ${context.join(" | ")}`}`;
+        task.title +
+        " — " +
+        task.explanation +
+        " — Action: " +
+        task.requiredActionKind +
+        (context.length === 0 ? "" : " — " + context.join(" | "));
       item.append(details);
       attentionList.append(item);
     }
