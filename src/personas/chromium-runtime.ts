@@ -127,35 +127,68 @@ function parseProcessStartTicks(stat: string): string {
 }
 
 function parseCmdline(content: Buffer): readonly string[] {
+  const entries = content
+    .toString("utf8")
+    .split("\0")
+    .filter((entry) => entry !== "");
+  if (entries.length > 1 || !entries[0]?.includes(" ")) {
+    return Object.freeze(entries);
+  }
+  // Chromium rewrites its Linux process title so the whole command line
+  // surfaces in /proc/<pid>/cmdline as one space-joined entry.
   return Object.freeze(
-    content
-      .toString("utf8")
-      .split("\0")
-      .filter((entry) => entry !== "")
+    entries[0].split(" ").filter((entry) => entry !== "")
   );
 }
 
 function hasOwnedProfileArgument(
   args: readonly string[],
-  profilePath: string
+  profilePath: string,
+  rawTitle: string | null
 ): boolean {
-  return args.includes(`--user-data-dir=${profilePath}`);
+  const flag = `--user-data-dir=${profilePath}`;
+  if (args.includes(flag)) {
+    return true;
+  }
+  if (rawTitle === null) {
+    return false;
+  }
+  // The space-joined title form cannot express a profile path containing a
+  // space as a single token; match it with token boundaries instead so a
+  // longer sibling path can never satisfy the check by prefix.
+  return (
+    rawTitle === flag ||
+    rawTitle.startsWith(`${flag} `) ||
+    rawTitle.includes(` ${flag} `) ||
+    rawTitle.endsWith(` ${flag}`)
+  );
 }
 
 async function readProcessEvidence(pid: number): Promise<{
   readonly processStartTicks: string;
   readonly executableRealPath: string;
   readonly args: readonly string[];
+  readonly rawTitle: string | null;
 }> {
   const [stat, executableRealPath, cmdline] = await Promise.all([
     readFile(`/proc/${pid}/stat`, "utf8"),
     readlink(`/proc/${pid}/exe`),
     readFile(`/proc/${pid}/cmdline`)
   ]);
+  const rawEntries = cmdline
+    .toString("utf8")
+    .split("\0")
+    .filter((entry) => entry !== "");
+  const soleEntry = rawEntries.length === 1 ? rawEntries[0] : undefined;
+  const rawTitle =
+    soleEntry !== undefined && soleEntry.includes(" ")
+      ? soleEntry
+      : null;
   return Object.freeze({
     processStartTicks: parseProcessStartTicks(stat),
     executableRealPath,
-    args: parseCmdline(cmdline)
+    args: parseCmdline(cmdline),
+    rawTitle
   });
 }
 
@@ -176,7 +209,7 @@ export async function captureChromiumProcessFingerprint(
 
   if (
     observed.executableRealPath !== configuredExecutable ||
-    !hasOwnedProfileArgument(observed.args, canonicalProfile)
+    !hasOwnedProfileArgument(observed.args, canonicalProfile, observed.rawTitle)
   ) {
     throw new Error(
       "Spawned Chromium process does not match the configured executable/profile ownership evidence"
@@ -210,7 +243,11 @@ export async function inspectChromiumProcessOwnership(
     if (
       observed.processStartTicks !== fingerprint.processStartTicks ||
       observed.executableRealPath !== fingerprint.executableRealPath ||
-      !hasOwnedProfileArgument(observed.args, fingerprint.profilePath)
+      !hasOwnedProfileArgument(
+        observed.args,
+        fingerprint.profilePath,
+        observed.rawTitle
+      )
     ) {
       return "MISMATCH";
     }
