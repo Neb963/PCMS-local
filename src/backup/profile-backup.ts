@@ -330,6 +330,58 @@ async function safeProfileRoot(
   return canonicalProfile;
 }
 
+function profileMarkerMatches(
+  bytes: Uint8Array,
+  personaUid: string
+): boolean {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    return false;
+  }
+  return (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    "format" in parsed &&
+    parsed.format === 1 &&
+    "personaUid" in parsed &&
+    parsed.personaUid === personaUid &&
+    "backend" in parsed &&
+    parsed.backend === "chromium-v1"
+  );
+}
+
+async function requireProfileMarker(
+  profileRoot: string,
+  personaUid: string
+): Promise<void> {
+  const markerPath = join(profileRoot, PROFILE_MARKER);
+  const metadata = await lstat(markerPath).catch(() => null);
+  if (
+    metadata === null ||
+    !metadata.isFile() ||
+    metadata.isSymbolicLink()
+  ) {
+    fail(
+      "PROFILE_BACKUP_PROFILE_UNSAFE",
+      "profile ownership marker is missing or unsafe"
+    );
+  }
+  if (
+    !profileMarkerMatches(
+      await readFile(markerPath),
+      personaUid
+    )
+  ) {
+    fail(
+      "PROFILE_BACKUP_PROFILE_UNSAFE",
+      "profile ownership marker does not match Persona identity"
+    );
+  }
+}
+
 function portablePath(root: string, path: string): string {
   return relative(root, path).split(sep).join("/");
 }
@@ -685,6 +737,22 @@ export async function validatePersonaProfileBackup(
       );
     }
   }
+  const markerPath = join(
+    root,
+    "profile",
+    PROFILE_MARKER
+  );
+  if (
+    !profileMarkerMatches(
+      await readFile(markerPath),
+      manifest.personaUid
+    )
+  ) {
+    fail(
+      "PROFILE_BACKUP_CONTENT_INVALID",
+      "profile backup ownership marker does not match manifest Persona"
+    );
+  }
   return manifest;
 }
 
@@ -757,6 +825,7 @@ export async function createPersonaProfileBackup(
     personasRoot,
     personaUid
   );
+  await requireProfileMarker(profileRoot, personaUid);
   const scanned = await scanProfile(profileRoot, maxBytes);
 
   const after = requireClosedProfile(
