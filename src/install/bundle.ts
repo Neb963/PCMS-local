@@ -29,6 +29,7 @@ export interface PcmsBundleManifest {
     open: "bin/pcms-open";
     node: "runtime/node";
     installer: "install.sh";
+    uninstaller: "bin/pcms-uninstall";
     systemdUserService:
       "share/systemd/user/pcmsd.service";
   }>;
@@ -103,6 +104,8 @@ function parseManifest(value: unknown): PcmsBundleManifest {
     entries["open"] !== "bin/pcms-open" ||
     entries["node"] !== "runtime/node" ||
     entries["installer"] !== "install.sh" ||
+    entries["uninstaller"] !==
+      "bin/pcms-uninstall" ||
     entries["systemdUserService"] !==
       "share/systemd/user/pcmsd.service"
   ) {
@@ -125,6 +128,7 @@ function parseManifest(value: unknown): PcmsBundleManifest {
       open: "bin/pcms-open",
       node: "runtime/node",
       installer: "install.sh",
+      uninstaller: "bin/pcms-uninstall",
       systemdUserService:
         "share/systemd/user/pcmsd.service"
     })
