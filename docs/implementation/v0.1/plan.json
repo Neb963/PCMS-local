@@ -1910,7 +1910,7 @@
       "id": "P045",
       "milestone": "M11",
       "name": "Crash, resource-pressure and scale hardening matrix",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P044"
       ],
