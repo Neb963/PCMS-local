@@ -34,6 +34,20 @@ export interface CoreInventorySearchResult {
   readonly personaUid: string | null;
 }
 
+export interface CoreAttentionItem {
+  readonly taskId: string;
+  readonly taskType: string;
+  readonly title: string;
+  readonly explanation: string;
+  readonly requiredActionKind: string;
+  readonly accountId: string | null;
+  readonly personaUid: string | null;
+  readonly operationId: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly expiresAt: string | null;
+}
+
 export interface CoreStatus {
   readonly service: "pcmsd";
   readonly status: "ready" | "not_ready";
@@ -345,6 +359,59 @@ function parseSearchResult(value: unknown): CoreInventorySearchResult {
   });
 }
 
+function parseAttentionItem(value: unknown): CoreAttentionItem {
+  if (!isRecord(value)) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Attention item is invalid"
+    );
+  }
+  const taskId = value["taskId"];
+  const taskType = value["taskType"];
+  const title = value["title"];
+  const explanation = value["explanation"];
+  const requiredActionKind = value["requiredActionKind"];
+  const accountId = value["accountId"];
+  const personaUid = value["personaUid"];
+  const operationId = value["operationId"];
+  const createdAt = value["createdAt"];
+  const updatedAt = value["updatedAt"];
+  const expiresAt = value["expiresAt"];
+
+  if (
+    typeof taskId !== "string" ||
+    typeof taskType !== "string" ||
+    typeof title !== "string" ||
+    typeof explanation !== "string" ||
+    typeof requiredActionKind !== "string" ||
+    (accountId !== null && typeof accountId !== "string") ||
+    (personaUid !== null && typeof personaUid !== "string") ||
+    (operationId !== null && typeof operationId !== "string") ||
+    typeof createdAt !== "string" ||
+    typeof updatedAt !== "string" ||
+    (expiresAt !== null && typeof expiresAt !== "string")
+  ) {
+    throw new PcmsApiError(
+      "INVALID_API_RESPONSE",
+      "PCMS Attention item fields are invalid"
+    );
+  }
+
+  return Object.freeze({
+    taskId,
+    taskType,
+    title,
+    explanation,
+    requiredActionKind,
+    accountId,
+    personaUid,
+    operationId,
+    createdAt,
+    updatedAt,
+    expiresAt
+  });
+}
+
 function parseErrorPayload(
   value: unknown,
   status: number
@@ -425,6 +492,18 @@ export function createPcmsApiClient(options: PcmsApiClientOptions) {
     },
     async diagnostics(): Promise<CoreDiagnostics> {
       return parseCoreDiagnostics(await requestJson("/api/v1/diagnostics"));
+    },
+    async attention(): Promise<readonly CoreAttentionItem[]> {
+      const payload = await requestJson("/api/v1/attention");
+      if (!isRecord(payload) || !Array.isArray(payload["attention"])) {
+        throw new PcmsApiError(
+          "INVALID_API_RESPONSE",
+          "PCMS Attention response has an invalid shape"
+        );
+      }
+      return Object.freeze(
+        payload["attention"].map(parseAttentionItem)
+      );
     },
     async accounts(): Promise<readonly CoreAccountInventorySummary[]> {
       const payload = await requestJson("/api/v1/accounts");
