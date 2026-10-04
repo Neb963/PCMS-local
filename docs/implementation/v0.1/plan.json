@@ -162,7 +162,7 @@
     {
       "id": "M12",
       "name": "Final live acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P048",
         "P049"
@@ -2052,7 +2052,7 @@
       "id": "P048",
       "milestone": "M12",
       "name": "Live MCP and Mullvad acceptance",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P047"
       ],
@@ -2091,7 +2091,7 @@
       "id": "P049",
       "milestone": "M12",
       "name": "Live Perchance compatibility and final release acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P048"
       ],
