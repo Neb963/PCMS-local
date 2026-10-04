@@ -1044,6 +1044,14 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 ---
 
+## Full V1 scope gate after P043
+
+The v0.1 baseline has explicit unresolved Full-V1 requirements recorded in
+`docs/implementation/v0.1/FULL_V1_GAP_LEDGER.md`. M11 and M12 may harden and
+validate this baseline, but they do not close PARTIAL/DEFERRED ledger rows.
+Release-candidate and final acceptance reports must not describe v0.1 as
+**Full V1** unless a later roadmap/product decision closes every unresolved row.
+
 ## M11 — Hardening, packaging and CI release candidate
 Milestone status: **BLOCKED**
 
