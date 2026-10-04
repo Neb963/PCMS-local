@@ -33,6 +33,12 @@ export function renderAppShell(apiToken: string): string {
       </dl>
     </section>
 
+    <section aria-labelledby="attention-heading">
+      <h2 id="attention-heading">Attention</h2>
+      <p id="attention-state" aria-live="polite">Loading Attention…</p>
+      <ul id="attention"></ul>
+    </section>
+
     <section aria-labelledby="accounts-heading">
       <h2 id="accounts-heading">Accounts</h2>
       <p id="accounts-state" aria-live="polite">Loading Accounts…</p>
@@ -66,6 +72,8 @@ export function renderAppShell(apiToken: string): string {
 export const APP_JS = `const token = document.querySelector('meta[name="pcms-api-token"]')?.content;
 const connection = document.querySelector("#connection");
 const status = document.querySelector("#status");
+const attentionState = document.querySelector("#attention-state");
+const attentionList = document.querySelector("#attention");
 const accountsState = document.querySelector("#accounts-state");
 const accountsList = document.querySelector("#accounts");
 const personaPanel = document.querySelector("#persona-panel");
@@ -149,6 +157,35 @@ async function loadStatus() {
   }
 }
 
+async function loadAttention() {
+  try {
+    const payload = await api("/api/v1/attention");
+    attentionList.replaceChildren();
+    if (payload.attention.length === 0) {
+      attentionState.textContent = "Nothing needs operator action.";
+      return;
+    }
+    attentionState.textContent =
+      `${payload.attention.length} blocking item(s)`;
+    for (const task of payload.attention) {
+      const item = document.createElement("li");
+      const details = document.createElement("span");
+      const context = [
+        task.accountId ? `Account: ${task.accountId}` : null,
+        task.personaUid ? `Persona: ${task.personaUid}` : null,
+        task.operationId ? `Operation: ${task.operationId}` : null
+      ].filter(Boolean);
+      details.textContent =
+        `${task.title} — ${task.explanation} — Action: ${task.requiredActionKind}${context.length === 0 ? "" : ` — ${context.join(" | ")}`}`;
+      item.append(details);
+      attentionList.append(item);
+    }
+  } catch (error) {
+    attentionState.textContent =
+      error instanceof Error ? error.message : "Attention query failed";
+  }
+}
+
 async function loadAccounts() {
   try {
     const payload = await api("/api/v1/accounts");
@@ -221,7 +258,7 @@ searchForm.addEventListener("submit", (event) => {
   })();
 });
 
-await Promise.all([loadStatus(), loadAccounts()]);
+await Promise.all([loadStatus(), loadAttention(), loadAccounts()]);
 `;
 
 export const APP_CSS = `:root {
