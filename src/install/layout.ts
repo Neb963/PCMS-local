@@ -12,6 +12,7 @@ export interface PcmsInstallPaths {
   readonly userBinDir: string;
   readonly cliLink: string;
   readonly openLink: string;
+  readonly uninstallLink: string;
   readonly systemdUserDir: string;
   readonly servicePath: string;
   readonly applicationsDir: string;
@@ -44,6 +45,11 @@ export function resolvePcmsInstallPaths(
     userBinDir: join(localRoot, "bin"),
     cliLink: join(localRoot, "bin", "pcms"),
     openLink: join(localRoot, "bin", "pcms-open"),
+    uninstallLink: join(
+      localRoot,
+      "bin",
+      "pcms-uninstall"
+    ),
     systemdUserDir: join(home, ".config", "systemd", "user"),
     servicePath: join(
       home,
