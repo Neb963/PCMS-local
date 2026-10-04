@@ -84,6 +84,24 @@ ROOT=$(CDPATH= cd -- "$SCRIPT_DIR" && pwd)
 export PCMS_BUNDLE_ROOT="$ROOT"
 exec "$ROOT/runtime/node" "$ROOT/app/dist/install/installer.js" "$@"
 `;
+const uninstallerLauncher = `#!/bin/sh
+set -eu
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
+ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+exec "$ROOT/runtime/node" "$ROOT/app/dist/install/uninstaller.js" "$@"
+`;
+const rootUninstallerLauncher = `#!/bin/sh
+set -eu
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
+ROOT=$(CDPATH= cd -- "$SCRIPT_DIR" && pwd)
+exec "$ROOT/runtime/node" "$ROOT/app/dist/install/uninstaller.js" "$@"
+`;
 
 await writeFile(join(bundleRoot, "bin", "pcmsd"), daemonLauncher, {
   mode: 0o755
@@ -97,6 +115,16 @@ await writeFile(join(bundleRoot, "bin", "pcms-open"), openLauncher, {
 await writeFile(join(bundleRoot, "install.sh"), installerLauncher, {
   mode: 0o755
 });
+await writeFile(
+  join(bundleRoot, "bin", "pcms-uninstall"),
+  uninstallerLauncher,
+  { mode: 0o755 }
+);
+await writeFile(
+  join(bundleRoot, "uninstall.sh"),
+  rootUninstallerLauncher,
+  { mode: 0o755 }
+);
 await writeFile(
   join(bundleRoot, "share", "systemd", "user", "pcmsd.service"),
   PCMSD_USER_SERVICE,
@@ -117,6 +145,7 @@ const manifest = Object.freeze({
     open: "bin/pcms-open",
     node: "runtime/node",
     installer: "install.sh",
+    uninstaller: "bin/pcms-uninstall",
     systemdUserService: "share/systemd/user/pcmsd.service"
   })
 });
