@@ -397,3 +397,110 @@ test("P045 Chromium crash matrix preserves unrelated running Persona", async () 
     await rm(f.root, { recursive: true, force: true });
   }
 });
+
+
+test("P045 60 dormant Personas keep a configured two-browser active subset bounded", async () => {
+  const f = await fixture("pcms-p045-persona-scale-");
+  const manager = f.manager(2);
+  let alpha;
+  let beta;
+
+  try {
+    for (let index = 0; index < 60; index += 1) {
+      await f.lifecycle.allocate(
+        "p045_dormant_" + String(index).padStart(2, "0")
+      );
+    }
+
+    alpha = await manager.launch("p045_active_alpha", {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    beta = await manager.launch("p045_active_beta", {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    await endpointHealthy(alpha);
+    await endpointHealthy(beta);
+
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM persona_browser_runtime
+        WHERE state IN ('STARTING', 'RUNNING', 'DEGRADED')
+      `).get().count,
+      2
+    );
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM personas
+        WHERE profile_state = 'OPEN'
+      `).get().count,
+      2
+    );
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM personas
+        WHERE profile_state = 'CLOSED'
+      `).get().count,
+      60
+    );
+
+    await assert.rejects(
+      () => manager.launch("p045_active_overflow", {
+        headless: true,
+        disableSandboxForTesting: true
+      }),
+      (error) => {
+        assert.ok(error instanceof ChromiumBrowserError);
+        assert.equal(
+          error.code,
+          "PERSONA_BROWSER_CAPACITY_EXCEEDED"
+        );
+        return true;
+      }
+    );
+
+    assert.equal(
+      f.lifecycle.get("p045_active_overflow").profileState,
+      "CLOSED"
+    );
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM persona_browser_runtime
+        WHERE state IN ('STARTING', 'RUNNING', 'DEGRADED')
+      `).get().count,
+      2
+    );
+    await endpointHealthy(alpha);
+    await endpointHealthy(beta);
+
+    await alpha.close();
+    alpha = undefined;
+    await beta.close();
+    beta = undefined;
+
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM persona_browser_runtime
+      `).get().count,
+      0
+    );
+  } finally {
+    if (alpha !== undefined) {
+      await alpha.close().catch(() => undefined);
+    }
+    if (beta !== undefined) {
+      await beta.close().catch(() => undefined);
+    }
+    f.database.close();
+    await rm(f.root, {
+      recursive: true,
+      force: true
+    });
+  }
+});
