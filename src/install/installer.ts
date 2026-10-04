@@ -35,6 +35,8 @@ const MANAGED_CLI_TARGET =
   "../lib/pcms-local/current/bin/pcms";
 const MANAGED_OPEN_TARGET =
   "../lib/pcms-local/current/bin/pcms-open";
+const MANAGED_UNINSTALL_TARGET =
+  "../lib/pcms-local/current/bin/pcms-uninstall";
 
 class InstallerError extends Error {
   public constructor(message: string, cause?: unknown) {
@@ -366,6 +368,11 @@ async function install(
       paths.openLink,
       MANAGED_OPEN_TARGET,
       "desktop launcher"
+    ),
+    preflightManagedLink(
+      paths.uninstallLink,
+      MANAGED_UNINSTALL_TARGET,
+      "uninstaller"
     )
   ]);
 
@@ -418,6 +425,10 @@ async function install(
   await atomicSymlink(
     paths.openLink,
     MANAGED_OPEN_TARGET
+  );
+  await atomicSymlink(
+    paths.uninstallLink,
+    MANAGED_UNINSTALL_TARGET
   );
 
   runSystemctl(["daemon-reload"]);
