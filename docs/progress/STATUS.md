@@ -1,10 +1,10 @@
 # PCMS-local Status
 
 Baseline: **v0.1**  
-Completed through: **P048**  
+Completed through: **P047**  
 Current milestone: **M12 — Final live acceptance**  
-Current phase: **P049 — READY**  
-Next phase: none — P049 is the final v0.1 phase
+Current phase: **P048 — IN_PROGRESS (reopened: session-detach correction)**  
+Next phase: **P049 — BLOCKED (P048)**
 
 Canonical execution view: `ROADMAP.md`.
 

@@ -1488,7 +1488,7 @@
         },
         {
           "id": "T033.3",
-          "name": "Run Account\u2192Persona\u2192synthetic route\u2192emulator\u2192Deployer end-to-end CI acceptance"
+          "name": "Run Account→Persona→synthetic route→emulator→Deployer end-to-end CI acceptance"
         }
       ]
     },
@@ -2052,7 +2052,7 @@
       "id": "P048",
       "milestone": "M12",
       "name": "Live MCP and Mullvad acceptance",
-      "status": "COMPLETE",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P047"
       ],
@@ -2091,7 +2091,7 @@
       "id": "P049",
       "milestone": "M12",
       "name": "Live Perchance compatibility and final release acceptance",
-      "status": "READY",
+      "status": "BLOCKED",
       "dependsOn": [
         "P048"
       ],
