@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P047**
-- Current phase: **P048 — IN_PROGRESS (reopened: session-detach correction)**
+- Current phase: **P048 — IN_PROGRESS**
 - Next phase: **P049 — BLOCKED (P048)**
 - Current milestone: **M12 — Final live acceptance**
 - Final live milestone: **M12 — P048–P049**
@@ -1149,7 +1149,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M12 — Final live acceptance
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P048 — Live MCP and Mullvad acceptance
 Status: **IN_PROGRESS**  
@@ -1162,7 +1162,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not debug broad implementation failures live; feed any discrepancy back into deterministic fixtures first.
 
 **Work:**
-- [x] T048.1 — Run MCP attach/interact/detach on actual PCMS-managed Persona and verify persistence
+- [~] T048.1 — Run MCP attach/interact/detach on actual PCMS-managed Persona and verify persistence
 - [x] T048.2 — Confirm two actual Personas are distinct contexts
 - [x] T048.3 — Run real protected Mullvad egress plus one representative route-loss fail-closed smoke
 

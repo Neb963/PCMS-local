@@ -638,18 +638,37 @@ async function waitForFingerprintGone(
   timeoutMs: number
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
+  // While Chrome tears itself down, a single /proc evidence read can observe
+  // a transient mismatch (the process title churns as the process dies).
+  // Tolerate a short bounded window of mismatched reads: the pid is never
+  // signalled while evidence is ambiguous, and a mismatch that outlasts the
+  // window still fails closed.
+  const mismatchGraceMs = 2_000;
+  let firstMismatchAt: number | null = null;
   while (Date.now() < deadline) {
     const ownership = await inspectChromiumProcessOwnership(fingerprint);
     if (ownership === "GONE") {
       return true;
     }
     if (ownership === "MISMATCH") {
-      throw new ChromiumBrowserError(
-        "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS",
-        "Chromium PID no longer matches persisted ownership evidence"
-      );
+      if (firstMismatchAt === null) {
+        firstMismatchAt = Date.now();
+      } else if (Date.now() - firstMismatchAt > mismatchGraceMs) {
+        throw new ChromiumBrowserError(
+          "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS",
+          "Chromium PID no longer matches persisted ownership evidence"
+        );
+      }
+    } else {
+      firstMismatchAt = null;
     }
     await sleep(25);
+  }
+  if (firstMismatchAt !== null) {
+    throw new ChromiumBrowserError(
+      "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS",
+      "Chromium PID no longer matches persisted ownership evidence"
+    );
   }
   return false;
 }

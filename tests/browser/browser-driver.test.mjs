@@ -272,9 +272,10 @@ test("BrowserDriver reports selected page target loss without closing the Person
     );
     assert.equal(closeResult.success, true);
 
-    // Target destruction completes asynchronously; under load the first
-    // evaluate after the close can still time out before the loss is
-    // observable. Poll briefly until the driver classifies the loss.
+    // Closing the target tears down both the page's session and the target.
+    // Which of the two events the driver observes first decides the
+    // in-flight command's classification, so the contract here is fast
+    // failure with a loss-classified error — never a silent hang.
     let lossError = null;
     const lossDeadline = Date.now() + 5_000;
     while (lossError === null && Date.now() < lossDeadline) {
@@ -282,14 +283,74 @@ test("BrowserDriver reports selected page target loss without closing the Person
         () => null,
         (error) => error
       );
-      if (lossError === null || lossError.code !== "BROWSER_DRIVER_TARGET_LOST") {
+      if (
+        lossError === null ||
+        (lossError.code !== "BROWSER_DRIVER_TARGET_LOST" &&
+          lossError.code !== "BROWSER_DRIVER_SESSION_DETACHED")
+      ) {
         lossError = null;
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
     }
-    assert.ok(lossError !== null, "driver must report the target loss");
-    assert.equal(lossError.code, "BROWSER_DRIVER_TARGET_LOST");
+    assert.ok(lossError !== null, "driver must report the page loss");
+    assert.ok(
+      lossError.code === "BROWSER_DRIVER_TARGET_LOST" ||
+        lossError.code === "BROWSER_DRIVER_SESSION_DETACHED",
+      `unexpected loss classification ${lossError.code}`
+    );
     assert.equal(lossError.targetId, page.targetId);
+
+    assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
+    assert.ok(await f.manager.resolveDevToolsEndpoint(personaUid));
+  } finally {
+    if (connection !== undefined) {
+      await connection.disconnect();
+    }
+    if (session !== undefined) {
+      await session.close();
+    }
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("BrowserDriver keeps a live target usable after an ordinary session detach", async () => {
+  const f = await fixture("pcms-browser-driver-session-detach-");
+  const personaUid = "persona_browser_driver_session_detach";
+  let session;
+  let connection;
+
+  try {
+    session = await f.manager.launch(personaUid, {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    connection = await f.driver.connect(personaUid);
+    const page = await connection.selectPage({ url: "about:blank" });
+    // A target can legitimately carry multiple sessions at once.
+    const second = await connection.selectPage({ targetId: page.targetId });
+    assert.equal(second.targetId, page.targetId);
+
+    // Ordinary detach: the driver's own session for the page goes away,
+    // while the target and the second session stay alive.
+    await page.detach();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await assert.rejects(
+      () => page.evaluate("1 + 1"),
+      (error) => {
+        assert.ok(error instanceof BrowserDriverError);
+        assert.equal(error.code, "BROWSER_DRIVER_SESSION_DETACHED");
+        assert.equal(error.targetId, page.targetId);
+        return true;
+      }
+    );
+
+    // The target itself must not be classified as lost: the surviving
+    // session keeps working and a fresh attach still succeeds.
+    assert.equal(await second.evaluate("40 + 2"), 42);
+    const revived = await connection.selectPage({ targetId: page.targetId });
+    assert.equal(await revived.evaluate("40 + 2"), 42);
 
     assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
     assert.ok(await f.manager.resolveDevToolsEndpoint(personaUid));

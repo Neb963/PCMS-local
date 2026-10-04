@@ -16,7 +16,8 @@ export type BrowserDriverErrorCode =
   | "BROWSER_DRIVER_CONNECTION_LOST"
   | "BROWSER_DRIVER_PROTOCOL_ERROR"
   | "BROWSER_DRIVER_TARGET_NOT_FOUND"
-  | "BROWSER_DRIVER_TARGET_LOST";
+  | "BROWSER_DRIVER_TARGET_LOST"
+  | "BROWSER_DRIVER_SESSION_DETACHED";
 
 export class BrowserDriverError extends Error {
   public constructor(
@@ -104,6 +105,7 @@ interface CdpTargetInfo {
 interface PendingCommand {
   readonly method: string;
   readonly targetId: string | null;
+  readonly sessionId: string | null;
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: Error) => void;
   readonly timer: ReturnType<typeof setTimeout>;
@@ -204,6 +206,7 @@ class CdpConnection {
   readonly #pending = new Map<number, PendingCommand>();
   readonly #lostTargets = new Set<string>();
   readonly #sessionTargets = new Map<string, string>();
+  readonly #detachedSessions = new Set<string>();
   #nextId = 1;
   #closed = false;
 
@@ -292,6 +295,26 @@ class CdpConnection {
     }
   }
 
+  #rejectPendingForDetachedSession(sessionId: string): void {
+    for (const [id, pending] of this.#pending) {
+      if (pending.sessionId !== sessionId) {
+        continue;
+      }
+      this.#finishPending(id);
+      pending.reject(
+        new BrowserDriverError(
+          "BROWSER_DRIVER_SESSION_DETACHED",
+          `CDP session ${sessionId} was detached during ${pending.method}`,
+          this.#personaUid,
+          pending.method,
+          pending.targetId,
+          undefined,
+          "MAY_HAVE_OCCURRED"
+        )
+      );
+    }
+  }
+
   #onMessage(data: unknown): void {
     const message = parseMessage(data);
     if (message === null) {
@@ -308,6 +331,12 @@ class CdpConnection {
         const targetId = (message.params as { targetId?: unknown }).targetId;
         if (typeof targetId === "string") {
           this.#lostTargets.add(targetId);
+          for (const [sessionId, mapped] of this.#sessionTargets) {
+            if (mapped === targetId) {
+              this.#sessionTargets.delete(sessionId);
+              this.#detachedSessions.delete(sessionId);
+            }
+          }
           this.#rejectPendingForLostTarget(targetId);
         }
       }
@@ -319,12 +348,13 @@ class CdpConnection {
       ) {
         const sessionId = (message.params as { sessionId?: unknown }).sessionId;
         if (typeof sessionId === "string") {
-          const targetId = this.#sessionTargets.get(sessionId);
-          if (targetId !== undefined) {
-            this.#lostTargets.add(targetId);
-            this.#sessionTargets.delete(sessionId);
-            this.#rejectPendingForLostTarget(targetId);
-          }
+          this.#sessionTargets.delete(sessionId);
+          // An ordinary session detach says nothing about the target's
+          // lifetime: the target stays alive and attachable, so only the
+          // detached session's own commands are invalidated. Permanent
+          // target loss is only ever recorded from Target.targetDestroyed.
+          this.#detachedSessions.add(sessionId);
+          this.#rejectPendingForDetachedSession(sessionId);
         }
       }
       return;
@@ -396,6 +426,20 @@ class CdpConnection {
         )
       );
     }
+    if (
+      options.sessionId !== undefined &&
+      this.#detachedSessions.has(options.sessionId)
+    ) {
+      return Promise.reject(
+        new BrowserDriverError(
+          "BROWSER_DRIVER_SESSION_DETACHED",
+          `CDP session ${options.sessionId} is detached`,
+          this.#personaUid,
+          method,
+          options.targetId ?? null
+        )
+      );
+    }
 
     const timeoutMs = options.timeoutMs ?? this.#commandTimeoutMs;
     validateTimeout(timeoutMs, "BrowserDriver command timeout");
@@ -458,6 +502,7 @@ class CdpConnection {
       const pending: PendingCommand = {
         method,
         targetId: options.targetId ?? null,
+        sessionId: options.sessionId ?? null,
         resolve,
         reject,
         timer,
@@ -546,6 +591,24 @@ export class BrowserPage {
         ...(options.signal === undefined ? {} : { signal: options.signal }),
         ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
         sessionId: this.sessionId,
+        targetId: this.targetId
+      }
+    );
+  }
+
+  /**
+   * Detach this page's CDP session without closing the browser target: the
+   * Persona stays alive and the target remains attachable.
+   */
+  public async detach(
+    options: BrowserDriverCommandOptions = {}
+  ): Promise<void> {
+    await this.#connection.command(
+      "Target.detachFromTarget",
+      { sessionId: this.sessionId },
+      {
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+        ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
         targetId: this.targetId
       }
     );

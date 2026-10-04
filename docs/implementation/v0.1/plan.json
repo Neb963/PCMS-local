@@ -162,7 +162,7 @@
     {
       "id": "M12",
       "name": "Final live acceptance",
-      "status": "IN_PROGRESS",
+      "status": "READY",
       "phaseIds": [
         "P048",
         "P049"

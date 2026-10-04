@@ -3,8 +3,12 @@
 Baseline: **v0.1**  
 Completed through: **P047**  
 Current milestone: **M12 — Final live acceptance**  
-Current phase: **P048 — IN_PROGRESS (reopened: session-detach correction)**  
+Current phase: **P048 — IN_PROGRESS**  
 Next phase: **P049 — BLOCKED (P048)**
+
+P048 was reopened after closure review found a production regression in the
+session-detach handling introduced by its drift fixes; the reopen is recorded
+in `reports/phases/P048.md`.
 
 Canonical execution view: `ROADMAP.md`.
 
