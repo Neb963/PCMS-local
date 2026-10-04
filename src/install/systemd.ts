@@ -1,4 +1,7 @@
-export const PCMSD_USER_SERVICE = `[Unit]
+import { PCMS_INSTALL_MARKER } from "./layout.js";
+
+export const PCMSD_USER_SERVICE = `${PCMS_INSTALL_MARKER}
+[Unit]
 Description=PCMS Local control plane
 After=network.target
 StartLimitIntervalSec=60

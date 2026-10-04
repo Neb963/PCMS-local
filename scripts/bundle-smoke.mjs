@@ -23,11 +23,22 @@ for (const path of [
   "SHA256SUMS",
   "share/systemd/user/pcmsd.service",
   "app/dist/daemon/main.js",
-  "app/dist/cli/main.js"
+  "app/dist/cli/main.js",
+  "app/dist/install/installer.js",
+  "app/dist/install/open-ui.js",
+  "app/dist/install/uninstaller.js"
 ]) {
   await assertFile(path);
 }
-for (const path of ["runtime/node", "bin/pcmsd", "bin/pcms"]) {
+for (const path of [
+  "runtime/node",
+  "bin/pcmsd",
+  "bin/pcms",
+  "bin/pcms-open",
+  "bin/pcms-uninstall",
+  "install.sh",
+  "uninstall.sh"
+]) {
   await assertFile(path, true);
 }
 
@@ -35,21 +46,42 @@ const manifest = JSON.parse(
   await readFile(join(bundleRoot, "manifest.json"), "utf8")
 );
 if (
-  manifest.bundleFormat !== 1 ||
+  manifest.bundleFormat !== 2 ||
   manifest.platform !== "linux" ||
   manifest.nodeVersion !== process.versions.node ||
+  !Number.isSafeInteger(manifest.schemaVersion) ||
+  manifest.schemaVersion < 1 ||
   manifest.entries?.node !== "runtime/node" ||
   manifest.entries?.daemon !== "bin/pcmsd" ||
-  manifest.entries?.cli !== "bin/pcms"
+  manifest.entries?.cli !== "bin/pcms" ||
+  manifest.entries?.open !== "bin/pcms-open" ||
+  manifest.entries?.installer !== "install.sh" ||
+  manifest.entries?.uninstaller !== "bin/pcms-uninstall"
 ) {
   throw new Error("bundle manifest is inconsistent with the build runtime/layout");
 }
 
-for (const launcher of ["bin/pcmsd", "bin/pcms"]) {
+for (const launcher of [
+  "bin/pcmsd",
+  "bin/pcms",
+  "bin/pcms-open",
+  "bin/pcms-uninstall",
+  "install.sh",
+  "uninstall.sh"
+]) {
   const content = await readFile(join(bundleRoot, launcher), "utf8");
   if (/\b(?:npm|pnpm|yarn|node_modules)\b/u.test(content)) {
     throw new Error(`bundle launcher depends on a package manager: ${launcher}`);
   }
+}
+
+
+const service = await readFile(
+  join(bundleRoot, "share/systemd/user/pcmsd.service"),
+  "utf8"
+);
+if (!service.startsWith("# Managed by PCMS Local installer\n")) {
+  throw new Error("bundle user service is not marked as installer-managed");
 }
 
 const nodeVersion = execFileSync(join(bundleRoot, "runtime", "node"), ["--version"], {
