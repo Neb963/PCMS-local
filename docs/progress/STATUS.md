@@ -31,3 +31,9 @@ on the final P048 re-closure `c3f0946`; correction run #744, reopen checkpoint
   publication is the durability boundary.
 
 Latest completed report: `reports/phases/P048.md`.
+
+**P049 is environment-blocked** (report: `reports/phases/P049.md`, status
+BLOCKED): the live Perchance perimeter answers every POST to its `/api/*`
+surface with an unsolvable 403 managed challenge from all tested Mullvad
+exits, so A12-04/A12-05 cannot be honestly passed. No release sign-off is
+claimed; the deterministic v0.1 tree is fully green.
