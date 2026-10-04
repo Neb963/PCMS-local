@@ -761,5 +761,45 @@ export const CORE_MIGRATIONS: readonly MigrationDefinition[] = Object.freeze([
       CREATE INDEX projects_generator_lookup
         ON projects(generator_local_id);
     `
+  }),
+  Object.freeze({
+    version: 15,
+    id: "0015-recovery-control",
+    sql: `
+      CREATE TABLE recovery_control (
+        singleton INTEGER PRIMARY KEY
+          CHECK (singleton = 1),
+        mode TEXT NOT NULL
+          CHECK (mode IN ('NORMAL', 'RECOVERY_HOLD')),
+        source_backup_id TEXT
+          CHECK (
+            source_backup_id IS NULL OR
+            length(source_backup_id) BETWEEN 1 AND 128
+          ),
+        entered_at TEXT,
+        revision INTEGER NOT NULL DEFAULT 0
+          CHECK (revision >= 0),
+        CHECK (
+          (
+            mode = 'NORMAL' AND
+            source_backup_id IS NULL AND
+            entered_at IS NULL
+          ) OR
+          (
+            mode = 'RECOVERY_HOLD' AND
+            source_backup_id IS NOT NULL AND
+            entered_at IS NOT NULL
+          )
+        )
+      ) STRICT;
+
+      INSERT INTO recovery_control (
+        singleton,
+        mode,
+        source_backup_id,
+        entered_at,
+        revision
+      ) VALUES (1, 'NORMAL', NULL, NULL, 0);
+    `
   })
 ]);

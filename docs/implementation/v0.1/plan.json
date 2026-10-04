@@ -1787,7 +1787,7 @@
       "id": "P042",
       "milestone": "M10",
       "name": "Optional profile backup and recovery-hold restore",
-      "status": "READY",
+      "status": "COMPLETE",
       "dependsOn": [
         "P041"
       ],
@@ -1826,7 +1826,7 @@
       "id": "P043",
       "milestone": "M10",
       "name": "Attention durability, fresh-install restore and V1 gap ledger",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P042"
       ],

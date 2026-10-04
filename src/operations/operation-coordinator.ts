@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 
+import { isRecoveryHeld } from "../recovery/recovery-control.js";
 import {
   ProviderGate,
   type ProviderGateLimits
@@ -145,6 +146,7 @@ export type OperationCoordinatorErrorCode =
   | "OPERATION_INVALID_TRANSITION"
   | "OPERATION_PREFLIGHT_STALE"
   | "OPERATION_MODULE_OWNER_STALE"
+  | "OPERATION_RECOVERY_HOLD"
   | "OPERATION_ROW_INVALID"
   | "OPERATION_EPOCH_EXHAUSTED";
 
@@ -1131,6 +1133,13 @@ export class OperationCoordinator {
         input.operationId,
         input.expectedClaimEpoch
       );
+      if (isRecoveryHeld(this.#database)) {
+        fail(
+          "OPERATION_RECOVERY_HOLD",
+          "mutation dispatch is blocked while Core recovery hold is active",
+          true
+        );
+      }
       if (operation.state !== "PREPARED") {
         fail(
           "OPERATION_INVALID_TRANSITION",
