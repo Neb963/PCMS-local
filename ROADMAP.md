@@ -1053,7 +1053,7 @@ Release-candidate and final acceptance reports must not describe v0.1 as
 **Full V1** unless a later roadmap/product decision closes every unresolved row.
 
 ## M11 — Hardening, packaging and CI release candidate
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P044 — Fedora/Linux installer, desktop launch and uninstall semantics
 Status: **IN_PROGRESS**  
