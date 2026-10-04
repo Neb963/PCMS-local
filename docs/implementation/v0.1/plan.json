@@ -151,7 +151,7 @@
     {
       "id": "M11",
       "name": "Hardening, packaging and CI release candidate",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P044",
         "P045",
@@ -1865,7 +1865,7 @@
       "id": "P044",
       "milestone": "M11",
       "name": "Fedora/Linux installer, desktop launch and uninstall semantics",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P043"
       ],
@@ -1910,7 +1910,7 @@
       "id": "P045",
       "milestone": "M11",
       "name": "Crash, resource-pressure and scale hardening matrix",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P044"
       ],
