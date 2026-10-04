@@ -1958,7 +1958,7 @@
       "id": "P046",
       "milestone": "M11",
       "name": "Security audit, release artifacts and fresh-restore drill",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P045"
       ],
@@ -2004,7 +2004,7 @@
       "id": "P047",
       "milestone": "M11",
       "name": "Full synthetic release-candidate acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P046"
       ],
@@ -2126,4 +2126,4 @@
       ]
     }
   ]
-}
+}\n

@@ -1101,7 +1101,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P045 → COMPLETE; P046 → READY; publish to GitHub; **STOP — do not implement P046.**
 
 ### P046 — Security audit, release artifacts and fresh-restore drill
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P045  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1111,19 +1111,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not treat SBOM/checksum generation as proof of live compatibility.
 
 **Work:**
-- [~] T046.1 — Run secrets/redaction/path/archive security audit
-- [ ] T046.2 — Build Core/modules with checksums, provenance and SBOM/reproducibility evidence
-- [ ] T046.3 — Run fresh-install restore drill preserving unresolved operation/HumanTask state
+- [x] T046.1 — Run secrets/redaction/path/archive security audit
+- [x] T046.2 — Build Core/modules with checksums, provenance and SBOM/reproducibility evidence
+- [x] T046.3 — Run fresh-install restore drill preserving unresolved operation/HumanTask state
 
 **Acceptance:**
-- [ ] A11-09
-- [ ] A11-10
-- [ ] A11-11
+- [x] A11-09
+- [x] A11-10
+- [x] A11-11
 
 **Closure:** relevant tests + CI green; phase report finalized; P046 → COMPLETE; P047 → READY; publish to GitHub; **STOP — do not implement P047.**
 
 ### P047 — Full synthetic release-candidate acceptance
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P046  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
