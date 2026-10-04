@@ -185,6 +185,29 @@ async function copyCoreBackupToStaging(
   }
 }
 
+function profileMarkerMatches(
+  bytes: Uint8Array,
+  personaUid: string
+): boolean {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(bytes).toString("utf8"));
+  } catch {
+    return false;
+  }
+  return (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    !Array.isArray(parsed) &&
+    "format" in parsed &&
+    parsed.format === 1 &&
+    "personaUid" in parsed &&
+    parsed.personaUid === personaUid &&
+    "backend" in parsed &&
+    parsed.backend === "chromium-v1"
+  );
+}
+
 async function profileAssessment(
   database: DatabaseSync,
   liveDataRoot: string
@@ -225,15 +248,20 @@ async function profileAssessment(
       }));
       continue;
     }
+    const structurallySafe =
+      profile.isDirectory() &&
+      !profile.isSymbolicLink() &&
+      marker.isFile() &&
+      !marker.isSymbolicLink();
+    const markerMatches =
+      structurallySafe &&
+      profileMarkerMatches(
+        await readFile(markerPath),
+        personaUid
+      );
     assessments.push(Object.freeze({
       personaUid,
-      status:
-        profile.isDirectory() &&
-        !profile.isSymbolicLink() &&
-        marker.isFile() &&
-        !marker.isSymbolicLink()
-          ? "AVAILABLE"
-          : "UNSAFE"
+      status: markerMatches ? "AVAILABLE" : "UNSAFE"
     }));
   }
   return Object.freeze(assessments);
