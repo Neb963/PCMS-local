@@ -9,6 +9,7 @@ import {
   captureChromiumProcessFingerprint,
   inspectChromiumProcessOwnership
 } from "../../dist/personas/chromium-runtime.js";
+import { waitForFingerprintGone } from "../../dist/personas/chromium-browser.js";
 
 function startFakeChromium(argv) {
   return spawn(process.execPath, argv, { stdio: "ignore" });
@@ -153,6 +154,99 @@ test("prefixed sibling profile path must not satisfy the ownership check", async
         captureChromiumProcessFingerprint(child.pid, process.execPath, profile),
         /ownership evidence/u,
         "a longer sibling path containing the profile path as a prefix must not match"
+      );
+    });
+  } finally {
+    if (child !== undefined) {
+      child.kill("SIGKILL");
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("waitForFingerprintGone tolerates a transient teardown mismatch and observes exit", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pcms-fingerprint-transient-"));
+  let child;
+  try {
+    await withProfile(root, async (profile) => {
+      const goodTitle = [
+        "fake-chromium",
+        `--user-data-dir=${profile}`,
+        "--headless=new",
+        "about:blank"
+      ].join(" ");
+      // Live with matching evidence, then churn the title the way a dying
+      // Chromium does, then exit: the wait must ride out the mismatch.
+      const script = [
+        `process.title = ${JSON.stringify(goodTitle)};`,
+        "setTimeout(() => { process.title = 'fake-chromium shutting down'; }, 700);",
+        "setTimeout(() => { process.exit(0); }, 1200);",
+        "setInterval(() => {}, 1000);"
+      ].join(" ");
+      child = startFakeChromium(["-e", script]);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const fingerprint = await captureChromiumProcessFingerprint(
+        child.pid,
+        process.execPath,
+        profile
+      );
+
+      const startedAt = Date.now();
+      const gone = await waitForFingerprintGone(fingerprint, 5_000);
+      const elapsed = Date.now() - startedAt;
+      assert.equal(gone, true, "the process exit must be observed as GONE");
+      assert.ok(
+        elapsed < 4_500,
+        `exit must be observed without consuming the whole timeout (took ${elapsed}ms)`
+      );
+    });
+  } finally {
+    if (child !== undefined) {
+      child.kill("SIGKILL");
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("waitForFingerprintGone fails closed on a persistent mismatch without signalling the pid", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pcms-fingerprint-persist-"));
+  let child;
+  try {
+    await withProfile(root, async (profile) => {
+      const goodTitle = [
+        "fake-chromium",
+        `--user-data-dir=${profile}`,
+        "--headless=new",
+        "about:blank"
+      ].join(" ");
+      // Matching evidence only briefly, then a permanently different title:
+      // ambiguous ownership must end in a fail-closed error, and the pid
+      // must not be signalled while evidence is ambiguous.
+      const script = [
+        `process.title = ${JSON.stringify(goodTitle)};`,
+        "setTimeout(() => { process.title = 'something-else'; }, 700);",
+        "setInterval(() => {}, 1000);"
+      ].join(" ");
+      child = startFakeChromium(["-e", script]);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const fingerprint = await captureChromiumProcessFingerprint(
+        child.pid,
+        process.execPath,
+        profile
+      );
+
+      await assert.rejects(
+        waitForFingerprintGone(fingerprint, 2_600),
+        (error) => {
+          assert.equal(error.code, "PERSONA_BROWSER_OWNERSHIP_AMBIGUOUS");
+          return true;
+        }
+      );
+      assert.doesNotThrow(
+        () => process.kill(child.pid, 0),
+        "an ambiguous pid must not be signalled during the wait"
       );
     });
   } finally {

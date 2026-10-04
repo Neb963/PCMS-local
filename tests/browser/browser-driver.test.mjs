@@ -332,9 +332,9 @@ test("BrowserDriver keeps a live target usable after an ordinary session detach"
     assert.equal(second.targetId, page.targetId);
 
     // Ordinary detach: the driver's own session for the page goes away,
-    // while the target and the second session stay alive.
+    // while the target and the second session stay alive. detach() records
+    // the session locally on success, so no settle delay is needed.
     await page.detach();
-    await new Promise((resolve) => setTimeout(resolve, 300));
 
     await assert.rejects(
       () => page.evaluate("1 + 1"),

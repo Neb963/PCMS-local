@@ -633,7 +633,9 @@ async function readProfileDevToolsEndpoint(
   });
 }
 
-async function waitForFingerprintGone(
+// Exported for deterministic ownership regression tests that force
+// transient and persistent /proc evidence mismatches with real processes.
+export async function waitForFingerprintGone(
   fingerprint: ChromiumProcessFingerprint,
   timeoutMs: number
 ): Promise<boolean> {

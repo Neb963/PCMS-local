@@ -154,15 +154,27 @@ function protocolErrorMessage(value: unknown): string {
     : "CDP returned an unspecified protocol error";
 }
 
-function isTargetLossProtocolError(value: unknown): boolean {
+// Exported for deterministic loss-classification tests. A "target closed"
+// style error proves the target itself is gone; a session-scoped error
+// ("No session with given id", "Session closed", ...) proves only that one
+// session's channel is gone and must never classify as target loss.
+export function isTargetClosedProtocolError(value: unknown): boolean {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
   const error = value as CdpProtocolError;
   const message = typeof error.message === "string" ? error.message : "";
-  return (
-    error.code === -32001 ||
-    /target closed|session.*closed|no session with given id|target.*gone/iu.test(message)
+  return /target closed|target.*gone/iu.test(message);
+}
+
+export function isSessionDetachedProtocolError(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const error = value as CdpProtocolError;
+  const message = typeof error.message === "string" ? error.message : "";
+  return /session.*closed|no session with given id|session.*not found/iu.test(
+    message
   );
 }
 
@@ -315,6 +327,16 @@ class CdpConnection {
     }
   }
 
+  // An ordinary session detach says nothing about the target's lifetime:
+  // the target stays alive and attachable, so only the detached session's
+  // own commands are invalidated. Permanent target loss is only ever
+  // recorded from Target.targetDestroyed.
+  public markSessionDetached(sessionId: string): void {
+    this.#sessionTargets.delete(sessionId);
+    this.#detachedSessions.add(sessionId);
+    this.#rejectPendingForDetachedSession(sessionId);
+  }
+
   #onMessage(data: unknown): void {
     const message = parseMessage(data);
     if (message === null) {
@@ -348,13 +370,7 @@ class CdpConnection {
       ) {
         const sessionId = (message.params as { sessionId?: unknown }).sessionId;
         if (typeof sessionId === "string") {
-          this.#sessionTargets.delete(sessionId);
-          // An ordinary session detach says nothing about the target's
-          // lifetime: the target stays alive and attachable, so only the
-          // detached session's own commands are invalidated. Permanent
-          // target loss is only ever recorded from Target.targetDestroyed.
-          this.#detachedSessions.add(sessionId);
-          this.#rejectPendingForDetachedSession(sessionId);
+          this.markSessionDetached(sessionId);
         }
       }
       return;
@@ -369,18 +385,28 @@ class CdpConnection {
     }
 
     if (message.error !== undefined) {
+      // A session-scoped protocol error can arrive for a stale session
+      // before the corresponding Target.detachedFromTarget event is
+      // processed; it proves only that this session's channel is gone, so
+      // it must not classify the target as lost.
       const targetLost =
         pending.targetId !== null &&
         (this.#lostTargets.has(pending.targetId) ||
-          isTargetLossProtocolError(message.error));
+          isTargetClosedProtocolError(message.error));
+      const sessionDetached =
+        !targetLost && isSessionDetachedProtocolError(message.error);
       pending.reject(
         new BrowserDriverError(
           targetLost
             ? "BROWSER_DRIVER_TARGET_LOST"
-            : "BROWSER_DRIVER_PROTOCOL_ERROR",
+            : sessionDetached
+              ? "BROWSER_DRIVER_SESSION_DETACHED"
+              : "BROWSER_DRIVER_PROTOCOL_ERROR",
           targetLost
             ? `Browser target ${pending.targetId} disappeared during ${pending.method}`
-            : `CDP ${pending.method} failed: ${protocolErrorMessage(message.error)}`,
+            : sessionDetached
+              ? `CDP session ${pending.sessionId ?? "unknown"} was detached during ${pending.method}`
+              : `CDP ${pending.method} failed: ${protocolErrorMessage(message.error)}`,
           this.#personaUid,
           pending.method,
           pending.targetId,
@@ -612,6 +638,9 @@ export class BrowserPage {
         targetId: this.targetId
       }
     );
+    // The detach succeeded, so this session can no longer carry commands:
+    // record that locally instead of racing the detachedFromTarget event.
+    this.#connection.markSessionDetached(this.sessionId);
   }
 
   public async evaluate(
