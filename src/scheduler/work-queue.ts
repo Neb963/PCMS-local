@@ -152,6 +152,22 @@ export class BoundedWorkQueue<T> {
     return this.#inFlight.has(key);
   }
 
+  #admissionLimit(priority: WorkPriority): number {
+    if (this.#capacity === 1) {
+      return 1;
+    }
+    if (priority === "RECOVERY") {
+      return this.#capacity;
+    }
+    if (priority === "INTERACTIVE") {
+      return this.#capacity - 1;
+    }
+    return Math.max(
+      1,
+      this.#capacity - (this.#capacity >= 3 ? 2 : 1)
+    );
+  }
+
   public enqueue(
     input: EnqueueWorkInput<T>
   ): WorkQueueEnqueueResult {
@@ -174,10 +190,16 @@ export class BoundedWorkQueue<T> {
     if (this.#keys.has(key)) {
       return "COALESCED";
     }
-    if (this.#keys.size >= this.#capacity) {
+    const admissionLimit =
+      this.#admissionLimit(priority);
+    if (this.#keys.size >= admissionLimit) {
       fail(
         "WORK_QUEUE_FULL",
-        "bounded work queue is at capacity",
+        priority === "RECOVERY"
+          ? "bounded work queue is at capacity"
+          : priority === "INTERACTIVE"
+            ? "bounded work queue is preserving recovery capacity"
+            : "bounded work queue is preserving interactive/recovery capacity",
         true
       );
     }
