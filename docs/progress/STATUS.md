@@ -5,9 +5,11 @@ Completed through: **P046**
 Current milestone: **M11 — Hardening, packaging and CI release candidate**  
 Current phase: **P047 — IN_PROGRESS**  
 Next phase: **P048 — BLOCKED (P047)**  
-Current task: **T047.1 — IN_PROGRESS**
+Current task: **T047.3 — IN_PROGRESS**
 
 Canonical execution view: `ROADMAP.md`.
+
+Latest verification: **Actions #731 — SUCCESS** on P047 acceptance checkpoint `e8da572`.
 
 ## Execution model
 

@@ -1133,9 +1133,9 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not claim real Mullvad, real Perchance or MCP compatibility.
 
 **Work:**
-- [~] T047.1 — Run generic DevTools Persona acceptance plus full synthetic routing/fail-closed matrix
-- [ ] T047.2 — Run Perchance emulator read/mutation/reconciliation/drift suite
-- [ ] T047.3 — Publish CI-complete release-candidate report with residual live assumptions
+- [x] T047.1 — Run generic DevTools Persona acceptance plus full synthetic routing/fail-closed matrix
+- [x] T047.2 — Run Perchance emulator read/mutation/reconciliation/drift suite
+- [~] T047.3 — Publish CI-complete release-candidate report with residual live assumptions
 
 **Acceptance:**
 - [ ] A11-05
