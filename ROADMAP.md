@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P043**
-- Current phase: **P044 — READY**
+- Current phase: **P044 — IN_PROGRESS**
 - Next phase: **P045 — BLOCKED (P044)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
@@ -1053,10 +1053,10 @@ Release-candidate and final acceptance reports must not describe v0.1 as
 **Full V1** unless a later roadmap/product decision closes every unresolved row.
 
 ## M11 — Hardening, packaging and CI release candidate
-Milestone status: **READY**
+Milestone status: **IN_PROGRESS**
 
 ### P044 — Fedora/Linux installer, desktop launch and uninstall semantics
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P043  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1066,7 +1066,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not silently purge user data, profiles, router state or configuration.
 
 **Work:**
-- [ ] T044.1 — Build installer/bundle integration with desktop and user-service launch
+- [~] T044.1 — Build installer/bundle integration with desktop and user-service launch
 - [ ] T044.2 — Implement update/uninstall preserving data by default with explicit purge
 - [ ] T044.3 — Run clean Fedora/Linux install/start/uninstall smoke in CI
 
