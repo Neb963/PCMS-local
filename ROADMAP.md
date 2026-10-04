@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P045**
-- Current phase: **P046 — IN_PROGRESS**
-- Next phase: **P047 — BLOCKED (P046)**
+- Completed through: **P046**
+- Current phase: **P047 — READY**
+- Next phase: **P048 — BLOCKED (P047)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
 
