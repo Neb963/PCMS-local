@@ -295,7 +295,7 @@ test("P045 queue flood and hung module preserve recovery interactive and daemon 
         assert.equal(error.retryable, true);
         assert.match(
           error.message,
-          /preserving interactive/recovery capacity/
+          /preserving interactive\/recovery capacity/
         );
         return true;
       }
