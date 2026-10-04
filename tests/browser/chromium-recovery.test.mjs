@@ -309,3 +309,91 @@ test("active Persona cap rejects excess work without killing the running Persona
     await rm(f.root, { recursive: true, force: true });
   }
 });
+
+
+test("P045 Chromium crash matrix preserves unrelated running Persona", async () => {
+  const f = await fixture("pcms-p045-chromium-isolation-");
+  const manager = f.manager(2);
+  let alpha;
+  let beta;
+
+  try {
+    alpha = await manager.launch("persona_p045_alpha", {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    beta = await manager.launch("persona_p045_beta", {
+      headless: true,
+      disableSandboxForTesting: true
+    });
+    await endpointHealthy(alpha);
+    await endpointHealthy(beta);
+
+    const alphaPid = alpha.pid;
+    const betaPid = beta.pid;
+    process.kill(alphaPid, "SIGKILL");
+    await waitForProcessExit(alphaPid);
+
+    const deadline = Date.now() + 5_000;
+    while (
+      Date.now() < deadline &&
+      f.lifecycle.get("persona_p045_alpha").profileState !== "CLOSED"
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    assert.equal(
+      f.lifecycle.get("persona_p045_alpha").profileState,
+      "CLOSED"
+    );
+    assert.equal(
+      f.database.prepare(`
+        SELECT COUNT(*) AS count
+        FROM persona_browser_runtime
+        WHERE persona_uid = ?
+      `).get("persona_p045_alpha").count,
+      0
+    );
+
+    process.kill(betaPid, 0);
+    await endpointHealthy(beta);
+    assert.equal(
+      f.lifecycle.get("persona_p045_beta").profileState,
+      "OPEN"
+    );
+    assert.equal(
+      f.database.prepare(`
+        SELECT state
+        FROM persona_browser_runtime
+        WHERE persona_uid = ?
+      `).get("persona_p045_beta").state,
+      "RUNNING"
+    );
+
+    const reopened = await manager.launch(
+      "persona_p045_alpha",
+      {
+        headless: true,
+        disableSandboxForTesting: true
+      }
+    );
+    alpha = reopened;
+    assert.notEqual(alpha.pid, alphaPid);
+    await endpointHealthy(alpha);
+    await endpointHealthy(beta);
+
+    await alpha.close();
+    alpha = undefined;
+    await beta.close();
+    beta = undefined;
+  } finally {
+    if (alpha !== undefined) {
+      await alpha.close().catch(() => undefined);
+    }
+    if (beta !== undefined) {
+      await beta.close().catch(() => undefined);
+    }
+    f.database.close();
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
