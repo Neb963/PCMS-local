@@ -5,11 +5,19 @@ import {
   PCMSD_USER_SERVICE,
   PCMSD_USER_SERVICE_INSTALL_PATH
 } from "../../dist/install/systemd.js";
+import {
+  PCMS_INSTALL_MARKER
+} from "../../dist/install/layout.js";
 
 test("user-systemd service launches the installed bundle with bounded restart policy", () => {
   assert.equal(
     PCMSD_USER_SERVICE_INSTALL_PATH,
     "~/.config/systemd/user/pcmsd.service"
+  );
+  assert.ok(
+    PCMSD_USER_SERVICE.startsWith(
+      PCMS_INSTALL_MARKER + "\n"
+    )
   );
   assert.match(
     PCMSD_USER_SERVICE,
