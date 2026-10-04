@@ -271,17 +271,25 @@ test("BrowserDriver reports selected page target loss without closing the Person
       { targetId: page.targetId }
     );
     assert.equal(closeResult.success, true);
-    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    await assert.rejects(
-      () => page.evaluate("1 + 1"),
-      (error) => {
-        assert.ok(error instanceof BrowserDriverError);
-        assert.equal(error.code, "BROWSER_DRIVER_TARGET_LOST");
-        assert.equal(error.targetId, page.targetId);
-        return true;
+    // Target destruction completes asynchronously; under load the first
+    // evaluate after the close can still time out before the loss is
+    // observable. Poll briefly until the driver classifies the loss.
+    let lossError = null;
+    const lossDeadline = Date.now() + 5_000;
+    while (lossError === null && Date.now() < lossDeadline) {
+      lossError = await page.evaluate("1 + 1").then(
+        () => null,
+        (error) => error
+      );
+      if (lossError === null || lossError.code !== "BROWSER_DRIVER_TARGET_LOST") {
+        lossError = null;
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-    );
+    }
+    assert.ok(lossError !== null, "driver must report the target loss");
+    assert.equal(lossError.code, "BROWSER_DRIVER_TARGET_LOST");
+    assert.equal(lossError.targetId, page.targetId);
 
     assert.equal(f.lifecycle.get(personaUid).profileState, "OPEN");
     assert.ok(await f.manager.resolveDevToolsEndpoint(personaUid));

@@ -94,6 +94,47 @@ test("NUL-separated Chromium cmdline keeps verifying as the owned Persona proces
   }
 });
 
+test("transient argv state during the process-title rewrite recovers via bounded re-reads", async () => {
+  const root = await mkdtemp(join(tmpdir(), "pcms-title-transient-"));
+  let child;
+  try {
+    await withProfile(root, async (profile) => {
+      const finalTitle = [
+        "fake-chromium",
+        `--user-data-dir=${profile}`,
+        "--headless=new",
+        "about:blank"
+      ].join(" ");
+      // Start with a title that does not yet identify the profile, then
+      // finish the rewrite shortly afterwards: a capture racing the rewrite
+      // must re-read rather than fail the launch.
+      const transientScript = [
+        "process.title = 'fake-chromium starting';",
+        `setTimeout(() => { process.title = ${JSON.stringify(finalTitle)}; }, 120);`,
+        "setInterval(() => {}, 1000);"
+      ].join(" ");
+      child = startFakeChromium(["-e", transientScript]);
+      await new Promise((resolve) => setTimeout(resolve, 30));
+
+      const fingerprint = await captureChromiumProcessFingerprint(
+        child.pid,
+        process.execPath,
+        profile
+      );
+      assert.equal(
+        await inspectChromiumProcessOwnership(fingerprint),
+        "OWNED",
+        "capture must tolerate a mid-rewrite argv read by re-reading evidence"
+      );
+    });
+  } finally {
+    if (child !== undefined) {
+      child.kill("SIGKILL");
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("prefixed sibling profile path must not satisfy the ownership check", async () => {
   const root = await mkdtemp(join(tmpdir(), "pcms-title-boundary-"));
   let child;

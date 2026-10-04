@@ -88,8 +88,11 @@ async function selectLoadedPage(connection, url) {
         targetId: target.targetId
       });
       while (Date.now() < deadline) {
+        // Require the in-page location to match: the target URL is set at
+        // navigation start and the previous document can still be current.
+        const location = await page.evaluate("location.href");
         const readyState = await page.evaluate("document.readyState");
-        if (readyState === "complete" || readyState === "interactive") {
+        if (location === url && readyState === "complete") {
           return page;
         }
         await new Promise((resolve) => setTimeout(resolve, 25));

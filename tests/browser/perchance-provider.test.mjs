@@ -119,8 +119,13 @@ async function selectLoadedPage(connection, url) {
   assert.ok(page, "emulator page target must become available");
 
   while (Date.now() < deadline) {
+    // Chrome sets the target URL at navigation start, so the matched target
+    // can still expose the previous document (about:blank also reports
+    // readyState "complete"). Require the in-page location to match so page
+    // globals and storage belong to the emulator document itself.
+    const location = await page.evaluate("location.href");
     const readyState = await page.evaluate("document.readyState");
-    if (readyState === "complete" || readyState === "interactive") {
+    if (location === url && readyState === "complete") {
       return page;
     }
     await new Promise((resolve) => setTimeout(resolve, 25));

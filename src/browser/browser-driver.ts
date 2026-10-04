@@ -272,6 +272,26 @@ class CdpConnection {
     }
   }
 
+  #rejectPendingForLostTarget(targetId: string): void {
+    for (const [id, pending] of this.#pending) {
+      if (pending.targetId !== targetId) {
+        continue;
+      }
+      this.#finishPending(id);
+      pending.reject(
+        new BrowserDriverError(
+          "BROWSER_DRIVER_TARGET_LOST",
+          `Browser target ${targetId} disappeared during ${pending.method}`,
+          this.#personaUid,
+          pending.method,
+          targetId,
+          undefined,
+          "MAY_HAVE_OCCURRED"
+        )
+      );
+    }
+  }
+
   #onMessage(data: unknown): void {
     const message = parseMessage(data);
     if (message === null) {
@@ -288,6 +308,7 @@ class CdpConnection {
         const targetId = (message.params as { targetId?: unknown }).targetId;
         if (typeof targetId === "string") {
           this.#lostTargets.add(targetId);
+          this.#rejectPendingForLostTarget(targetId);
         }
       }
       if (
@@ -302,6 +323,7 @@ class CdpConnection {
           if (targetId !== undefined) {
             this.#lostTargets.add(targetId);
             this.#sessionTargets.delete(sessionId);
+            this.#rejectPendingForLostTarget(targetId);
           }
         }
       }

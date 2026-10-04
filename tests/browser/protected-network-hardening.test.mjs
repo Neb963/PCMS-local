@@ -233,24 +233,35 @@ test("protected Chromium enforces DNS, QUIC and WebRTC network hardening", async
       }
     });
 
-    const commandLine = (await readFile(`/proc/${session.pid}/cmdline`))
-      .toString("utf8")
-      .split("\0")
-      .filter(Boolean);
-    assert.ok(
-      commandLine.includes(`--proxy-server=socks5://127.0.0.1:${socks.port}`)
-    );
-    assert.ok(
-      commandLine.includes(
-        "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1"
-      )
-    );
-    assert.ok(commandLine.includes("--disable-quic"));
-    assert.ok(
-      commandLine.includes(
-        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"
-      )
-    );
+    // Chromium rewrites /proc/<pid>/cmdline into one space-joined entry on
+    // hosts that permit the process-title rewrite, and a read racing that
+    // rewrite can observe a torn mixture (joined content plus leftover NUL
+    // bytes). Match against the NUL-normalized content with substrings:
+    // joined form word-splitting cannot preserve flags that embed spaces,
+    // and the expected flag strings are unique per launch.
+    const expectedFlags = [
+      `--proxy-server=socks5://127.0.0.1:${socks.port}`,
+      "--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1",
+      "--disable-quic",
+      "--force-webrtc-ip-handling-policy=disable_non_proxied_udp"
+    ];
+    let normalizedCommandLine = "";
+    const flagsDeadline = Date.now() + 5_000;
+    while (Date.now() < flagsDeadline) {
+      const rawCommandLine = (await readFile(`/proc/${session.pid}/cmdline`))
+        .toString("utf8");
+      normalizedCommandLine = rawCommandLine.replaceAll("\0", " ");
+      if (expectedFlags.every((flag) => normalizedCommandLine.includes(flag))) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    for (const flag of expectedFlags) {
+      assert.ok(
+        normalizedCommandLine.includes(flag),
+        `launched Chromium must carry ${flag}; observed ${JSON.stringify(normalizedCommandLine)}`
+      );
+    }
 
     client = await connectCdp(session.devTools.webSocketUrl);
     target = await openTarget(client, `http://${targetHost}/dns-through-socks`);

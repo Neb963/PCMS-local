@@ -192,6 +192,13 @@ async function readProcessEvidence(pid: number): Promise<{
   });
 }
 
+const CAPTURE_EVIDENCE_ATTEMPTS = 8;
+const CAPTURE_EVIDENCE_RETRY_DELAY_MS = 25;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function captureChromiumProcessFingerprint(
   pid: number,
   executablePath: string,
@@ -201,27 +208,41 @@ export async function captureChromiumProcessFingerprint(
     throw new RangeError("Chromium PID must be a positive safe integer");
   }
 
-  const [configuredExecutable, canonicalProfile, observed] = await Promise.all([
-    realpath(executablePath),
-    realpath(profilePath),
-    readProcessEvidence(pid)
-  ]);
-
-  if (
-    observed.executableRealPath !== configuredExecutable ||
-    !hasOwnedProfileArgument(observed.args, canonicalProfile, observed.rawTitle)
+  // Chromium rewrites its Linux process title early in startup, and a
+  // /proc/<pid>/cmdline read racing that rewrite can observe inconsistent
+  // argv bytes. This manager spawned the process itself moments ago, so
+  // re-read the evidence briefly before failing closed.
+  for (
+    let attempt = 1;
+    ;
+    attempt += 1
   ) {
-    throw new Error(
-      "Spawned Chromium process does not match the configured executable/profile ownership evidence"
-    );
-  }
+    const [configuredExecutable, canonicalProfile, observed] =
+      await Promise.all([
+        realpath(executablePath),
+        realpath(profilePath),
+        readProcessEvidence(pid)
+      ]);
 
-  return Object.freeze({
-    pid,
-    processStartTicks: observed.processStartTicks,
-    executableRealPath: configuredExecutable,
-    profilePath: canonicalProfile
-  });
+    if (
+      observed.executableRealPath === configuredExecutable &&
+      hasOwnedProfileArgument(observed.args, canonicalProfile, observed.rawTitle)
+    ) {
+      return Object.freeze({
+        pid,
+        processStartTicks: observed.processStartTicks,
+        executableRealPath: configuredExecutable,
+        profilePath: canonicalProfile
+      });
+    }
+
+    if (attempt >= CAPTURE_EVIDENCE_ATTEMPTS) {
+      throw new Error(
+        "Spawned Chromium process does not match the configured executable/profile ownership evidence"
+      );
+    }
+    await delay(CAPTURE_EVIDENCE_RETRY_DELAY_MS);
+  }
 }
 
 export async function inspectChromiumProcessOwnership(
