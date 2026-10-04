@@ -14,6 +14,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PCMSD_USER_SERVICE } from "../dist/install/systemd.js";
+import { CORE_MIGRATIONS } from "../dist/storage/core-migrations.js";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const buildRoot = join(repositoryRoot, "build");
@@ -64,11 +65,36 @@ esac
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 exec "$ROOT/runtime/node" "$ROOT/app/dist/cli/main.js" "$@"
 `;
+const openLauncher = `#!/bin/sh
+set -eu
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
+ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+exec "$ROOT/runtime/node" "$ROOT/app/dist/install/open-ui.js" "$@"
+`;
+const installerLauncher = `#!/bin/sh
+set -eu
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
+ROOT=$(CDPATH= cd -- "$SCRIPT_DIR" && pwd)
+export PCMS_BUNDLE_ROOT="$ROOT"
+exec "$ROOT/runtime/node" "$ROOT/app/dist/install/installer.js" "$@"
+`;
 
 await writeFile(join(bundleRoot, "bin", "pcmsd"), daemonLauncher, {
   mode: 0o755
 });
 await writeFile(join(bundleRoot, "bin", "pcms"), cliLauncher, {
+  mode: 0o755
+});
+await writeFile(join(bundleRoot, "bin", "pcms-open"), openLauncher, {
+  mode: 0o755
+});
+await writeFile(join(bundleRoot, "install.sh"), installerLauncher, {
   mode: 0o755
 });
 await writeFile(
@@ -78,16 +104,19 @@ await writeFile(
 );
 
 const manifest = Object.freeze({
-  bundleFormat: 1,
+  bundleFormat: 2,
   name: "pcms-local",
   packageVersion: packageJson.version,
   nodeVersion: process.versions.node,
   platform: process.platform,
   arch: process.arch,
+  schemaVersion: CORE_MIGRATIONS.length,
   entries: Object.freeze({
     daemon: "bin/pcmsd",
     cli: "bin/pcms",
+    open: "bin/pcms-open",
     node: "runtime/node",
+    installer: "install.sh",
     systemdUserService: "share/systemd/user/pcmsd.service"
   })
 });
