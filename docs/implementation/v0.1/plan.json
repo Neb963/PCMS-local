@@ -141,7 +141,7 @@
     {
       "id": "M10",
       "name": "Statistics, backup, restore and operational UX",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P041",
         "P042",
@@ -151,7 +151,7 @@
     {
       "id": "M11",
       "name": "Hardening, packaging and CI release candidate",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P044",
         "P045",
@@ -1826,7 +1826,7 @@
       "id": "P043",
       "milestone": "M10",
       "name": "Attention durability, fresh-install restore and V1 gap ledger",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P042"
       ],
@@ -1865,7 +1865,7 @@
       "id": "P044",
       "milestone": "M11",
       "name": "Fedora/Linux installer, desktop launch and uninstall semantics",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P043"
       ],

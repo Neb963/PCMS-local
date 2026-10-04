@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P042**
-- Current phase: **P043 — IN_PROGRESS**
-- Next phase: **P044 — BLOCKED (P043)**
-- Current milestone: **M10 — Statistics, backup, restore and operational UX**
+- Completed through: **P043**
+- Current phase: **P044 — READY**
+- Next phase: **P045 — BLOCKED (P044)**
+- Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -974,7 +974,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M10 — Statistics, backup, restore and operational UX
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P041 — Statistics and coherent Core/module backup
 Status: **COMPLETE**  
@@ -1021,7 +1021,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P042 → COMPLETE; P043 → READY; publish to GitHub; **STOP — do not implement P043.**
 
 ### P043 — Attention durability, fresh-install restore and V1 gap ledger
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P042  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1053,10 +1053,10 @@ Release-candidate and final acceptance reports must not describe v0.1 as
 **Full V1** unless a later roadmap/product decision closes every unresolved row.
 
 ## M11 — Hardening, packaging and CI release candidate
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P044 — Fedora/Linux installer, desktop launch and uninstall semantics
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P043  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
