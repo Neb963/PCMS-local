@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P046**
-- Current phase: **P047 — READY**
+- Current phase: **P047 — IN_PROGRESS**
 - Next phase: **P048 — BLOCKED (P047)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
@@ -1123,7 +1123,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P046 → COMPLETE; P047 → READY; publish to GitHub; **STOP — do not implement P047.**
 
 ### P047 — Full synthetic release-candidate acceptance
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P046  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1133,7 +1133,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not claim real Mullvad, real Perchance or MCP compatibility.
 
 **Work:**
-- [ ] T047.1 — Run generic DevTools Persona acceptance plus full synthetic routing/fail-closed matrix
+- [~] T047.1 — Run generic DevTools Persona acceptance plus full synthetic routing/fail-closed matrix
 - [ ] T047.2 — Run Perchance emulator read/mutation/reconciliation/drift suite
 - [ ] T047.3 — Publish CI-complete release-candidate report with residual live assumptions
 

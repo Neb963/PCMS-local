@@ -2004,7 +2004,7 @@
       "id": "P047",
       "milestone": "M11",
       "name": "Full synthetic release-candidate acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P046"
       ],
