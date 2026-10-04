@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P048**
-- Current phase: **P049 — READY**
-- Next phase: none — P049 is the final v0.1 phase
+- Completed through: **P047**
+- Current phase: **P048 — IN_PROGRESS**
+- Next phase: **P049 — BLOCKED (P048)**
 - Current milestone: **M12 — Final live acceptance**
 - Final live milestone: **M12 — P048–P049**
 
@@ -1149,10 +1149,10 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M12 — Final live acceptance
-Milestone status: **IN_PROGRESS**
+Milestone status: **READY**
 
 ### P048 — Live MCP and Mullvad acceptance
-Status: **COMPLETE**  
+Status: **IN_PROGRESS**  
 Depends on: P047  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1162,7 +1162,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not debug broad implementation failures live; feed any discrepancy back into deterministic fixtures first.
 
 **Work:**
-- [x] T048.1 — Run MCP attach/interact/detach on actual PCMS-managed Persona and verify persistence
+- [~] T048.1 — Run MCP attach/interact/detach on actual PCMS-managed Persona and verify persistence
 - [x] T048.2 — Confirm two actual Personas are distinct contexts
 - [x] T048.3 — Run real protected Mullvad egress plus one representative route-loss fail-closed smoke
 
@@ -1174,7 +1174,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P048 → COMPLETE; P049 → READY; publish to GitHub; **STOP — do not implement P049.**
 
 ### P049 — Live Perchance compatibility and final release acceptance
-Status: **READY**  
+Status: **BLOCKED**  
 Depends on: P048  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
