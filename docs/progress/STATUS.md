@@ -8,10 +8,10 @@ Next phase: none — P049 is the final v0.1 phase
 
 Canonical execution view: `ROADMAP.md`.
 
-Latest verification: **Actions run #744 (`37211270398`) — SUCCESS** on the
-second P048 review correction `0581444`; the reopen checkpoint carried run
-#743 and the first closure run #742. P048 evidence and CI references are
-recorded in `reports/phases/P048.md`.
+Latest P048 closure verification: **Actions run #745 (`37211464954`) — SUCCESS**
+on the final P048 re-closure `c3f0946`; correction run #744, reopen checkpoint
+#743, and first reviewed closure #742 are recorded in
+`reports/phases/P048.md`.
 
 ## Execution model
 
