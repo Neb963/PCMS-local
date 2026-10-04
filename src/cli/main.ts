@@ -10,6 +10,7 @@ import { PcmsApiError, createPcmsApiClient } from "../client/api-client.js";
 type CliArguments =
   | Readonly<{ command: "status"; json: boolean }>
   | Readonly<{ command: "diagnostics"; json: boolean }>
+  | Readonly<{ command: "attention-list"; json: boolean }>
   | Readonly<{ command: "accounts-list"; json: boolean }>
   | Readonly<{
       command: "account-persona";
@@ -35,6 +36,7 @@ const USAGE = [
   "Usage:",
   "  pcms status [--json]",
   "  pcms diagnostics [--json]",
+  "  pcms attention list [--json]",
   "  pcms accounts list [--json]",
   "  pcms accounts persona <account-id> [--json]",
   "  pcms search <query> [--json]"
@@ -49,6 +51,13 @@ function parseArguments(argv: readonly string[]): CliArguments {
   }
   if (positional.length === 1 && positional[0] === "diagnostics") {
     return Object.freeze({ command: "diagnostics", json });
+  }
+  if (
+    positional.length === 2 &&
+    positional[0] === "attention" &&
+    positional[1] === "list"
+  ) {
+    return Object.freeze({ command: "attention-list", json });
   }
   if (
     positional.length === 2 &&
@@ -166,6 +175,32 @@ async function run(): Promise<void> {
           `Cache: ${diagnostics.paths.cacheRoot}`
         ].join("\n") + "\n"
       );
+      return;
+    }
+
+    if (args.command === "attention-list") {
+      const attention = await client.attention();
+      if (args.json) {
+        process.stdout.write(
+          `${JSON.stringify({ ok: true, attention })}\n`
+        );
+        return;
+      }
+
+      if (attention.length === 0) {
+        process.stdout.write("No Attention items.\n");
+        return;
+      }
+      for (const item of attention) {
+        const context = [
+          item.accountId === null ? null : `Account: ${item.accountId}`,
+          item.personaUid === null ? null : `Persona: ${item.personaUid}`,
+          item.operationId === null ? null : `Operation: ${item.operationId}`
+        ].filter((value): value is string => value !== null);
+        process.stdout.write(
+          `${item.taskId}\t${item.title}\tAction: ${item.requiredActionKind}${context.length === 0 ? "" : `\t${context.join(" | ")}`}\n`
+        );
+      }
       return;
     }
 
