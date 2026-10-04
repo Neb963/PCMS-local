@@ -50,11 +50,18 @@ test("P043 Full V1 gap ledger enumerates every PRD section 24 requirement with a
   );
   assert.ok(boundary.length > 0);
 
+  const requirementLines = boundary
+    .split("\n")
+    .filter((line) => line.startsWith("- "));
+  const requirementNames = requirementLines.map(
+    (line) => line.slice(2).replace(/[;.]$/, "")
+  );
+  assert.deepEqual(
+    requirementNames,
+    [...EXPECTED.keys()]
+  );
+
   for (const [requirement, status] of EXPECTED) {
-    assert.match(
-      boundary,
-      new RegExp("- " + escapeRegex(requirement) + ";")
-    );
     assert.match(
       ledger,
       new RegExp(
@@ -66,11 +73,6 @@ test("P043 Full V1 gap ledger enumerates every PRD section 24 requirement with a
       )
     );
   }
-
-  const requirementLines = boundary
-    .split("\n")
-    .filter((line) => line.startsWith("- "));
-  assert.equal(requirementLines.length, EXPECTED.size);
 
   assert.match(
     ledger,
