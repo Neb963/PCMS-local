@@ -208,6 +208,9 @@ test("P044 clean user install, update, desktop launch and uninstall preserve dat
   const env = {
     ...process.env,
     HOME: home,
+    XDG_CONFIG_HOME: join(home, ".config"),
+    XDG_DATA_HOME: join(home, ".local", "share"),
+    XDG_CACHE_HOME: join(home, ".cache"),
     PCMS_PORT: String(port),
     PCMS_FAKE_BIN: fakeBin,
     PCMS_FAKE_SYSTEMCTL_LOG: join(
