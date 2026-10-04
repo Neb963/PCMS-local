@@ -43,7 +43,7 @@
     "release:smoke": "npm run release:build --silent && node --test tests/integration/p046-release-artifacts.test.mjs"
   },
   "devDependencies": {
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "@types/node": "24.10.0"
   },
   "bin": {
