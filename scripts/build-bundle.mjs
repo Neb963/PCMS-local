@@ -49,38 +49,60 @@ await chmod(join(bundleRoot, "runtime", "node"), 0o755);
 
 const daemonLauncher = `#!/bin/sh
 set -eu
-SELF=$(readlink -f -- "$0")
-SCRIPT_DIR=\${SELF%/*}
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 exec "$ROOT/runtime/node" "$ROOT/app/dist/daemon/main.js" "$@"
 `;
 const cliLauncher = `#!/bin/sh
 set -eu
-SELF=$(readlink -f -- "$0")
-SCRIPT_DIR=\${SELF%/*}
-ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+if [ "$0" = "$HOME/.local/bin/pcms" ]; then
+  ROOT="$HOME/.local/lib/pcms-local/current"
+else
+  case "$0" in
+    */*) SCRIPT_DIR=\${0%/*} ;;
+    *) SCRIPT_DIR=. ;;
+  esac
+  ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+fi
 exec "$ROOT/runtime/node" "$ROOT/app/dist/cli/main.js" "$@"
 `;
 const openLauncher = `#!/bin/sh
 set -eu
-SELF=$(readlink -f -- "$0")
-SCRIPT_DIR=\${SELF%/*}
-ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+if [ "$0" = "$HOME/.local/bin/pcms-open" ]; then
+  ROOT="$HOME/.local/lib/pcms-local/current"
+else
+  case "$0" in
+    */*) SCRIPT_DIR=\${0%/*} ;;
+    *) SCRIPT_DIR=. ;;
+  esac
+  ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+fi
 exec "$ROOT/runtime/node" "$ROOT/app/dist/install/open-ui.js" "$@"
 `;
 const installerLauncher = `#!/bin/sh
 set -eu
-SELF=$(readlink -f -- "$0")
-SCRIPT_DIR=\${SELF%/*}
+case "$0" in
+  */*) SCRIPT_DIR=\${0%/*} ;;
+  *) SCRIPT_DIR=. ;;
+esac
 ROOT=$(CDPATH= cd -- "$SCRIPT_DIR" && pwd)
 export PCMS_BUNDLE_ROOT="$ROOT"
 exec "$ROOT/runtime/node" "$ROOT/app/dist/install/installer.js" "$@"
 `;
 const uninstallerLauncher = `#!/bin/sh
 set -eu
-SELF=$(readlink -f -- "$0")
-SCRIPT_DIR=\${SELF%/*}
-ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+if [ "$0" = "$HOME/.local/bin/pcms-uninstall" ]; then
+  ROOT="$HOME/.local/lib/pcms-local/current"
+else
+  case "$0" in
+    */*) SCRIPT_DIR=\${0%/*} ;;
+    *) SCRIPT_DIR=. ;;
+  esac
+  ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+fi
 exec "$ROOT/runtime/node" "$ROOT/app/dist/install/uninstaller.js" "$@"
 `;
 const rootUninstallerLauncher = `#!/bin/sh
