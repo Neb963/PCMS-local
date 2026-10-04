@@ -157,7 +157,7 @@ test("P043 Attention survives daemon restart and is exposed independently of not
         FROM human_tasks
         WHERE task_id = ?
       `).get("attention-recovery-conflict");
-      assert.deepEqual(row, {
+      assert.deepEqual({ ...row }, {
         status: "OPEN",
         title: "Review restored provider state",
         required_action_kind: "REVIEW_RECOVERY"
