@@ -38,7 +38,9 @@
     "pcms": "npm run build --silent && node dist/cli/main.js",
     "bundle:build": "npm run build --silent && node scripts/build-bundle.mjs",
     "bundle:smoke": "npm run bundle:build --silent && node scripts/bundle-smoke.mjs",
-    "test:browser": "npm run build --silent && node --test tests/browser/*.test.mjs"
+    "test:browser": "npm run build --silent && node --test tests/browser/*.test.mjs",
+    "release:build": "npm run build --silent && node scripts/build-bundle.mjs && node scripts/build-release.mjs",
+    "release:smoke": "npm run release:build --silent && node --test tests/integration/p046-release-artifacts.test.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3",
