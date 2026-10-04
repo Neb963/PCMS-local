@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P042**
-- Current phase: **P043 — READY**
+- Current phase: **P043 — IN_PROGRESS**
 - Next phase: **P044 — BLOCKED (P043)**
 - Current milestone: **M10 — Statistics, backup, restore and operational UX**
 - Final live milestone: **M12 — P048–P049**
@@ -1021,7 +1021,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P042 → COMPLETE; P043 → READY; publish to GitHub; **STOP — do not implement P043.**
 
 ### P043 — Attention durability, fresh-install restore and V1 gap ledger
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P042  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1031,7 +1031,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not hide unresolved Workflow/Project/workspace requirements.
 
 **Work:**
-- [ ] T043.1 — Persist Attention/HumanTask state across restart independent of notifications
+- [~] T043.1 — Persist Attention/HumanTask state across restart independent of notifications
 - [ ] T043.2 — Run fresh-install Core/module relationship restore acceptance
 - [ ] T043.3 — Produce explicit Full-V1 requirements gap ledger and accepted dispositions
 
