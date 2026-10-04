@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -32,6 +32,7 @@ test("P043 fresh-install restore reconstructs Core relationships and active modu
   const sourceRoot = join(outer, "source");
   const backupRoot = join(outer, "backups");
   const freshRoot = join(outer, "fresh-install");
+  await mkdir(sourceRoot, { recursive: true });
   const source = openPcmsDatabase(
     join(sourceRoot, "pcms.db"),
     {
