@@ -1067,8 +1067,8 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 
 **Work:**
 - [x] T044.1 — Build installer/bundle integration with desktop and user-service launch
-- [~] T044.2 — Implement update/uninstall preserving data by default with explicit purge
-- [ ] T044.3 — Run clean Fedora/Linux install/start/uninstall smoke in CI
+- [x] T044.2 — Implement update/uninstall preserving data by default with explicit purge
+- [~] T044.3 — Run clean Fedora/Linux install/start/uninstall smoke in CI
 
 **Acceptance:**
 - [ ] A11-01
