@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P044**
-- Current phase: **P045 — READY**
+- Current phase: **P045 — IN_PROGRESS**
 - Next phase: **P046 — BLOCKED (P045)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
@@ -1077,7 +1077,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P044 → COMPLETE; P045 → READY; publish to GitHub; **STOP — do not implement P045.**
 
 ### P045 — Crash, resource-pressure and scale hardening matrix
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P044  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1087,7 +1087,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not use real provider/VPN availability as a hardening dependency.
 
 **Work:**
-- [ ] T045.1 — Automate pcmsd/module/Chromium kill matrices across operation states
+- [~] T045.1 — Automate pcmsd/module/Chromium kill matrices across operation states
 - [ ] T045.2 — Inject DB busy/disk-full/corrupt-backup and queue/poison-module pressure
 - [ ] T045.3 — Exercise 50+ Persona inventory/startup/disk with bounded active subset
 
