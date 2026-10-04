@@ -1,18 +1,17 @@
 # PCMS-local Status
 
 Baseline: **v0.1**  
-Completed through: **P047**  
+Completed through: **P048**  
 Current milestone: **M12 — Final live acceptance**  
-Current phase: **P048 — IN_PROGRESS**  
-Next phase: **P049 — BLOCKED (P048)**
+Current phase: **P049 — READY**  
+Next phase: none — P049 is the final v0.1 phase
 
 Canonical execution view: `ROADMAP.md`.
 
-P048 is reopened for a second review pass: session-loss protocol errors must
-be distinguished from target-loss errors, explicit detach must update local
-session state immediately, and the close-time fingerprint-mismatch grace
-needs focused deterministic regression coverage. See
-`reports/phases/P048.md`.
+Latest verification: **Actions run #744 (`37211270398`) — SUCCESS** on the
+second P048 review correction `0581444`; the reopen checkpoint carried run
+#743 and the first closure run #742. P048 evidence and CI references are
+recorded in `reports/phases/P048.md`.
 
 ## Execution model
 
@@ -21,7 +20,7 @@ needs focused deterministic regression coverage. See
 - P001–P047 are session-sized CI-first implementation phases.
 - P048–P049 are final live MCP/Mullvad/Perchance acceptance; P048 is complete
   with live MCP interoperability, real Persona distinction and real Mullvad
-  route/fail-closed evidence, plus reviewed corrections.
+  route/fail-closed evidence, plus two reviewed correction passes.
 - Exactly one phase may be READY or IN_PROGRESS.
 - A coding agent implements at most one phase, closes it, makes only the
   immediate successor READY, publishes, then stops.
