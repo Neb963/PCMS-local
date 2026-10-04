@@ -21,6 +21,7 @@ import {
   ProfileBackupError,
   checkPersonaProfileCompatibility,
   createPersonaProfileBackup,
+  restorePersonaProfileBackup,
   validatePersonaProfileBackup
 } from "../../dist/backup/profile-backup.js";
 import { ModuleManager } from "../../dist/modules/manager.js";
@@ -130,6 +131,31 @@ test("P042 restore keeps overdue schedules held and reports missing local/extern
       {
         compatible: false,
         reason: "CHROMIUM_VERSION_MISMATCH"
+      }
+    );
+    const incompatibleRestore =
+      await restorePersonaProfileBackup({
+        backupDirectory: profileBackup.directory,
+        destinationPersonasRoot: join(
+          outer,
+          "incompatible-personas"
+        ),
+        expectedPersonaUid: "persona-p042",
+        chromiumVersion: "Chrome/155.0.0.0"
+      });
+    assert.deepEqual(
+      {
+        status: incompatibleRestore.status,
+        compatibility: incompatibleRestore.compatibility,
+        profilePath: incompatibleRestore.profilePath
+      },
+      {
+        status: "INCOMPATIBLE",
+        compatibility: {
+          compatible: false,
+          reason: "CHROMIUM_VERSION_MISMATCH"
+        },
+        profilePath: null
       }
     );
 
