@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P044**
-- Current phase: **P045 — IN_PROGRESS**
-- Next phase: **P046 — BLOCKED (P045)**
+- Completed through: **P045**
+- Current phase: **P046 — READY**
+- Next phase: **P047 — BLOCKED (P046)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
 
@@ -1077,7 +1077,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P044 → COMPLETE; P045 → READY; publish to GitHub; **STOP — do not implement P045.**
 
 ### P045 — Crash, resource-pressure and scale hardening matrix
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P044  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1089,19 +1089,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T045.1 — Automate pcmsd/module/Chromium kill matrices across operation states
 - [x] T045.2 — Inject DB busy/disk-full/corrupt-backup and queue/poison-module pressure
-- [~] T045.3 — Exercise 50+ Persona inventory/startup/disk with bounded active subset
+- [x] T045.3 — Exercise 50+ Persona inventory/startup/disk with bounded active subset
 
 **Acceptance:**
-- [ ] A11-03
-- [ ] A11-04
-- [ ] A11-06
-- [ ] A11-07
-- [ ] A11-08
+- [x] A11-03
+- [x] A11-04
+- [x] A11-06
+- [x] A11-07
+- [x] A11-08
 
 **Closure:** relevant tests + CI green; phase report finalized; P045 → COMPLETE; P046 → READY; publish to GitHub; **STOP — do not implement P046.**
 
 ### P046 — Security audit, release artifacts and fresh-restore drill
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P045  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
