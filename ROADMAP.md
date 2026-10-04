@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P042**
-- Current phase: **P043 — READY**
-- Next phase: **P044 — BLOCKED (P043)**
-- Current milestone: **M10 — Statistics, backup, restore and operational UX**
+- Completed through: **P043**
+- Current phase: **P044 — READY**
+- Next phase: **P045 — BLOCKED (P044)**
+- Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -974,7 +974,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 ---
 
 ## M10 — Statistics, backup, restore and operational UX
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P041 — Statistics and coherent Core/module backup
 Status: **COMPLETE**  
@@ -1021,7 +1021,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P042 → COMPLETE; P043 → READY; publish to GitHub; **STOP — do not implement P043.**
 
 ### P043 — Attention durability, fresh-install restore and V1 gap ledger
-Status: **READY**  
+Status: **COMPLETE**  
 Depends on: P042  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1031,24 +1031,32 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not hide unresolved Workflow/Project/workspace requirements.
 
 **Work:**
-- [ ] T043.1 — Persist Attention/HumanTask state across restart independent of notifications
-- [ ] T043.2 — Run fresh-install Core/module relationship restore acceptance
-- [ ] T043.3 — Produce explicit Full-V1 requirements gap ledger and accepted dispositions
+- [x] T043.1 — Persist Attention/HumanTask state across restart independent of notifications
+- [x] T043.2 — Run fresh-install Core/module relationship restore acceptance
+- [x] T043.3 — Produce explicit Full-V1 requirements gap ledger and accepted dispositions
 
 **Acceptance:**
-- [ ] A10-07
-- [ ] A10-08
-- [ ] A10-09
+- [x] A10-07
+- [x] A10-08
+- [x] A10-09
 
 **Closure:** relevant tests + CI green; phase report finalized; P043 → COMPLETE; P044 → READY; publish to GitHub; **STOP — do not implement P044.**
 
 ---
 
+## Full V1 scope gate after P043
+
+The v0.1 baseline has explicit unresolved Full-V1 requirements recorded in
+`docs/implementation/v0.1/FULL_V1_GAP_LEDGER.md`. M11 and M12 may harden and
+validate this baseline, but they do not close PARTIAL/DEFERRED ledger rows.
+Release-candidate and final acceptance reports must not describe v0.1 as
+**Full V1** unless a later roadmap/product decision closes every unresolved row.
+
 ## M11 — Hardening, packaging and CI release candidate
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P044 — Fedora/Linux installer, desktop launch and uninstall semantics
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P043  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

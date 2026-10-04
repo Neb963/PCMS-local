@@ -27,7 +27,9 @@ The Product Requirements document is authoritative. This view maps requirement f
 
 ## Important scope decision
 
-The PRD's Full V1 includes reusable Workflows, Projects/workspaces and scheduling. Scheduling/batch foundations are implemented in P029. A generic Workflow graph/runtime is intentionally not front-loaded: concrete Deployer/Provisioning/Refresher operation plans must first demonstrate common semantics. P043 owns the explicit Full-V1 gap decision and may add an ADR/roadmap amendment rather than silently omit a requirement.
+The PRD's Full V1 includes reusable Workflows, Projects/workspaces and scheduling. Scheduling/batch foundations are implemented in P029. A generic Workflow graph/runtime was intentionally not front-loaded: concrete Deployer/Provisioning/Refresher operation plans first demonstrated the semantics actually shared by those features.
+
+P043 resolved the v0.1 scope decision in `FULL_V1_GAP_LEDGER.md`: the v0.1 hardening/acceptance roadmap is not a Full V1 completeness claim. Requirements classified PARTIAL or DEFERRED remain binding post-v0.1 Full-V1 work and must be closed by a future roadmap/product decision before any release is labeled Full V1.
 
 ## Acceptance strategy
 

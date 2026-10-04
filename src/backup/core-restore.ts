@@ -30,6 +30,7 @@ import {
   type ProfileBackupManifest,
   type RestorePersonaProfileBackupResult
 } from "./profile-backup.js";
+import { ModulePackageStore } from "../modules/package-store.js";
 import {
   enterRecoveryHold,
   readRecoveryControl
@@ -87,6 +88,7 @@ export type CoreRestoreErrorCode =
   | "RESTORE_PROFILE_TARGET_VERSION_REQUIRED"
   | "RESTORE_PROFILE_NOT_IN_DATABASE"
   | "RESTORE_PROFILE_NOT_CLOSED"
+  | "RESTORE_MODULE_PACKAGE_INVALID"
   | "RESTORE_LIVE_ROOT_UNSAFE"
   | "RESTORE_ACTIVATION_FAILED";
 
@@ -160,12 +162,13 @@ async function writeCoreFile(
   await chmod(path, mode);
 }
 
-async function copyCoreBackupToStaging(
+async function copyCoreDatabaseToStaging(
   backupRoot: string,
   manifest: CoreBackupManifest,
   staging: string
 ): Promise<void> {
   for (const file of manifest.files) {
+    if (file.kind !== "database") continue;
     const source = resolve(backupRoot, file.path);
     if (!strictDescendant(backupRoot, source)) {
       fail(
@@ -180,8 +183,55 @@ async function copyCoreBackupToStaging(
     await writeCoreFile(
       destination,
       await readFile(source),
-      file.kind === "database" ? 0o600 : 0o400
+      0o600
     );
+  }
+}
+
+async function restoreModulePackages(
+  backupRoot: string,
+  manifest: CoreBackupManifest,
+  staging: string
+): Promise<void> {
+  const packages = new ModulePackageStore(
+    join(staging, "modules")
+  );
+
+  for (const module of manifest.modules) {
+    const source = resolve(backupRoot, module.path);
+    if (!strictDescendant(backupRoot, source)) {
+      fail(
+        "RESTORE_INVALID_INPUT",
+        "Core backup module path escapes backup root"
+      );
+    }
+    try {
+      const installed = await packages.install(
+        await readFile(source)
+      );
+      if (
+        installed.moduleId !== module.moduleId ||
+        installed.version !== module.version ||
+        installed.sha256 !== module.sha256
+      ) {
+        fail(
+          "RESTORE_MODULE_PACKAGE_INVALID",
+          `restored module package identity differs: ${module.moduleId}@${module.version}`
+        );
+      }
+    } catch (error: unknown) {
+      if (
+        error instanceof CoreRestoreError &&
+        error.code === "RESTORE_MODULE_PACKAGE_INVALID"
+      ) {
+        throw error;
+      }
+      fail(
+        "RESTORE_MODULE_PACKAGE_INVALID",
+        `module package could not be reconstructed: ${module.moduleId}@${module.version}`,
+        error
+      );
+    }
   }
 }
 
@@ -542,7 +592,12 @@ export async function restoreCoreStateBackup(
   let assessment: RecoveryAssessment;
 
   try {
-    await copyCoreBackupToStaging(
+    await copyCoreDatabaseToStaging(
+      backupRoot,
+      manifest,
+      staging
+    );
+    await restoreModulePackages(
       backupRoot,
       manifest,
       staging
