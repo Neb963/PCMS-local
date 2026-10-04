@@ -23,6 +23,10 @@ test("P044 install layout stays inside the current user home", () => {
     "/home/pcms-user/.local/bin/pcms"
   );
   assert.equal(
+    paths.uninstallLink,
+    "/home/pcms-user/.local/bin/pcms-uninstall"
+  );
+  assert.equal(
     paths.servicePath,
     "/home/pcms-user/.config/systemd/user/pcmsd.service"
   );
