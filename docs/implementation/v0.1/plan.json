@@ -151,7 +151,7 @@
     {
       "id": "M11",
       "name": "Hardening, packaging and CI release candidate",
-      "status": "IN_PROGRESS",
+      "status": "READY",
       "phaseIds": [
         "P044",
         "P045",
