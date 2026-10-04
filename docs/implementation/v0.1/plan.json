@@ -151,7 +151,7 @@
     {
       "id": "M11",
       "name": "Hardening, packaging and CI release candidate",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "phaseIds": [
         "P044",
         "P045",
@@ -1865,7 +1865,7 @@
       "id": "P044",
       "milestone": "M11",
       "name": "Fedora/Linux installer, desktop launch and uninstall semantics",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P043"
       ],
