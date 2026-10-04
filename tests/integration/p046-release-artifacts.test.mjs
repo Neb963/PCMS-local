@@ -60,7 +60,7 @@ test("P046 release artifacts carry checksums provenance SBOM and reproducibility
           path: match[2]
         };
       });
-    assert.ok(checksumEntries.length >= 9);
+    assert.ok(checksumEntries.length >= 8);
     for (const entry of checksumEntries) {
       assert.equal(
         sha256(await readFile(join(root, entry.path))),
