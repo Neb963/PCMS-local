@@ -288,12 +288,12 @@ test("P045 pcmsd SIGKILL matrix preserves claims and recovers dispatched phases 
       assert.equal(
         recovered.require("p045-op-running")
           .lastTransitionReason,
-        "pcmsd-restart-after-dispatch"
+        "startup-recovery-after-possible-dispatch"
       );
       assert.equal(
         recovered.require("p045-op-verifying")
           .lastTransitionReason,
-        "pcmsd-restart-after-dispatch"
+        "startup-recovery-after-possible-dispatch"
       );
     } finally {
       recoveredDb.close();
