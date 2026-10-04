@@ -1033,12 +1033,12 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T043.1 — Persist Attention/HumanTask state across restart independent of notifications
 - [x] T043.2 — Run fresh-install Core/module relationship restore acceptance
-- [~] T043.3 — Produce explicit Full-V1 requirements gap ledger and accepted dispositions
+- [x] T043.3 — Produce explicit Full-V1 requirements gap ledger and accepted dispositions
 
 **Acceptance:**
-- [ ] A10-07
-- [ ] A10-08
-- [ ] A10-09
+- [x] A10-07
+- [x] A10-08
+- [x] A10-09
 
 **Closure:** relevant tests + CI green; phase report finalized; P043 → COMPLETE; P044 → READY; publish to GitHub; **STOP — do not implement P044.**
 
