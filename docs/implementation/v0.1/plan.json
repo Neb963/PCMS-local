@@ -1910,7 +1910,7 @@
       "id": "P045",
       "milestone": "M11",
       "name": "Crash, resource-pressure and scale hardening matrix",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P044"
       ],
@@ -1958,7 +1958,7 @@
       "id": "P046",
       "milestone": "M11",
       "name": "Security audit, release artifacts and fresh-restore drill",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P045"
       ],
