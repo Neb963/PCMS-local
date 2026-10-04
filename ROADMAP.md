@@ -28,9 +28,9 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P041**
-- Current phase: **P042 — IN_PROGRESS**
-- Next phase: **P043 — BLOCKED (P042)**
+- Completed through: **P042**
+- Current phase: **P043 — READY**
+- Next phase: **P044 — BLOCKED (P043)**
 - Current milestone: **M10 — Statistics, backup, restore and operational UX**
 - Final live milestone: **M12 — P048–P049**
 
@@ -999,7 +999,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P041 → COMPLETE; P042 → READY; publish to GitHub; **STOP — do not implement P042.**
 
 ### P042 — Optional profile backup and recovery-hold restore
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P041  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1009,19 +1009,19 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not back up open profiles or claim cross-Chromium compatibility that is not verified.
 
 **Work:**
-- [~] T042.1 — Implement optional closed-profile backup/restore with compatibility reporting
-- [ ] T042.2 — Activate restores into RECOVERY_HOLD without overdue mutation replay
-- [ ] T042.3 — Report missing profile/module/external state as degraded/unknown
+- [x] T042.1 — Implement optional closed-profile backup/restore with compatibility reporting
+- [x] T042.2 — Activate restores into RECOVERY_HOLD without overdue mutation replay
+- [x] T042.3 — Report missing profile/module/external state as degraded/unknown
 
 **Acceptance:**
-- [ ] A10-04
-- [ ] A10-05
-- [ ] A10-06
+- [x] A10-04
+- [x] A10-05
+- [x] A10-06
 
 **Closure:** relevant tests + CI green; phase report finalized; P042 → COMPLETE; P043 → READY; publish to GitHub; **STOP — do not implement P043.**
 
 ### P043 — Attention durability, fresh-install restore and V1 gap ledger
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P042  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
