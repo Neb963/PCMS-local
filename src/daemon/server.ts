@@ -9,6 +9,7 @@ import {
 import {
   AccountRepositoryError
 } from "../accounts/account-repository.js";
+import { AttentionReadService } from "../attention/read-service.js";
 
 import {
   DEFAULT_PCMSD_PORT,
@@ -539,7 +540,8 @@ function createRequestHandler(
   currentOrigin: () => string,
   paths: PcmsPaths,
   moduleUiHost: ModuleUiHost | undefined,
-  inventory: InventoryReadService
+  inventory: InventoryReadService,
+  attention: AttentionReadService
 ) {
   return (request: IncomingMessage, response: ServerResponse): void => {
     const origin = currentOrigin();
@@ -671,6 +673,7 @@ function createRequestHandler(
       path === "/api/v1/status" ||
       path === "/api/v1/diagnostics" ||
       path === "/api/v1/accounts" ||
+      path === "/api/v1/attention" ||
       path === "/api/v1/search" ||
       accountPersonaMatch !== null;
 
@@ -734,6 +737,13 @@ function createRequestHandler(
         if (path === "/api/v1/accounts") {
           writeJson(request, response, 200, {
             accounts: inventory.listAccounts()
+          });
+          return;
+        }
+
+        if (path === "/api/v1/attention") {
+          writeJson(request, response, 200, {
+            attention: attention.listOpen()
           });
           return;
         }
@@ -913,7 +923,8 @@ export async function startPcmsd(options: StartPcmsdOptions = {}): Promise<Pcmsd
       () => origin,
       paths,
       options.moduleUiHost,
-      new InventoryReadService({ database: database.connection })
+      new InventoryReadService({ database: database.connection }),
+      new AttentionReadService({ database: database.connection })
     )
   );
 
