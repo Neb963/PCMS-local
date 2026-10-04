@@ -1826,7 +1826,7 @@
       "id": "P043",
       "milestone": "M10",
       "name": "Attention durability, fresh-install restore and V1 gap ledger",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P042"
       ],
