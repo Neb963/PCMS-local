@@ -135,6 +135,10 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build and validate package and bundle surfaces
         run: npm run package:smoke && npm run bundle:smoke
+      - name: Build and validate release evidence
+        env:
+          PCMS_RELEASE_SOURCE_COMMIT: ${{ github.sha }}
+        run: npm run release:smoke
 
   fedora_install:
     name: Fedora install smoke
