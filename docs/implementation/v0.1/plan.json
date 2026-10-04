@@ -2091,7 +2091,7 @@
       "id": "P049",
       "milestone": "M12",
       "name": "Live Perchance compatibility and final release acceptance",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P048"
       ],

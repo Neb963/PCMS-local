@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P048**  
 Current milestone: **M12 — Final live acceptance**  
-Current phase: **P049 — READY**  
+Current phase: **P049 — IN_PROGRESS**  
 Next phase: none — P049 is the final v0.1 phase
 
 Canonical execution view: `ROADMAP.md`.

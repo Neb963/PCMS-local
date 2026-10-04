@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P048**
-- Current phase: **P049 — READY**
+- Current phase: **P049 — IN_PROGRESS**
 - Next phase: none — P049 is the final v0.1 phase
 - Current milestone: **M12 — Final live acceptance**
 - Final live milestone: **M12 — P048–P049**
@@ -1174,7 +1174,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P048 → COMPLETE; P049 → READY; publish to GitHub; **STOP — do not implement P049.**
 
 ### P049 — Live Perchance compatibility and final release acceptance
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P048  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1184,7 +1184,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not use production-critical generators; do not continue live debugging when behavior diverges from emulator.
 
 **Work:**
-- [ ] T049.1 — Verify expected real Perchance session/account and representative read
+- [~] T049.1 — Verify expected real Perchance session/account and representative read
 - [ ] T049.2 — Perform one disposable Deployer mutation and independently verify result
 - [ ] T049.3 — If drift exists, encode/reproduce it in CI first; otherwise finalize live acceptance/release report
 
