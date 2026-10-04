@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readdir,
+  rm,
+  stat,
+  writeFile
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -81,12 +87,46 @@ async function createScaleFixture(prefix) {
   return { root, paths };
 }
 
+async function treeFootprint(root) {
+  let files = 0;
+  let bytes = 0;
+
+  const walk = async (directory) => {
+    for (
+      const entry of await readdir(
+        directory,
+        { withFileTypes: true }
+      )
+    ) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(path);
+      } else if (entry.isFile()) {
+        files += 1;
+        bytes += (await stat(path)).size;
+      }
+    }
+  };
+
+  await walk(root);
+  return { files, bytes };
+}
+
 function auth(token) {
   return { authorization: `Bearer ${token}` };
 }
 
 test("64 dormant Account/Persona pairs stay queryable without starting browser runtimes", async () => {
   const fixture = await createScaleFixture("pcms-inventory-scale-");
+  const beforeStartup = await treeFootprint(
+    fixture.paths.personasRoot
+  );
+  assert.equal(beforeStartup.files, DORMANT_COUNT);
+  assert.ok(
+    beforeStartup.bytes <= DORMANT_COUNT * 256,
+    "dormant Persona profile metadata must stay structurally bounded"
+  );
+
   const daemon = await startPcmsd({ paths: fixture.paths, port: 0 });
 
   try {
@@ -139,6 +179,11 @@ test("64 dormant Account/Persona pairs stay queryable without starting browser r
     } finally {
       observation.close();
     }
+
+    const afterStartup = await treeFootprint(
+      fixture.paths.personasRoot
+    );
+    assert.deepEqual(afterStartup, beforeStartup);
   } finally {
     await daemon.close();
     await rm(fixture.root, { recursive: true, force: true });
