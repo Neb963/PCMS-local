@@ -3,7 +3,7 @@
 Baseline: **v0.1**  
 Completed through: **P045**  
 Current milestone: **M11 — Hardening, packaging and CI release candidate**  
-Current phase: **P046 — READY**  
+Current phase: **P046 — IN_PROGRESS**  
 Next phase: **P047 — BLOCKED (P046)**
 
 Canonical execution view: `ROADMAP.md`.

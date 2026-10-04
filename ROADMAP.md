@@ -29,7 +29,7 @@ At most one task in the active phase may be `[~]`.
 ## Current execution state
 
 - Completed through: **P045**
-- Current phase: **P046 — READY**
+- Current phase: **P046 — IN_PROGRESS**
 - Next phase: **P047 — BLOCKED (P046)**
 - Current milestone: **M11 — Hardening, packaging and CI release candidate**
 - Final live milestone: **M12 — P048–P049**
@@ -1101,7 +1101,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P045 → COMPLETE; P046 → READY; publish to GitHub; **STOP — do not implement P046.**
 
 ### P046 — Security audit, release artifacts and fresh-restore drill
-Status: **READY**  
+Status: **IN_PROGRESS**  
 Depends on: P045  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1111,7 +1111,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 - Do not treat SBOM/checksum generation as proof of live compatibility.
 
 **Work:**
-- [ ] T046.1 — Run secrets/redaction/path/archive security audit
+- [~] T046.1 — Run secrets/redaction/path/archive security audit
 - [ ] T046.2 — Build Core/modules with checksums, provenance and SBOM/reproducibility evidence
 - [ ] T046.3 — Run fresh-install restore drill preserving unresolved operation/HumanTask state
 

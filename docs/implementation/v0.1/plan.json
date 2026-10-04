@@ -1958,7 +1958,7 @@
       "id": "P046",
       "milestone": "M11",
       "name": "Security audit, release artifacts and fresh-restore drill",
-      "status": "READY",
+      "status": "IN_PROGRESS",
       "dependsOn": [
         "P045"
       ],
