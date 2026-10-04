@@ -25,7 +25,8 @@ for (const path of [
   "app/dist/daemon/main.js",
   "app/dist/cli/main.js",
   "app/dist/install/installer.js",
-  "app/dist/install/open-ui.js"
+  "app/dist/install/open-ui.js",
+  "app/dist/install/uninstaller.js"
 ]) {
   await assertFile(path);
 }
@@ -34,7 +35,9 @@ for (const path of [
   "bin/pcmsd",
   "bin/pcms",
   "bin/pcms-open",
-  "install.sh"
+  "bin/pcms-uninstall",
+  "install.sh",
+  "uninstall.sh"
 ]) {
   await assertFile(path, true);
 }
@@ -52,7 +55,8 @@ if (
   manifest.entries?.daemon !== "bin/pcmsd" ||
   manifest.entries?.cli !== "bin/pcms" ||
   manifest.entries?.open !== "bin/pcms-open" ||
-  manifest.entries?.installer !== "install.sh"
+  manifest.entries?.installer !== "install.sh" ||
+  manifest.entries?.uninstaller !== "bin/pcms-uninstall"
 ) {
   throw new Error("bundle manifest is inconsistent with the build runtime/layout");
 }
@@ -61,7 +65,9 @@ for (const launcher of [
   "bin/pcmsd",
   "bin/pcms",
   "bin/pcms-open",
-  "install.sh"
+  "bin/pcms-uninstall",
+  "install.sh",
+  "uninstall.sh"
 ]) {
   const content = await readFile(join(bundleRoot, launcher), "utf8");
   if (/\b(?:npm|pnpm|yarn|node_modules)\b/u.test(content)) {
