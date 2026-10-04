@@ -28,10 +28,10 @@ At most one task in the active phase may be `[~]`.
 
 ## Current execution state
 
-- Completed through: **P046**
-- Current phase: **P047 — IN_PROGRESS**
-- Next phase: **P048 — BLOCKED (P047)**
-- Current milestone: **M11 — Hardening, packaging and CI release candidate**
+- Completed through: **P047**
+- Current phase: **P048 — READY**
+- Next phase: **P049 — BLOCKED (P048)**
+- Current milestone: **M12 — Final live acceptance**
 - Final live milestone: **M12 — P048–P049**
 
 
@@ -1053,7 +1053,7 @@ Release-candidate and final acceptance reports must not describe v0.1 as
 **Full V1** unless a later roadmap/product decision closes every unresolved row.
 
 ## M11 — Hardening, packaging and CI release candidate
-Milestone status: **IN_PROGRESS**
+Milestone status: **COMPLETE**
 
 ### P044 — Fedora/Linux installer, desktop launch and uninstall semantics
 Status: **COMPLETE**  
@@ -1123,7 +1123,7 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Closure:** relevant tests + CI green; phase report finalized; P046 → COMPLETE; P047 → READY; publish to GitHub; **STOP — do not implement P047.**
 
 ### P047 — Full synthetic release-candidate acceptance
-Status: **IN_PROGRESS**  
+Status: **COMPLETE**  
 Depends on: P046  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 
@@ -1135,24 +1135,24 @@ Target size: one bounded agent session (~20–30 min empirical target; do not se
 **Work:**
 - [x] T047.1 — Run generic DevTools Persona acceptance plus full synthetic routing/fail-closed matrix
 - [x] T047.2 — Run Perchance emulator read/mutation/reconciliation/drift suite
-- [~] T047.3 — Publish CI-complete release-candidate report with residual live assumptions
+- [x] T047.3 — Publish CI-complete release-candidate report with residual live assumptions
 
 **Acceptance:**
-- [ ] A11-05
-- [ ] A11-12
-- [ ] A11-13
-- [ ] A11-14
-- [ ] A11-15
+- [x] A11-05
+- [x] A11-12
+- [x] A11-13
+- [x] A11-14
+- [x] A11-15
 
 **Closure:** relevant tests + CI green; phase report finalized; P047 → COMPLETE; P048 → READY; publish to GitHub; **STOP — do not implement P048.**
 
 ---
 
 ## M12 — Final live acceptance
-Milestone status: **BLOCKED**
+Milestone status: **READY**
 
 ### P048 — Live MCP and Mullvad acceptance
-Status: **BLOCKED**  
+Status: **READY**  
 Depends on: P047  
 Target size: one bounded agent session (~20–30 min empirical target; do not self-time)
 

@@ -151,7 +151,7 @@
     {
       "id": "M11",
       "name": "Hardening, packaging and CI release candidate",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "phaseIds": [
         "P044",
         "P045",
@@ -162,7 +162,7 @@
     {
       "id": "M12",
       "name": "Final live acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "phaseIds": [
         "P048",
         "P049"
@@ -2004,7 +2004,7 @@
       "id": "P047",
       "milestone": "M11",
       "name": "Full synthetic release-candidate acceptance",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "dependsOn": [
         "P046"
       ],
@@ -2052,7 +2052,7 @@
       "id": "P048",
       "milestone": "M12",
       "name": "Live MCP and Mullvad acceptance",
-      "status": "BLOCKED",
+      "status": "READY",
       "dependsOn": [
         "P047"
       ],
