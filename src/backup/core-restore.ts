@@ -311,6 +311,14 @@ async function moduleAssessment(
       }));
       continue;
     }
+    if (entries.length === 0) {
+      assessments.push(Object.freeze({
+        moduleId,
+        version,
+        status: "MISSING"
+      }));
+      continue;
+    }
     if (
       entries.length !== 1 ||
       !entries[0]?.isDirectory() ||
