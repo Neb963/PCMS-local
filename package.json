@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "typescript": "5.9.3",
-    "@types/node": "24.10.0"
+    "@types/node": "26.6.4"
   },
   "bin": {
     "pcms": "./dist/cli/main.js"
